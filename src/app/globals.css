@@ -1,38 +1,35 @@
 @import "tailwindcss";
+@import "@fontsource/inter"; 
 
-/* Add backdrop filter variables to fix backdrop-blur and similar effects */
+
 *, ::before, ::after {
   --tw-backdrop-blur: ;
-  --tw-backdrop-brightness: ;
-  --tw-backdrop-contrast: ;
-  --tw-backdrop-grayscale: ;
-  --tw-backdrop-hue-rotate: ;
-  --tw-backdrop-invert: ;
-  --tw-backdrop-opacity: ;
-  --tw-backdrop-saturate: ;
-  --tw-backdrop-sepia: ;
-}
-
-body::before {
-  content: "Tailwind loaded ✅";
-  display: block;
-  color: red;
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: linear-gradient(to bottom right, #0b0c0f, #13161a);
+  --foreground: #d9dee3;
+  --glass-bg: rgba(255, 255, 255, 0.035);
+  --glass-border: rgba(255, 255, 255, 0.045);
+  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  --accent-glow: rgba(150, 220, 255, 0.05);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'InterVariable', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  transition: background 0.5s ease;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: linear-gradient(to bottom right, #f8f9fa, #e5e7eb);
+    --foreground: #1f1f1f;
+    --glass-bg: rgba(255, 255, 255, 0.5);
+    --glass-border: rgba(0, 0, 0, 0.05);
+    --accent-glow: rgba(30, 144, 255, 0.1);
+  }
 }
