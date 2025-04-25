@@ -1,7 +1,10 @@
+// src/app/notes/page.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import GlassPanel from "../components/GlassPanel";
 import { apiFetch } from "../hooks/useApi";
 import { getUserFromToken } from "../hooks/useAuth";
@@ -43,41 +46,74 @@ export default function NotesOverviewPage() {
   const notesToRender = notes.length > 0 ? notes : mockNotes;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-gradient-to-br from-[#0b0c0f] via-[#101215] to-[#13161a]">
-      <GlassPanel className="w-full max-w-6xl min-h-[500px]">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-slate-100 text-2xl font-semibold">Your Notes</h2>
-          <Link
-            href="/notes/new"
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-100 rounded-md border border-white/10"
-          >
-            + New Note
-          </Link>
-        </div>
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-gradient-to-br from-[#0b0c0f] via-[#101215] to-[#13161a] relative overflow-hidden">
+      {/* Ripple background layer */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse,rgba(30,144,255,0.02)_0%,transparent_70%)] bg-[length:200%_200%] animate-[ripple_24s_linear_infinite] z-0" />
 
-        {loading ? (
-          <p className="text-slate-400">Loading...</p>
-        ) : error ? (
-          <p className="text-red-400">{error}</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {notesToRender.map((note) => (
+      <motion.div
+        animate={{
+          y: [0, 1.5, 0, -1.5, 0],
+          rotate: [0, 0.3, 0, -0.3, 0],
+        }}
+        transition={{
+          duration: 14,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="relative z-10"
+      >
+        <div className="relative w-full max-w-6xl">
+          {/* subtle glow */}
+          <div className="absolute -inset-1 rounded-2xl bg-cyan-200/3 blur-md z-0" />
+
+          <GlassPanel className="relative z-10 min-h-[500px]">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-slate-100 text-2xl font-semibold">Your Notes</h2>
               <Link
-                key={note.id}
-                href={`/notes/${note.id}`}
-                className="block backdrop-blur-sm bg-white/5 border border-white/5 p-4 rounded-lg hover:bg-white/10 transition"
+                href="/notes/new"
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-100 rounded-md border border-white/10"
               >
-                <h3 className="text-slate-100 text-lg font-medium mb-2">
-                  {note.title}
-                </h3>
-                <p className="text-slate-400 text-sm">
-                  {note.preview || note.content?.slice(0, 100) || ""}
-                </p>
+                + New Note
               </Link>
-            ))}
-          </div>
-        )}
-      </GlassPanel>
+            </div>
+
+            {loading ? (
+              <p className="text-slate-400">Loading...</p>
+            ) : error ? (
+              <p className="text-red-400">{error}</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {notesToRender.map((note) => (
+                  <motion.div
+                    key={note.id}
+                    animate={{ y: [0, 1, 0, -1, 0] }}
+                    whileHover={{
+                      y: -2,
+                      scale: 1.015,
+                      boxShadow: "0 6px 12px rgba(255, 255, 255, 0.05)",
+                    }}
+                    transition={{
+                      duration: 10,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  >
+                    <Link
+                      href={`/notes/${note.id}`}
+                      className="block backdrop-blur-sm bg-white/5 border border-white/5 p-4 rounded-lg hover:bg-white/10 transition"
+                    >
+                      <h3 className="text-slate-100 text-lg font-medium mb-2">{note.title}</h3>
+                      <p className="text-slate-400 text-sm">
+                        {note.preview || note.content?.slice(0, 100) || ""}
+                      </p>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </GlassPanel>
+        </div>
+      </motion.div>
     </div>
   );
 }

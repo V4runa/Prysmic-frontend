@@ -9,7 +9,7 @@ import { apiFetch } from "../hooks/useApi";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,7 +21,7 @@ export default function SignupPage() {
     try {
       const res = await apiFetch<{ access_token: string }>("/auth/signup", {
         method: "POST",
-        body: JSON.stringify({ username:name, email, password }),
+        body: JSON.stringify({ username, email, password }),
       });
 
       localStorage.setItem("token", res.access_token);
@@ -47,9 +47,9 @@ export default function SignupPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <input
               type="text"
-              placeholder="Full Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-2 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md"
             />
             <input

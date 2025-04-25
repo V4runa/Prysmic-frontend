@@ -1,9 +1,14 @@
-
+// src/app/layout.tsx
 import "./globals.css";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import AppShell from "./components/AppShell";
 
-export const metadata = {
-  title: 'AI Notes',
-  description: 'Your smart note-taking assistant',
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "AI Notes",
+  description: "A quiet place for thought and reflection, powered by AI.",
 };
 
 export default function RootLayout({
@@ -13,7 +18,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={inter.className}>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
