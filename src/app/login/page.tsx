@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import Link from "next/link";
 import GlassPanel from "../components/GlassPanel";
 import { apiFetch } from "../hooks/useApi";
+import PageTransition from "../components/PageTransition"; // ✅ Add this import
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function LoginPage() {
       const res = await apiFetch<{ access_token: string }>("/auth/login", {
         method: "POST",
         body: JSON.stringify({
-          identifier,  // ✅ username OR email
+          identifier,
           password,
         }),
       });
@@ -35,12 +35,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-[#0b0c0f] via-[#101215] to-[#13161a]">
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
+    <div className="min-h-screen flex items-center justify-center px-4 bg-transparent">
+      <PageTransition>
+        {" "}
+        {/* ✅ */}
         <GlassPanel>
           <h2 className="text-slate-100 text-2xl font-medium mb-6 text-center tracking-wide">
             Enter the Flow
@@ -80,7 +78,7 @@ export default function LoginPage() {
             </Link>
           </p>
         </GlassPanel>
-      </motion.div>
+      </PageTransition>
     </div>
   );
 }

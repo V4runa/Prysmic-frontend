@@ -44,11 +44,16 @@ export default function NotesPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-[#0b0c0f] via-[#101215] to-[#13161a]">
-      <GlassPanel className="w-full max-w-2xl">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-slate-100 text-xl font-semibold">New Note</h2>
-          <Link href="/notes" className="text-cyan-300 text-sm hover:underline">
+    <div className="h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden bg-transparent">
+      <GlassPanel className="w-full max-w-6xl h-[65vh] flex flex-col justify-start gap-8">
+        <div className="flex justify-between items-center">
+          <h2 className="text-slate-100 text-3xl font-semibold tracking-wide">
+            New Note
+          </h2>
+          <Link
+            href="/notes"
+            className="px-5 py-2 bg-white/10 hover:bg-white/20 text-slate-100 rounded-md border border-white/10 transition text-sm"
+          >
             ← Back to Notes
           </Link>
         </div>
@@ -65,12 +70,12 @@ export default function NotesPage() {
             placeholder="Write your note here..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            rows={10}
+            rows={12}
             className="w-full px-4 py-2 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md resize-none"
           />
           <button
             type="submit"
-            className="self-end px-4 py-2 mt-2 bg-white/5 hover:bg-cyan-200/10 text-slate-100 rounded-md border border-white/10"
+            className="self-end px-5 py-2 mt-4 bg-white/5 hover:bg-cyan-200/10 text-slate-100 rounded-md border border-white/10"
           >
             Save
           </button>

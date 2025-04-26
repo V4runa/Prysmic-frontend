@@ -35,25 +35,32 @@ export default function ViewNotePage() {
   }, [id]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-[#0b0c0f] via-[#101215] to-[#13161a]">
-      <GlassPanel className="w-full max-w-2xl min-h-[300px]">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-slate-100 text-xl font-semibold">Viewing Note</h2>
-          <Link href="/notes" className="text-cyan-300 text-sm hover:underline">
+    <div className="h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden bg-transparent">
+      <GlassPanel className="w-full max-w-6xl h-[65vh] flex flex-col justify-start gap-8">
+        <div className="flex justify-between items-center">
+          <h2 className="text-slate-100 text-3xl font-semibold tracking-wide">
+            Viewing Note
+          </h2>
+          <Link
+            href="/notes"
+            className="px-5 py-2 bg-white/10 hover:bg-white/20 text-slate-100 rounded-md border border-white/10 transition text-sm"
+          >
             ← Back to Notes
           </Link>
         </div>
 
         {loading ? (
-          <p className="text-slate-400">Loading...</p>
+          <p className="text-slate-400 text-lg">Loading...</p>
         ) : error ? (
-          <p className="text-red-400">{error}</p>
+          <p className="text-red-400 text-lg">{error}</p>
         ) : (
           <>
-            <h3 className="text-slate-100 text-2xl font-semibold mb-3">
+            <h3 className="text-slate-100 text-2xl font-semibold mb-2">
               {note.title}
             </h3>
-            <p className="text-slate-300 whitespace-pre-wrap">{note.content}</p>
+            <p className="text-slate-300 whitespace-pre-wrap text-base leading-relaxed">
+              {note.content}
+            </p>
             {note.tags?.length > 0 && (
               <div className="mt-4 text-slate-400 text-sm">
                 Tags: {note.tags.map((t: any) => t.name).join(", ")}

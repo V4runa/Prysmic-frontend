@@ -3,22 +3,19 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import GlassPanel from "./components/GlassPanel";
+import PageTransition from "./components/PageTransition"; // ✅
 
 export default function HomePage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-[#0b0c0f] via-[#101215] to-[#13161a]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-      >
+      <PageTransition>
         <GlassPanel className="w-full max-w-2xl text-center">
           <h1 className="text-4xl text-slate-100 font-semibold mb-4 tracking-wide">
             Welcome to <span className="text-cyan-300">AI Notes</span>
           </h1>
           <p className="text-slate-400 text-lg mb-6">
-            A quiet place for deep thought. Organize ideas, tag memories, and let
-            your notes evolve with you.
+            A quiet place for deep thought. Organize ideas, tag memories, and
+            let your notes evolve with you.
           </p>
 
           <div className="flex justify-center gap-6">
@@ -40,7 +37,7 @@ export default function HomePage() {
             Created by a wanderer of code and thought
           </p>
         </GlassPanel>
-      </motion.div>
+      </PageTransition>
     </div>
   );
 }
