@@ -30,6 +30,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = [
     { label: "Notes", href: "/notes" },
     { label: "New", href: "/notes/new" },
+    { label: "Tags", href: "/tags" },
     { label: "Summon AI", href: "#", disabled: true },
   ];
 
