@@ -1,4 +1,3 @@
-// === /tags/page.tsx ===
 "use client";
 
 import { useEffect, useState } from "react";
@@ -41,23 +40,17 @@ export default function TagsPage() {
   const [editedColor, setEditedColor] = useState("cyan");
   const [error, setError] = useState("");
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
   useEffect(() => {
-    if (!token) return;
-    apiFetch<Tag[]>("/tags", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch<Tag[]>("/tags")
       .then(setTags)
       .catch(() => setError("Could not fetch tags"));
-  }, [token]);
+  }, []);
 
   const handleCreate = async () => {
-    if (!token || !newTagName.trim()) return;
+    if (!newTagName.trim()) return;
     try {
       const created = await apiFetch<Tag>("/tags", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: newTagName, color: newTagColor }),
       });
       setTags((prev) => [...prev, created]);
@@ -68,12 +61,8 @@ export default function TagsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!token) return;
     try {
-      await apiFetch(`/tags/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await apiFetch(`/tags/${id}`, { method: "DELETE" });
       setTags((prev) => prev.filter((t) => t.id !== id));
     } catch {
       setError("Failed to delete tag");
@@ -81,11 +70,10 @@ export default function TagsPage() {
   };
 
   const handleSaveEdit = async (id: number) => {
-    if (!token || !editedName.trim()) return;
+    if (!editedName.trim()) return;
     try {
       const updated = await apiFetch<Tag>(`/tags/${id}`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: editedName, color: editedColor }),
       });
       setTags((prev) => prev.map((t) => (t.id === id ? updated : t)));
@@ -102,36 +90,38 @@ export default function TagsPage() {
           <h2 className="text-slate-100 text-3xl font-bold tracking-wide">Tag Codex</h2>
 
           {/* Tag Creation */}
-          <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
             <input
               type="text"
               placeholder="Tag name..."
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
-              className="w-full px-4 py-2 bg-white/10 text-slate-200 rounded-md border border-white/10"
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              className="flex-1 px-4 py-2 bg-white/10 text-slate-200 rounded-md border border-white/10"
             />
-            <div className="flex flex-wrap items-center gap-2">
-              {colorOptions.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setNewTagColor(c.value)}
-                  className={`px-3 py-1 text-xs rounded-full border backdrop-blur-md transition ${
-                    newTagColor === c.value
-                      ? `${tagColorClasses[c.value]} ring-2 ring-${c.value}-300 text-${c.value}-200 border-${c.value}-300`
-                      : `border-white/10 text-slate-400 hover:text-white hover:border-white/20`
-                  }`}
-                >
-                  {c.name}
-                </button>
-              ))}
+            <button
+              onClick={handleCreate}
+              className="px-3 py-2 text-sm text-slate-300 hover:text-white border border-white/10 rounded-md hover:bg-white/10 transition"
+            >
+              +
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {colorOptions.map((c) => (
               <button
-                onClick={handleCreate}
-                className="px-3 py-2 text-sm text-slate-300 hover:text-white border border-white/10 rounded-md hover:bg-white/10 transition"
+                key={c.value}
+                type="button"
+                onClick={() => setNewTagColor(c.value)}
+                className={`px-3 py-1 text-xs rounded-full border backdrop-blur-md transition ${
+                  newTagColor === c.value
+                    ? `${tagColorClasses[c.value]} ring-2 ring-${c.value}-300 text-${c.value}-200 border-${c.value}-300`
+                    : `border-white/10 text-slate-400 hover:text-white hover:border-white/20`
+                }`}
               >
-                +
+                {c.name}
               </button>
-            </div>
+            ))}
           </div>
 
           {/* Tags Display */}
