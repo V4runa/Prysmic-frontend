@@ -3,7 +3,6 @@ export async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const baseUrl = "http://localhost:5000";
-
   const token = localStorage.getItem("token");
 
   const headers = new Headers({
@@ -16,6 +15,18 @@ export async function apiFetch<T>(
     ...options,
     headers,
   });
+
+  if (res.status === 401) {
+    const errorText = await res.text();
+    console.warn("🔒 401 Unauthorized:", errorText);
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      window.dispatchEvent(new Event("token-expired")); // triggers toast
+    }
+
+    throw new Error("Session expired. Redirecting...");
+  }
 
   if (!res.ok) {
     const error = await res.text();

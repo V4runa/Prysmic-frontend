@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ClientShellWrapper>{children}</ClientShellWrapper> {}
+        <ClientShellWrapper>{children}</ClientShellWrapper>
       </body>
     </html>
   );
