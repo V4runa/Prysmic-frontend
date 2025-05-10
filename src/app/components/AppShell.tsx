@@ -93,7 +93,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <main className="pt-20 px-4 pb-10 max-w-7xl mx-auto relative z-10 bg-transparent">
+      <main className="pt-20 px-4 pb-10 w-full max-w-[95vw] mx-auto relative z-10 bg-transparent">
         <PageTransition>{children}</PageTransition>
       </main>
     </div>
