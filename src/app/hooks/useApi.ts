@@ -2,7 +2,8 @@ export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const baseUrl = "http://localhost:3000";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
   const token = localStorage.getItem("token");
 
   const headers = new Headers({
@@ -37,6 +38,11 @@ export async function apiFetch<T>(
   const contentLength = res.headers.get("content-length");
   if (contentLength && parseInt(contentLength) > 0) {
     return res.json();
+  }
+
+  // Return empty array for endpoints that should return arrays
+  if (endpoint.includes('/notes') || endpoint.includes('/tags') || endpoint.includes('/habits')) {
+    return [] as unknown as T;
   }
 
   return null as unknown as T;

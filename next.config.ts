@@ -1,9 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  reactStrictMode: true,
   env: {
-    PORT: "3001",
+    NEXT_PUBLIC_API_BASE_URL: "/api", // Frontend will call `/api/xyz`
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://backend:3001/:path*", // Docker-internal backend
+      },
+    ];
   },
 };
 
