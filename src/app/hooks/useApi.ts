@@ -2,9 +2,8 @@ export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
-  const token = localStorage.getItem("token");
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const headers = new Headers({
     "Content-Type": "application/json",
@@ -15,35 +14,33 @@ export async function apiFetch<T>(
   const res = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     headers,
-    credentials: "include",
   });
 
   if (res.status === 401) {
-    const errorText = await res.text();
-    console.warn("🔒 401 Unauthorized:", errorText);
-
+    const msg = await res.text().catch(() => "");
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
-      window.dispatchEvent(new Event("token-expired")); // triggers toast
+      window.dispatchEvent(new Event("token-expired"));
     }
-
-    throw new Error("Session expired. Redirecting...");
+    throw new Error(`Session expired. ${msg}`);
   }
+
+  if (res.status === 204) {
+    return null as unknown as T;
+  }
+
+  const ct = res.headers.get("content-type") || "";
+  const body = ct.includes("application/json")
+    ? await res.json().catch(() => null)
+    : await res.text().catch(() => "");
 
   if (!res.ok) {
-    const error = await res.text();
-    throw new Error(`API Error: ${res.status} ${res.statusText} - ${error}`);
+    throw new Error(
+      `API Error: ${res.status} ${res.statusText} - ${
+        typeof body === "string" ? body : JSON.stringify(body)
+      }`
+    );
   }
 
-  const contentLength = res.headers.get("content-length");
-  if (contentLength && parseInt(contentLength) > 0) {
-    return res.json();
-  }
-
-  // Return empty array for endpoints that should return arrays
-  if (endpoint.includes('/notes') || endpoint.includes('/tags') || endpoint.includes('/habits')) {
-    return [] as unknown as T;
-  }
-
-  return null as unknown as T;
+  return body as T;
 }
