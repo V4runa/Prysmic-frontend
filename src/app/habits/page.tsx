@@ -99,7 +99,7 @@ export default function HabitsPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen w-full flex flex-col items-center justify-start gap-12 pt-8 pb-20 px-6">
+      <div className="w-full min-h-[calc(100vh-64px)] pt-[80px] px-[clamp(1rem,4vw,2rem)] pb-16 flex justify-center items-start">
         <GlassPanel className="w-full max-w-5xl flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <div>

@@ -43,7 +43,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         transition={{ duration: 2, ease: "easeOut" }}
         className="fixed inset-0 -z-10"
       >
-        {/* Subtle Cosmic Moving Gradient */}
         <motion.div
           initial={{ backgroundPosition: "0% 50%" }}
           animate={{ backgroundPosition: "100% 50%" }}
@@ -52,15 +51,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           style={{ zIndex: -10 }}
         />
 
-        {/* Darkened overlay */}
         <div className="absolute inset-0 bg-black/70 pointer-events-none" />
-
-        {/* Radial vignette */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0)_40%,rgba(0,0,0,0.7)_100%)] pointer-events-none" />
       </motion.div>
 
       {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/5 border-b border-white/10 px-4 py-3 flex justify-between items-center shadow-sm">
+      <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/5 border-b border-white/10 px-4 py-2 flex justify-between items-center shadow-sm h-12">
         <div className="flex gap-6 items-center">
           <h1 className="text-xl font-bold tracking-wide">AI Notes</h1>
           {navItems.map((item) => (
@@ -93,7 +89,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <main className="pt-20 px-4 pb-10 w-full max-w-[95vw] mx-auto relative z-10 bg-transparent">
+      <main className="relative z-10">
         <PageTransition>{children}</PageTransition>
       </main>
     </div>

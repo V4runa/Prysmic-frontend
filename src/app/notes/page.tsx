@@ -29,9 +29,9 @@ export default function NotesOverviewPage() {
   const [allTags, setAllTags] = useState<TagData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeTags, setActiveTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const notesPerPage = 12;
+  const [notesPerPage, setNotesPerPage] = useState(6);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -78,11 +78,37 @@ export default function NotesOverviewPage() {
   }, []);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTag]);
+    const height = window.innerHeight;
+    const cardHeight = 300;
+    const usable = height - 140;
+    const rows = Math.floor(usable / cardHeight);
+    const columns =
+      window.innerWidth < 768
+        ? 1
+        : window.innerWidth < 1024
+        ? 2
+        : window.innerWidth < 1280
+        ? 3
+        : 4;
+    setNotesPerPage(Math.max(1, rows * columns));
+  }, []);
 
-  const filteredNotes = activeTag
-    ? notes.filter((note) => note.tags?.some((tag) => tag.name === activeTag))
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTags]);
+
+  const toggleTag = (name: string) => {
+    setActiveTags((prev) =>
+      prev.includes(name)
+        ? prev.filter((tag) => tag !== name)
+        : [...prev, name]
+    );
+  };
+
+  const filteredNotes = activeTags.length
+    ? notes.filter((note) =>
+        note.tags?.some((tag) => activeTags.includes(tag.name))
+      )
     : notes;
 
   const totalPages = Math.max(
@@ -103,29 +129,37 @@ export default function NotesOverviewPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-row items-start justify-center px-6 py-12 bg-transparent gap-8">
+    <div className="w-full h-[calc(100vh-80px)] px-[clamp(1rem,4vw,2rem)] pt-6 pb-4 flex gap-6 items-start overflow-hidden mt-12">
+      {/* Left: Tags */}
       {allTags.length > 0 && (
-        <GlassPanel className="hidden md:flex flex-col w-64 max-h-[85vh] p-4 gap-4 overflow-y-auto shadow-xl rounded-2xl backdrop-blur-md bg-white/5 border border-white/10">
-          <div className="flex items-center gap-2 mb-1 text-slate-200 uppercase text-xs font-semibold tracking-widest">
-            <Tag size={14} /> Tags
+        <GlassPanel className="hidden md:flex flex-col w-64 p-4 gap-4 shadow-xl rounded-2xl backdrop-blur-md bg-white/5 border border-white/10">
+          <div className="flex items-center gap-2 text-slate-200 uppercase text-xs font-semibold tracking-widest">
+            <Tag size={20} /> Tags
           </div>
-          <div className="flex flex-col gap-3">
+
+          <div className="flex flex-col gap-3 mt-1">
             {allTags.map((tag) => {
-              const isActive = tag.name === activeTag;
+              const isActive = activeTags.includes(tag.name);
               return (
                 <motion.div
                   key={tag.id}
-                  whileHover={{ scale: 1.03 }}
-                  transition={{ type: "spring", stiffness: 100 }}
-                  onClick={() => setActiveTag(isActive ? null : tag.name)}
-                  className={`cursor-pointer group px-4 py-2 flex items-center justify-between rounded-xl border transition backdrop-blur-lg border-${tag.color}-300/20 hover:bg-${tag.color}-300/10 ${
+                  layout
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 180, damping: 18 }}
+                  onClick={() => toggleTag(tag.name)}
+                  className={`cursor-pointer px-4 py-2 flex items-center justify-between rounded-xl border backdrop-blur-lg relative
+                  border-${tag.color}-300/20
+                  ${
                     isActive
-                      ? `bg-${tag.color}-300/20 shadow-inner shadow-${tag.color}-400/40`
-                      : "bg-white/5"
+                      ? `ring ring-${tag.color}-300 shadow-[0_0_10px] shadow-${tag.color}-400/40 scale-[1.05] bg-${tag.color}-500/10`
+                      : "hover:bg-white/20"
                   }`}
+                  style={{
+                    background: isActive ? `rgba(255, 255, 255, 0.10)` : "rgba(255,255,255,0.025)",
+                  }}
                 >
                   <span
-                    className={`text-sm font-medium text-${tag.color}-300 truncate w-40`}
+                    className={`text-sm font-medium truncate w-40 text-${tag.color}-300`}
                   >
                     {tag.name}
                   </span>
@@ -139,7 +173,18 @@ export default function NotesOverviewPage() {
             })}
           </div>
 
-          <div className="mt-8 flex flex-col items-center gap-1">
+          {activeTags.length > 0 && (
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={() => setActiveTags([])}
+                className="text-xs text-cyan-300 underline hover:text-cyan-200 transition"
+              >
+                Clear all tags
+              </button>
+            </div>
+          )}
+
+          <div className="mt-auto pt-6 flex flex-col items-center gap-1">
             <span className="uppercase tracking-wide text-[10px] text-slate-400 font-semibold">
               Echoes of Thought
             </span>
@@ -152,22 +197,12 @@ export default function NotesOverviewPage() {
         </GlassPanel>
       )}
 
-      <GlassPanel className="flex-grow max-w-[95vw] min-h-[85vh] w-full flex flex-col justify-start gap-8">
+      {/* Right: Notes */}
+      <GlassPanel className="flex-grow w-full h-full flex flex-col justify-start gap-6 overflow-hidden">
         <div className="flex justify-between items-start">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-slate-100 text-3xl font-bold tracking-wide">
-              Your Notes
-            </h2>
-            {activeTag && (
-              <button
-                onClick={() => setActiveTag(null)}
-                className="text-xs text-cyan-300 underline hover:text-cyan-200 transition"
-              >
-                Clear tag filter
-              </button>
-            )}
-          </div>
-
+          <h2 className="text-slate-100 text-3xl font-bold tracking-wide">
+            Your Notes
+          </h2>
           <Link
             href="/notes/new"
             className="px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 transition text-sm"
@@ -180,11 +215,6 @@ export default function NotesOverviewPage() {
           <p className="text-slate-400 text-center text-lg">Loading...</p>
         ) : error ? (
           <p className="text-red-400 text-center text-lg">{error}</p>
-        ) : notes.length === 0 ? (
-          <p className="text-slate-500 text-center italic mt-12">
-            You haven’t written any notes yet. Your mind awaits its first
-            inscription.
-          </p>
         ) : filteredNotes.length === 0 ? (
           <p className="text-slate-400 text-center text-lg">
             No notes match your filter.
@@ -193,7 +223,7 @@ export default function NotesOverviewPage() {
           <>
             <AnimatePresence mode="wait">
               <motion.div
-                key={currentPage + (activeTag ?? "")}
+                key={currentPage + activeTags.join(",")}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -237,7 +267,6 @@ export default function NotesOverviewPage() {
                         addSuffix: true,
                       })}
                     </div>
-
                     <Link
                       href={`/notes/${note.id}`}
                       className="absolute inset-0 z-10"
@@ -248,7 +277,7 @@ export default function NotesOverviewPage() {
             </AnimatePresence>
 
             <div className="mt-auto flex justify-center pt-6">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-center">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}

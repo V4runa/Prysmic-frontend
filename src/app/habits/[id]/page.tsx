@@ -199,7 +199,7 @@ export default function HabitDetailPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+      <div className="mt-20 min-h-screen w-full flex flex-col items-center justify-start py-[var(--page-y)] px-[var(--page-x)]">
         <GlassPanel className={clsx("w-full max-w-3xl flex flex-col gap-6", bgPanelMap[color])}>
           <div className="flex justify-between items-center">
             <h2 className="text-3xl font-bold text-slate-100 tracking-wide">

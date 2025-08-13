@@ -147,66 +147,33 @@ export default function ViewNotePage() {
   };
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden bg-transparent">
-      <GlassPanel className="w-full max-w-5xl h-[65vh] flex flex-col gap-6 justify-start">
+    <div className="w-full h-[calc(100vh-64px)] px-[clamp(1rem,4vw,2rem)] mt-[64px] pb-6 flex items-center justify-center bg-transparent">
+      <GlassPanel className="w-full max-w-5xl h-[70vh] flex flex-col gap-4 justify-start overflow-hidden">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            {editing ? (
-              <h2 className="text-cyan-300 text-4xl font-bold tracking-wide">Editing Note</h2>
-            ) : (
-              <h2 className="text-slate-100 text-4xl font-bold tracking-wide">Viewing Note</h2>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4">
+          <h2 className="text-slate-100 text-3xl font-bold tracking-wide">
+            {editing ? "Editing Note" : "Viewing Note"}
+          </h2>
+          <div className="flex items-center gap-3">
             {!editing ? (
               <>
-                <motion.button
-                  whileHover={{ scale: 1.15 }}
-                  className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20"
-                  onClick={() => setEditing(true)}
-                  title="Edit"
-                >
+                <motion.button whileHover={{ scale: 1.15 }} className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={() => setEditing(true)} title="Edit">
                   <Pencil className="h-5 w-5 text-cyan-300" />
                 </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.15 }}
-                  className="p-2 bg-red-400/10 hover:bg-red-400/20 rounded-md border border-red-300/20"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  title="Delete"
-                >
+                <motion.button whileHover={{ scale: 1.15 }} className="p-2 bg-red-400/10 hover:bg-red-400/20 rounded-md border border-red-300/20" onClick={handleDelete} disabled={deleting} title="Delete">
                   <Trash2 className="h-5 w-5 text-red-300" />
                 </motion.button>
               </>
             ) : (
               <>
-                <motion.button
-                  whileHover={{ scale: 1.15 }}
-                  className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20"
-                  onClick={handleSaveUpdate}
-                  title="Save"
-                >
+                <motion.button whileHover={{ scale: 1.15 }} className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={handleSaveUpdate} title="Save">
                   <Save className="h-5 w-5 text-cyan-300" />
                 </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.15 }}
-                  className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10"
-                  onClick={handleCancelEdit}
-                  title="Cancel"
-                >
+                <motion.button whileHover={{ scale: 1.15 }} className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" onClick={handleCancelEdit} title="Cancel">
                   <X className="h-5 w-5 text-slate-300" />
                 </motion.button>
               </>
             )}
-
-            <Link
-              href="/notes"
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10"
-              title="Back"
-            >
+            <Link href="/notes" className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" title="Back">
               <ArrowLeft className="h-5 w-5 text-slate-300" />
             </Link>
           </div>
@@ -218,34 +185,21 @@ export default function ViewNotePage() {
           <p className="text-red-400 text-lg">{error}</p>
         ) : (
           <>
-            {editing ? (
-              <input
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-2xl font-semibold"
-              />
-            ) : (
-              <h3 className="text-slate-100 text-3xl font-bold mb-2">
-                {note?.title}
-              </h3>
-            )}
-
-            {editing ? (
-              <textarea
-                value={editedContent}
-                onChange={(e) => setEditedContent(e.target.value)}
-                rows={8}
-                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md resize-none"
-              />
-            ) : (
-              <p className="text-slate-300 whitespace-pre-wrap text-base leading-relaxed">
-                {note?.content}
-              </p>
-            )}
-
-            <div className="flex flex-wrap gap-3 mt-4">
+            <div className="flex-grow overflow-y-auto pr-2 flex flex-col gap-4 hide-scrollbar">
+              {editing ? (
+                <input value={editedTitle} onChange={(e) => setEditedTitle(e.target.value)} className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-2xl font-semibold" />
+              ) : (
+                <h3 className="text-slate-100 text-2xl font-bold">{note?.title}</h3>
+              )}
+              {editing ? (
+                <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} rows={10} className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md resize-none" />
+              ) : (
+                <p className="text-slate-300 whitespace-pre-wrap text-base leading-relaxed">{note?.content}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3 mt-2">
               {(editing ? availableTags : note?.tags || []).map((tag) => {
-                const color = tag.color || "cyan";
+                const color = tag.color || "slate";
                 const active = selectedTagIds.includes(tag.id);
                 const base = tagColorClasses[color];
                 return (
@@ -254,7 +208,9 @@ export default function ViewNotePage() {
                     type="button"
                     onClick={() => editing && toggleTag(tag.id)}
                     className={`px-4 py-1 rounded-full text-xs border backdrop-blur-md shadow-sm transition ${
-                      active ? `${base} ring-1 ring-white/20` : "text-slate-300 border-white/10 hover:bg-white/10"
+                      active
+                        ? `${base} ring-1 ring-white/20`
+                        : "text-slate-300 border-white/10 hover:bg-white/10"
                     }`}
                   >
                     {tag.name}

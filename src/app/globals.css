@@ -1,11 +1,39 @@
 @import "tailwindcss";
-@import "@fontsource/inter"; 
+@import "@fontsource/inter";
 
-
-*, ::before, ::after {
-  --tw-backdrop-blur: ;
+/* Scrollbar Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
+/* For WebKit browsers (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Hide scrollbar for overflow-hidden elements if needed */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hidden {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* --- Design Tokens --- */
 :root {
   --background: linear-gradient(to bottom right, #0b0c0f, #13161a);
   --foreground: #d9dee3;
@@ -15,6 +43,7 @@
   --accent-glow: rgba(150, 220, 255, 0.05);
 }
 
+/* --- Base Styles --- */
 body {
   height: 100%;
   overflow: hidden;

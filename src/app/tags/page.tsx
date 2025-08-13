@@ -85,7 +85,7 @@ export default function TagsPage() {
 
   return (
     <PageTransition>
-      <div className="h-screen flex flex-col items-center justify-center px-4 py-8 overflow-y-auto">
+      <div className="w-full min-h-[calc(100vh-64px)] pt-[80px] px-[clamp(1rem,4vw,2rem)] pb-16 flex justify-center items-start">
         <GlassPanel className="w-full max-w-3xl flex flex-col gap-8">
           <h2 className="text-slate-100 text-3xl font-bold tracking-wide">Tag Codex</h2>
 
