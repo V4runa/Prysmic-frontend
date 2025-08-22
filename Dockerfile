@@ -3,7 +3,7 @@
   WORKDIR /app
   COPY package*.json ./
   RUN npm ci
-  COPY . .exist before build (we’ll use .env.production)
+  COPY . .
   RUN npm run build
   
   # ---------- Runtime stage ----------
