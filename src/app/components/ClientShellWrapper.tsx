@@ -58,7 +58,7 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
       clearInterval(interval);
       window.removeEventListener("token-expired", handleTokenExpired);
     };
-  }, [pathname]);
+  }, [pathname, isPublic, triggerToast]);
 
   return isPublic ? children : <AppShell>{children}</AppShell>;
 }

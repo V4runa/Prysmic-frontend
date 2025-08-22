@@ -28,7 +28,7 @@ export default function LoginPage() {
 
       localStorage.setItem("token", res.access_token);
       router.push("/notes");
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error("Login failed", err);
       setError("Invalid login credentials.");
     }
@@ -72,7 +72,7 @@ export default function LoginPage() {
           )}
 
           <p className="text-slate-400 text-sm mt-4 text-center">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-cyan-300 hover:underline">
               Sign up
             </Link>

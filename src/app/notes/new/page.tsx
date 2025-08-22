@@ -75,7 +75,7 @@ export default function CreateNotePage() {
       });
 
       router.push("/notes");
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error("Note creation failed", err);
       setError("Failed to create note.");
     }

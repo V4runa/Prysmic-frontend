@@ -26,7 +26,7 @@ export default function SignupPage() {
 
       localStorage.setItem("token", res.access_token);
       router.push("/notes");
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error("Signup failed", err);
       setError("Signup failed. Please try again.");
     }
