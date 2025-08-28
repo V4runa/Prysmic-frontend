@@ -8,8 +8,8 @@ import ClientShellWrapper from "./components/ClientShellWrapper";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AI Notes",
-  description: "A quiet place for thought and reflection, powered by AI.",
+  title: "Prysmic",
+  description: "Prysmic is an exptention to your cognition. A smoothly designed space to capture thoughts, track habits, and organize tasks.",
 };
 
 export default function RootLayout({

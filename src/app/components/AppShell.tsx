@@ -31,7 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { label: "Notes", href: "/notes" },
     { label: "Tags", href: "/tags" },
     { label: "Habits", href: "/habits" },
-    { label: "Summon AI", href: "#", disabled: true },
+    { label: "Coming Soon...", href: "#", disabled: true },
   ];
 
   return (
@@ -58,7 +58,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Top Navigation Bar */}
       <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/5 border-b border-white/10 px-4 py-2 flex justify-between items-center shadow-sm h-12">
         <div className="flex gap-6 items-center">
-          <h1 className="text-xl font-bold tracking-wide">AI Notes</h1>
+          <h1 className="text-xl font-bold tracking-wide">Prysmic</h1>
           {navItems.map((item) => (
             <Link
               key={item.label}

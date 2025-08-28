@@ -10,11 +10,10 @@ export default function HomePage() {
       <PageTransition>
         <GlassPanel className="w-full max-w-2xl text-center">
           <h1 className="text-4xl text-slate-100 font-semibold mb-4 tracking-wide">
-            Welcome to <span className="text-cyan-300">AI Notes</span>
+            Welcome to <span className="text-cyan-300">Prysmic</span>
           </h1>
           <p className="text-slate-400 text-lg mb-6">
-            A quiet place for deep thought. Organize ideas, tag memories, and
-            let your notes evolve with you.
+          Prysmic is an exptention to your cognition. A smoothly designed space to capture thoughts, track habits, and organize tasks.
           </p>
 
           <div className="flex justify-center gap-6">
