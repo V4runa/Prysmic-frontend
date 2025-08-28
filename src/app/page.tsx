@@ -13,7 +13,7 @@ export default function HomePage() {
             Welcome to <span className="text-cyan-300">Prysmic</span>
           </h1>
           <p className="text-slate-400 text-lg mb-6">
-          Prysmic is an exptention to your cognition. A smoothly designed space to capture thoughts, track habits, and organize tasks.
+          Prysmic is an extension to your cognition. A smoothly designed space to capture thoughts, track habits, and organize tasks.
           </p>
 
           <div className="flex justify-center gap-6">

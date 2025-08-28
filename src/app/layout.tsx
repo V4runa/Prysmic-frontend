@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Prysmic",
-  description: "Prysmic is an exptention to your cognition. A smoothly designed space to capture thoughts, track habits, and organize tasks.",
+  description: "Prysmic is an extension to your cognition. A smoothly designed space to capture thoughts, track habits, and organize tasks.",
 };
 
 export default function RootLayout({
