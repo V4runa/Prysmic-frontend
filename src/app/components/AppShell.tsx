@@ -31,6 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { label: "Notes", href: "/notes" },
     { label: "Tags", href: "/tags" },
     { label: "Habits", href: "/habits" },
+    { label: "Tasks", href: "/tasks" },
     { label: "Coming Soon...", href: "#", disabled: true },
   ];
 
