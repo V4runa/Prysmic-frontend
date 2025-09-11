@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Task, TaskPriority } from "../Tasks/types/task";
-import { useRouter } from "next/navigation";
 import { apiFetch } from "../hooks/useApi";
 
 interface TaskFormProps {
@@ -14,7 +13,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? TaskPriority.MEDIUM);
   const [dueDate, setDueDate] = useState<string>(task?.dueDate ? task.dueDate.slice(0, 10) : "");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+ 
 
   useEffect(() => {
     if (task) {
