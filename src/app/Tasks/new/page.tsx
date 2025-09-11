@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import GlassPanel from "../../components/GlassPanel";
 import MotionDiv from "../../components/MotionDiv";
