@@ -8,7 +8,7 @@ import GlassPanel from "../../components/GlassPanel";
 import MotionDiv from "../../components/MotionDiv";
 import TaskForm from "../../components/TaskForm";
 import { apiFetch } from "../../hooks/useApi";
-import { Task } from "../../Tasks/types/task";
+import { Task } from "../types/task";
 
 export default function TaskDetailPage() {
   const { id } = useParams();

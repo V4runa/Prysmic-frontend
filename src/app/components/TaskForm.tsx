@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Task, TaskPriority } from "../Tasks/types/task";
+import { Task, TaskPriority } from "../tasks/types/task";
 import { apiFetch } from "../hooks/useApi";
 
 interface TaskFormProps {

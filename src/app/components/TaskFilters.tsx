@@ -1,4 +1,4 @@
-import { TaskPriority } from "../Tasks/types/task";
+import { TaskPriority } from "../tasks/types/task";
 
 interface TaskFiltersProps {
   filters: {

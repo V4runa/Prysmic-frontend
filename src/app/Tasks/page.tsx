@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../hooks/useApi";
-import { Task, TaskPriority } from "./types/task";
+import { Task, TaskPriority } from "../tasks/types/task";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
 import TaskCard from "../components/TaskCard";

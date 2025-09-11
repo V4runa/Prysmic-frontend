@@ -1,6 +1,6 @@
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Task, TaskPriority } from "../Tasks/types/task";
+import { Task, TaskPriority } from "../tasks/types/task";
 
 export default function TaskCard({ task }: { task: Task }) {
   const router = useRouter();
