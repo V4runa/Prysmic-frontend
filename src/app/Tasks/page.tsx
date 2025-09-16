@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { apiFetch } from "../hooks/useApi";
+import { useEffect, useState, useCallback } from "react";
 import { Task, TaskPriority } from "../tasks/types/task";
+import { apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
 import TaskCard from "../components/TaskCard";
 import TaskFilters from "../components/TaskFilters";
+import QuickTaskInput from "../components/QuickTaskInput";
 
 export default function TasksPage() {
-  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<{
@@ -23,45 +22,39 @@ export default function TasksPage() {
     search: "",
   });
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const params = new URLSearchParams();
-        if (filters.complete !== undefined) {
-          params.append("complete", String(filters.complete));
-        }
-        if (filters.priority !== undefined) {
-          params.append("priority", String(filters.priority));
-        }
-        if (filters.search.trim()) {
-          params.append("search", filters.search);
-        }
-        const data = await apiFetch<Task[]>(`/tasks?${params.toString()}`);
-        setTasks(data);
-      } catch (err) {
-        console.error("Failed to fetch tasks:", err);
-      } finally {
-        setLoading(false);
+  const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.complete !== undefined) {
+        params.append("complete", String(filters.complete));
       }
-    };
-
-    fetchTasks();
+      if (filters.priority !== undefined) {
+        params.append("priority", String(filters.priority));
+      }
+      if (filters.search.trim()) {
+        params.append("search", filters.search);
+      }
+      const data = await apiFetch<Task[]>(`/tasks?${params.toString()}`);
+      setTasks(data);
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [filters]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   return (
     <PageTransition>
       <div className="pt-[80px] px-[clamp(1rem,5vw,3rem)] pb-20 min-h-screen">
-        <GlassPanel className="p-6 w-full">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-white">Your Tasks</h1>
-            <button
-              onClick={() => router.push("/tasks/new")}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition-colors"
-            >
-              + New Task
-            </button>
-          </div>
+        <GlassPanel className="p-6 w-full flex flex-col gap-6">
+          <h1 className="text-3xl font-bold text-white">Your Tasks</h1>
 
+          <QuickTaskInput onTaskCreated={fetchTasks} />
           <TaskFilters filters={filters} setFilters={setFilters} />
 
           {loading ? (
@@ -69,9 +62,9 @@ export default function TasksPage() {
           ) : tasks.length === 0 ? (
             <p className="text-white/60 mt-8">No tasks found.</p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {tasks.map((task) => (
-                <TaskCard key={task.id} task={task} />
+                <TaskCard key={task.id} task={task} onUpdate={fetchTasks} />
               ))}
             </div>
           )}

@@ -1,19 +1,26 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { Task, TaskPriority } from "../tasks/types/task";
 import { apiFetch } from "../hooks/useApi";
+import clsx from "clsx";
 
 interface TaskFormProps {
-  task?: Task;
+  task?: Task; // if present = edit mode
   onSuccess?: () => void;
 }
 
 export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   const [title, setTitle] = useState(task?.title || "");
   const [description, setDescription] = useState(task?.description || "");
-  const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? TaskPriority.MEDIUM);
-  const [dueDate, setDueDate] = useState<string>(task?.dueDate ? task.dueDate.slice(0, 10) : "");
+  const [priority, setPriority] = useState<TaskPriority>(
+    task?.priority ?? TaskPriority.MEDIUM
+  );
+  const [dueDate, setDueDate] = useState<string>(
+    task?.dueDate ? task.dueDate.slice(0, 10) : ""
+  );
   const [loading, setLoading] = useState(false);
- 
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (task) {
@@ -27,8 +34,10 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
+
     try {
-      const payload = { title, description, priority, dueDate };
+      const payload = { title, description, priority, dueDate: dueDate || null };
 
       if (task) {
         await apiFetch(`/tasks/${task.id}`, {
@@ -47,63 +56,79 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       onSuccess?.();
     } catch (err) {
       console.error("Error saving task:", err);
+      setError("Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="text-white block mb-1">Title</label>
+        <label className="text-white block mb-1 text-sm">Title</label>
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
           required
-          className="w-full rounded-md px-3 py-2 bg-white/10 text-white placeholder-white/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          onChange={(e) => setTitle(e.target.value)}
+          className="w-full rounded-md px-4 py-2 bg-white/10 text-white placeholder-white/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          placeholder="e.g., Fix landing page bug"
         />
       </div>
 
       <div>
-        <label className="text-white block mb-1">Description</label>
+        <label className="text-white block mb-1 text-sm">Description</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={4}
-          className="w-full rounded-md px-3 py-2 bg-white/10 text-white placeholder-white/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="w-full rounded-md px-4 py-2 bg-white/10 text-white placeholder-white/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          placeholder="Optional notes or extra context..."
         />
       </div>
 
-      <div>
-        <label className="text-white block mb-1">Priority</label>
-        <select
-          value={priority}
-          onChange={(e) => setPriority(Number(e.target.value) as TaskPriority)}
-          className="w-full rounded-md px-3 py-2 bg-white/10 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        >
-          <option value={TaskPriority.LOW}>Low</option>
-          <option value={TaskPriority.MEDIUM}>Medium</option>
-          <option value={TaskPriority.HIGH}>High</option>
-        </select>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-white block mb-1 text-sm">Priority</label>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(Number(e.target.value) as TaskPriority)}
+            className="w-full rounded-md px-4 py-2 bg-white/10 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          >
+            <option value={TaskPriority.LOW}>Low</option>
+            <option value={TaskPriority.MEDIUM}>Medium</option>
+            <option value={TaskPriority.HIGH}>High</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="text-white block mb-1 text-sm">Due Date</label>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="w-full rounded-md px-4 py-2 bg-white/10 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          />
+        </div>
       </div>
 
-      <div>
-        <label className="text-white block mb-1">Due Date</label>
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="w-full rounded-md px-3 py-2 bg-white/10 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        />
-      </div>
+      {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="mt-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200 disabled:opacity-50"
+        className={clsx(
+          "mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-6 rounded-md transition duration-200",
+          loading && "opacity-60"
+        )}
       >
-        {loading ? (task ? "Saving..." : "Creating...") : task ? "Save Changes" : "Create Task"}
+        {loading
+          ? task
+            ? "Saving..."
+            : "Creating..."
+          : task
+          ? "Save Changes"
+          : "Create Task"}
       </button>
     </form>
   );
