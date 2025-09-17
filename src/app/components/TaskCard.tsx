@@ -86,83 +86,86 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
         updating && "opacity-50 pointer-events-none"
       )}
     >
-      <div className="flex items-start gap-3">
-        <button
-          onClick={toggleComplete}
-          disabled={updating}
-          className="mt-1 rounded-full border border-white/20 p-1 hover:bg-white/10 transition"
-          title={task.isComplete ? "Mark Incomplete" : "Mark Complete"}
-        >
-          {task.isComplete ? (
-            <CheckCircle2 className="h-5 w-5 text-green-400" />
-          ) : (
-            <Circle className="h-5 w-5 text-white/30" />
-          )}
-        </button>
-
-        <div className="flex-1 min-w-0">
-          {editing ? (
-            <div className="relative">
-              <input
-                ref={inputRef}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={saveTitle}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    saveTitle();
-                  } else if (e.key === "Escape") {
-                    setTitle(task.title);
-                    setEditing(false);
-                  }
-                }}
-                className="w-full bg-white/10 border border-cyan-400/20 text-white px-3 py-1.5 rounded-md text-sm outline-none"
-              />
-              <Save
-                className="absolute right-2 top-1.5 h-4 w-4 text-cyan-300 cursor-pointer"
-                onClick={saveTitle}
-              />
-            </div>
-          ) : (
-            <div className="flex justify-between items-start gap-2">
-              <h3
-                className={clsx(
-                  "text-white font-medium text-base truncate cursor-pointer",
-                  task.isComplete && "line-through text-white/40"
-                )}
-                title="Click to edit"
-                onClick={() => setEditing(true)}
-              >
-                {task.title}
-              </h3>
-              <Pencil
-                className="h-4 w-4 text-cyan-300 opacity-0 group-hover:opacity-100 transition"
-                onClick={() => setEditing(true)}
-              />
-            </div>
-          )}
-
-          {task.description && (
-            <p className="text-sm text-white/60 mt-1 line-clamp-3">
-              {task.description}
-            </p>
-          )}
-
-          {task.dueDate && (
-            <p className="text-xs text-white/40 mt-1">
-              Due: {format(new Date(task.dueDate), "PPP")}
-            </p>
-          )}
-
-          <div
-            className={clsx(
-              "mt-2 inline-block px-2 py-0.5 text-xs rounded-full border font-medium",
-              priority.class
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start gap-3">
+          <div className="flex-1 min-w-0">
+            {editing ? (
+              <div className="relative">
+                <input
+                  ref={inputRef}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onBlur={saveTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      saveTitle();
+                    } else if (e.key === "Escape") {
+                      setTitle(task.title);
+                      setEditing(false);
+                    }
+                  }}
+                  className="w-full bg-white/10 border border-cyan-400/20 text-white px-3 py-1.5 rounded-md text-sm outline-none"
+                />
+                <Save
+                  className="absolute right-2 top-1.5 h-4 w-4 text-cyan-300 cursor-pointer"
+                  onClick={saveTitle}
+                />
+              </div>
+            ) : (
+              <div className="flex justify-between items-start gap-2">
+                <h3
+                  className={clsx(
+                    "text-white font-medium text-base truncate cursor-pointer",
+                    task.isComplete && "line-through text-white/40"
+                  )}
+                  title="Click to edit"
+                  onClick={() => setEditing(true)}
+                >
+                  {task.title}
+                </h3>
+                <Pencil
+                  className="h-4 w-4 text-cyan-300 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                  onClick={() => setEditing(true)}
+                />
+              </div>
             )}
-          >
-            {priority.label} Priority
+
+            {task.description && (
+              <p className="text-sm text-white/60 mt-1 line-clamp-3">
+                {task.description}
+              </p>
+            )}
+
+            {task.dueDate && (
+              <p className="text-xs text-white/40 mt-1">
+                Due: {format(new Date(task.dueDate), "PPP")}
+              </p>
+            )}
+
+            <div
+              className={clsx(
+                "mt-2 inline-block px-2 py-0.5 text-xs rounded-full border font-medium",
+                priority.class
+              )}
+            >
+              {priority.label} Priority
+            </div>
           </div>
+
+          {/* ✅ Moved Toggle to Right Side */}
+          <button
+            onClick={toggleComplete}
+            disabled={updating}
+            className="rounded-full border border-white/20 p-1 hover:bg-white/10 transition mt-1"
+            title={task.isComplete ? "Mark Incomplete" : "Mark Complete"}
+          >
+            {task.isComplete ? (
+              <CheckCircle2 className="h-5 w-5 text-green-400" />
+            ) : (
+              <Circle className="h-5 w-5 text-white/30" />
+            )}
+          </button>
         </div>
       </div>
     </div>
