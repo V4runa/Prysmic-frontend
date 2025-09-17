@@ -1,12 +1,27 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Task, TaskPriority } from "../tasks/types/task";
+import { Task } from "../tasks/types/task";
 import { apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
 import TaskCard from "../components/TaskCard";
 import QuickTaskInput from "../components/QuickTaskInput";
+
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -15,11 +30,16 @@ export default function TasksPage() {
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
   const [loadingCompleted, setLoadingCompleted] = useState(false);
 
+  const sensors = useSensors(useSensor(PointerSensor));
+
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiFetch<Task[]>("/tasks?complete=false");
-      setTasks(data);
+      const sorted = [...data].sort(
+        (a, b) => a.priority - b.priority
+      );
+      setTasks(sorted);
     } catch (err) {
       console.error("Failed to fetch tasks:", err);
     } finally {
@@ -49,6 +69,15 @@ export default function TasksPage() {
     }
   }, [showCompleted, fetchCompletedTasks]);
 
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = tasks.findIndex((t) => t.id === active.id);
+      const newIndex = tasks.findIndex((t) => t.id === over.id);
+      setTasks((prev) => arrayMove(prev, oldIndex, newIndex));
+    }
+  };
+
   return (
     <PageTransition>
       <div className="pt-[80px] px-[clamp(1rem,5vw,3rem)] pb-20 min-h-screen">
@@ -63,11 +92,26 @@ export default function TasksPage() {
             ) : tasks.length === 0 ? (
               <p className="text-white/60 text-sm">No tasks found.</p>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {tasks.map((task) => (
-                  <TaskCard key={task.id} task={task} onUpdate={fetchTasks} />
-                ))}
-              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={tasks.map((t) => t.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {tasks.map((task) => (
+                      <SortableTaskCard
+                        key={task.id}
+                        task={task}
+                        onUpdate={fetchTasks}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </div>
 
@@ -99,5 +143,23 @@ export default function TasksPage() {
         </GlassPanel>
       </div>
     </PageTransition>
+  );
+}
+
+// ✨ Drag-enabled wrapper for TaskCard
+function SortableTaskCard({ task, onUpdate }: { task: Task; onUpdate: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: task.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <TaskCard task={task} onUpdate={onUpdate} />
+    </div>
   );
 }
