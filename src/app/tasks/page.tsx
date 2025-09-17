@@ -14,6 +14,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -36,9 +37,7 @@ export default function TasksPage() {
     setLoading(true);
     try {
       const data = await apiFetch<Task[]>("/tasks?complete=false");
-      const sorted = [...data].sort(
-        (a, b) => a.priority - b.priority
-      );
+      const sorted = [...data].sort((a, b) => a.priority - b.priority);
       setTasks(sorted);
     } catch (err) {
       console.error("Failed to fetch tasks:", err);
@@ -69,11 +68,13 @@ export default function TasksPage() {
     }
   }, [showCompleted, fetchCompletedTasks]);
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (active.id !== over?.id) {
-      const oldIndex = tasks.findIndex((t) => t.id === active.id);
-      const newIndex = tasks.findIndex((t) => t.id === over.id);
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = tasks.findIndex((t) => t.id === active.id);
+    const newIndex = tasks.findIndex((t) => t.id === over.id);
+    if (oldIndex !== -1 && newIndex !== -1) {
       setTasks((prev) => arrayMove(prev, oldIndex, newIndex));
     }
   };
@@ -126,7 +127,9 @@ export default function TasksPage() {
 
           {showCompleted && (
             <div className="mt-4">
-              <h2 className="text-white/60 text-lg font-medium mb-2">Completed Tasks</h2>
+              <h2 className="text-white/60 text-lg font-medium mb-2">
+                Completed Tasks
+              </h2>
               {loadingCompleted ? (
                 <p className="text-white/60 text-sm">Loading completed tasks...</p>
               ) : completedTasks.length === 0 ? (
@@ -146,11 +149,21 @@ export default function TasksPage() {
   );
 }
 
-// ✨ Drag-enabled wrapper for TaskCard
-function SortableTaskCard({ task, onUpdate }: { task: Task; onUpdate: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: task.id,
-  });
+// 🧲 Drag wrapper for TaskCard
+function SortableTaskCard({
+  task,
+  onUpdate,
+}: {
+  task: Task;
+  onUpdate: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: task.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
