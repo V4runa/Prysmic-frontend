@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { apiFetch } from "../hooks/useApi";
 import { motion, AnimatePresence } from "framer-motion";
 import { TaskPriority } from "../tasks/types/task";
@@ -12,16 +12,21 @@ interface QuickTaskInputProps {
 
 export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
   const [dueDate, setDueDate] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const titleRef = useRef<HTMLInputElement>(null);
 
   const toggleExpanded = () => setExpanded((prev) => !prev);
 
   const handleSubmit = async () => {
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setError("Title is required.");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -29,6 +34,7 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
     try {
       const payload = {
         title,
+        description: description.trim() || null,
         priority,
         dueDate: dueDate || null,
       };
@@ -40,9 +46,11 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
       });
 
       setTitle("");
+      setDescription("");
       setPriority(TaskPriority.MEDIUM);
       setDueDate("");
       setExpanded(false);
+      titleRef.current?.focus();
       onTaskCreated?.();
     } catch (err) {
       console.error("Failed to create task", err);
@@ -68,6 +76,7 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
     >
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <input
+          ref={titleRef}
           type="text"
           placeholder="Add a new task..."
           value={title}
@@ -137,13 +146,22 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
                 />
               </div>
             </div>
+
+            <div className="mt-4">
+              <label className="text-sm text-white/70 mb-1 block">Description</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Optional task details..."
+                className="w-full bg-white/10 text-white border border-white/20 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {error && (
-        <p className="text-red-400 text-sm mt-3">{error}</p>
-      )}
+      {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
     </motion.div>
   );
 }

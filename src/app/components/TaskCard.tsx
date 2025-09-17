@@ -51,7 +51,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
 
   const saveTitle = async () => {
     if (!title.trim() || title.trim() === task.title) {
-      setTitle(task.title); // revert if unchanged or empty
+      setTitle(task.title);
       setEditing(false);
       return;
     }
@@ -87,7 +87,6 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
       )}
     >
       <div className="flex items-start gap-3">
-        {/* ✅ Complete Toggle */}
         <button
           onClick={toggleComplete}
           disabled={updating}
@@ -101,7 +100,6 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
           )}
         </button>
 
-        {/* 🧾 Content */}
         <div className="flex-1 min-w-0">
           {editing ? (
             <div className="relative">
@@ -143,6 +141,12 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
                 onClick={() => setEditing(true)}
               />
             </div>
+          )}
+
+          {task.description && (
+            <p className="text-sm text-white/60 mt-1 line-clamp-3">
+              {task.description}
+            </p>
           )}
 
           {task.dueDate && (

@@ -13,9 +13,9 @@ interface TaskFiltersProps {
 }
 
 const priorityOptions = [
-  { label: "Low", value: TaskPriority.LOW, color: "text-emerald-300" },
-  { label: "Medium", value: TaskPriority.MEDIUM, color: "text-amber-300" },
-  { label: "High", value: TaskPriority.HIGH, color: "text-rose-300" },
+  { label: "Low", value: TaskPriority.LOW },
+  { label: "Medium", value: TaskPriority.MEDIUM },
+  { label: "High", value: TaskPriority.HIGH },
 ];
 
 export default function TaskFilters({ filters, setFilters }: TaskFiltersProps) {
@@ -34,55 +34,57 @@ export default function TaskFilters({ filters, setFilters }: TaskFiltersProps) {
       </div>
 
       {/* 🚩 Priority */}
-      <select
-        value={filters.priority ?? ""}
-        onChange={(e) =>
-          setFilters({
-            ...filters,
-            priority:
-              e.target.value === ""
-                ? undefined
-                : (Number(e.target.value) as TaskPriority),
-          })
-        }
-        className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-      >
-        <option value="">All Priorities</option>
-        {priorityOptions.map((opt) => (
-          <option
-            key={opt.value}
-            value={opt.value}
-            className={opt.color}
-          >
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      <div className="flex flex-col">
+        <label className="text-sm text-white/60 mb-1">Priority</label>
+        <select
+          value={filters.priority ?? ""}
+          onChange={(e) =>
+            setFilters({
+              ...filters,
+              priority:
+                e.target.value === ""
+                  ? undefined
+                  : (Number(e.target.value) as TaskPriority),
+            })
+          }
+          className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+        >
+          <option value="">All Priorities</option>
+          {priorityOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {/* ✅ Completion */}
-      <select
-        value={
-          filters.complete === undefined
-            ? ""
-            : filters.complete
-            ? "true"
-            : "false"
-        }
-        onChange={(e) =>
-          setFilters({
-            ...filters,
-            complete:
-              e.target.value === ""
-                ? undefined
-                : e.target.value === "true",
-          })
-        }
-        className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-      >
-        <option value="">All Statuses</option>
-        <option value="false">Incomplete</option>
-        <option value="true">Complete</option>
-      </select>
+      {/* ✅ Status */}
+      <div className="flex flex-col">
+        <label className="text-sm text-white/60 mb-1">Status</label>
+        <select
+          value={
+            filters.complete === undefined
+              ? ""
+              : filters.complete
+              ? "true"
+              : "false"
+          }
+          onChange={(e) =>
+            setFilters({
+              ...filters,
+              complete:
+                e.target.value === ""
+                  ? undefined
+                  : e.target.value === "true",
+            })
+          }
+          className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+        >
+          <option value="">All Statuses</option>
+          <option value="false">Incomplete</option>
+          <option value="true">Complete</option>
+        </select>
+      </div>
     </div>
   );
 }
