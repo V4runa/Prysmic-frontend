@@ -8,37 +8,24 @@ import GlassPanel from "../components/GlassPanel";
 import TaskCard from "../components/TaskCard";
 import QuickTaskInput from "../components/QuickTaskInput";
 
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showCompleted, setShowCompleted] = useState(false);
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
-  const [loadingCompleted, setLoadingCompleted] = useState(false);
-
-  const sensors = useSensors(useSensor(PointerSensor));
+  const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
+  const [activeTab, setActiveTab] = useState<"active" | "completed" | "archived">("active");
+  const [loading, setLoading] = useState(false);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiFetch<Task[]>("/tasks?complete=false");
-      const sorted = [...data].sort((a, b) => a.priority - b.priority);
-      setTasks(sorted);
+      const [active, completed, archived] = await Promise.all([
+        apiFetch<Task[]>("/tasks?complete=false&archived=false"),
+        apiFetch<Task[]>("/tasks?complete=true&archived=false"),
+        apiFetch<Task[]>("/tasks?archived=true"),
+      ]);
+      setTasks(active.sort((a, b) => a.priority - b.priority));
+      setCompletedTasks(completed);
+      setArchivedTasks(archived);
     } catch (err) {
       console.error("Failed to fetch tasks:", err);
     } finally {
@@ -46,38 +33,16 @@ export default function TasksPage() {
     }
   }, []);
 
-  const fetchCompletedTasks = useCallback(async () => {
-    setLoadingCompleted(true);
-    try {
-      const data = await apiFetch<Task[]>("/tasks?complete=true");
-      setCompletedTasks(data);
-    } catch (err) {
-      console.error("Failed to fetch completed tasks:", err);
-    } finally {
-      setLoadingCompleted(false);
-    }
-  }, []);
-
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 
-  useEffect(() => {
-    if (showCompleted) {
-      fetchCompletedTasks();
-    }
-  }, [showCompleted, fetchCompletedTasks]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = tasks.findIndex((t) => t.id === active.id);
-    const newIndex = tasks.findIndex((t) => t.id === over.id);
-    if (oldIndex !== -1 && newIndex !== -1) {
-      setTasks((prev) => arrayMove(prev, oldIndex, newIndex));
-    }
-  };
+  const visibleTasks =
+    activeTab === "active"
+      ? [...tasks, ...completedTasks] // Both incomplete and completed (non-archived)
+      : activeTab === "completed"
+      ? completedTasks // Only completed, non-archived tasks
+      : archivedTasks; // Only archived tasks
 
   return (
     <PageTransition>
@@ -85,94 +50,39 @@ export default function TasksPage() {
         <GlassPanel className="p-6 w-full flex flex-col gap-6">
           <h1 className="text-3xl font-bold text-white">Your Tasks</h1>
 
-          <QuickTaskInput onTaskCreated={fetchTasks} />
-
-          <div className="mt-4">
-            {loading ? (
-              <p className="text-white/60 text-sm">Loading tasks...</p>
-            ) : tasks.length === 0 ? (
-              <p className="text-white/60 text-sm">No tasks found.</p>
-            ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
+          {/* Traditional tab-style nav */}
+          <div className="flex border-b border-white/10 text-white">
+            {["active", "completed", "archived"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab as "active" | "completed" | "archived")}
+                className={`px-4 py-2 -mb-px transition font-medium ${
+                  activeTab === tab
+                    ? "border-b-2 border-cyan-400 text-cyan-300"
+                    : "text-white/40 hover:text-white"
+                }`}
               >
-                <SortableContext
-                  items={tasks.map((t) => t.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {tasks.map((task) => (
-                      <SortableTaskCard
-                        key={task.id}
-                        task={task}
-                        onUpdate={fetchTasks}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            )}
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
 
-          <div className="mt-8">
-            <button
-              onClick={() => setShowCompleted((prev) => !prev)}
-              className="text-sm text-cyan-400 hover:underline"
-            >
-              {showCompleted ? "Hide Completed Tasks" : "Show Completed Tasks"}
-            </button>
-          </div>
+          {activeTab === "active" && <QuickTaskInput onTaskCreated={fetchTasks} />}
 
-          {showCompleted && (
-            <div className="mt-4">
-              <h2 className="text-white/60 text-lg font-medium mb-2">
-                Completed Tasks
-              </h2>
-              {loadingCompleted ? (
-                <p className="text-white/60 text-sm">Loading completed tasks...</p>
-              ) : completedTasks.length === 0 ? (
-                <p className="text-white/60 text-sm">No completed tasks.</p>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 opacity-70">
-                  {completedTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} onUpdate={fetchTasks} />
-                  ))}
-                </div>
+          {loading ? (
+            <p className="text-white/60 text-sm mt-6">Loading tasks...</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {visibleTasks.map((task) => (
+                <TaskCard key={task.id} task={task} onUpdate={fetchTasks} />
+              ))}
+              {visibleTasks.length === 0 && (
+                <p className="text-white/40 text-sm mt-4">No tasks to show.</p>
               )}
             </div>
           )}
         </GlassPanel>
       </div>
     </PageTransition>
-  );
-}
-
-// 🧲 Drag wrapper for TaskCard
-function SortableTaskCard({
-  task,
-  onUpdate,
-}: {
-  task: Task;
-  onUpdate: () => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: task.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCard task={task} onUpdate={onUpdate} />
-    </div>
   );
 }

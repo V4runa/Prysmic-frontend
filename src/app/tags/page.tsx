@@ -85,35 +85,39 @@ export default function TagsPage() {
 
   return (
     <PageTransition>
-      <div className="w-full min-h-[calc(100vh-64px)] pt-[80px] px-[clamp(1rem,4vw,2rem)] pb-16 flex justify-center items-start">
-        <GlassPanel className="w-full max-w-3xl flex flex-col gap-8">
-          <h2 className="text-slate-100 text-3xl font-bold tracking-wide">Tag Codex</h2>
+      <div className="w-full min-h-screen pt-24 pb-16 px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20 flex justify-center">
+        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-10">
+          {/* Header */}
+          <h2 className="text-slate-100 text-4xl font-bold tracking-wide">
+            Tag Codex
+          </h2>
 
-          {/* Tag Creation */}
-          <div className="flex items-center gap-2">
+          {/* Tag creation */}
+          <div className="flex items-center gap-4 flex-wrap">
             <input
               type="text"
               placeholder="Tag name..."
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              className="flex-1 px-4 py-2 bg-white/10 text-slate-200 rounded-md border border-white/10"
+              className="flex-grow px-4 py-3 bg-white/10 text-slate-200 rounded-md border border-white/10 min-w-[200px]"
             />
             <button
               onClick={handleCreate}
-              className="px-3 py-2 text-sm text-slate-300 hover:text-white border border-white/10 rounded-md hover:bg-white/10 transition"
+              className="px-4 py-3 text-sm text-slate-300 hover:text-white border border-white/10 rounded-md hover:bg-white/10 transition"
             >
-              +
+              + Create
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Color options */}
+          <div className="flex flex-wrap gap-3">
             {colorOptions.map((c) => (
               <button
                 key={c.value}
                 type="button"
                 onClick={() => setNewTagColor(c.value)}
-                className={`px-3 py-1 text-xs rounded-full border backdrop-blur-md transition ${
+                className={`px-4 py-2 text-sm rounded-full border backdrop-blur-md transition ${
                   newTagColor === c.value
                     ? `${tagColorClasses[c.value]} ring-2 ring-${c.value}-300 text-${c.value}-200 border-${c.value}-300`
                     : `border-white/10 text-slate-400 hover:text-white hover:border-white/20`
@@ -124,8 +128,8 @@ export default function TagsPage() {
             ))}
           </div>
 
-          {/* Tags Display */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Tags Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
             {tags.map((tag) => {
               const colorClass = tagColorClasses[tag.color || "cyan"];
               return (
@@ -139,7 +143,7 @@ export default function TagsPage() {
                       <input
                         value={editedName}
                         onChange={(e) => setEditedName(e.target.value)}
-                        className="w-full px-3 py-1 bg-white/10 text-slate-200 rounded-md border border-white/10"
+                        className="w-full px-3 py-2 bg-white/10 text-slate-200 rounded-md border border-white/10"
                       />
                       <div className="flex gap-2 flex-wrap">
                         {colorOptions.map((c) => (
