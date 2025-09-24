@@ -107,6 +107,24 @@ export default function NotesOverviewPage() {
     }),
   };
 
+  const tagColorClasses: Record<string, string> = {
+    cyan: "text-cyan-300 border-cyan-300/30 shadow-cyan-300/10",
+    rose: "text-rose-300 border-rose-300/30 shadow-rose-300/10",
+    slate: "text-slate-300 border-slate-300/30 shadow-slate-300/10",
+    violet: "text-violet-300 border-violet-300/30 shadow-violet-300/10",
+    emerald: "text-emerald-300 border-emerald-300/30 shadow-emerald-300/10",
+    amber: "text-amber-300 border-amber-300/30 shadow-amber-300/10",
+  };
+
+  const tagActiveClasses: Record<string, string> = {
+    cyan: "ring ring-cyan-300 shadow-[0_0_10px] shadow-cyan-400/40 scale-[1.05] bg-cyan-500/10",
+    rose: "ring ring-rose-300 shadow-[0_0_10px] shadow-rose-400/40 scale-[1.05] bg-rose-500/10",
+    slate: "ring ring-slate-300 shadow-[0_0_10px] shadow-slate-400/40 scale-[1.05] bg-slate-500/10",
+    violet: "ring ring-violet-300 shadow-[0_0_10px] shadow-violet-400/40 scale-[1.05] bg-violet-500/10",
+    emerald: "ring ring-emerald-300 shadow-[0_0_10px] shadow-emerald-400/40 scale-[1.05] bg-emerald-500/10",
+    amber: "ring ring-amber-300 shadow-[0_0_10px] shadow-amber-400/40 scale-[1.05] bg-amber-500/10",
+  };
+
   return (
     <div className="w-full h-[calc(100vh-3rem)] flex flex-col xl:flex-row px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
       {/* Sidebar (desktop only) */}
@@ -117,20 +135,27 @@ export default function NotesOverviewPage() {
               <Tag size={20} /> Tags
             </div>
             <div className="flex flex-col gap-3 mt-1">
-              {allTags.map((tag) => {
+              {allTags.map((tag, i) => {
                 const isActive = activeTags.includes(tag.name);
+                const color = tag.color || "slate";
+                const baseClasses = tagColorClasses[color];
+                const activeClasses = tagActiveClasses[color];
+                
                 return (
                   <motion.div
                     key={tag.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05, type: "spring", stiffness: 180, damping: 18 }}
                     layout
                     whileTap={{ scale: 0.98 }}
-                    transition={{ type: "spring", stiffness: 180, damping: 18 }}
+                    whileHover={{ scale: 1.02 }}
                     onClick={() => toggleTag(tag.name)}
-                    className={`cursor-pointer px-4 py-2 flex items-center justify-between rounded-xl border backdrop-blur-lg relative border-${
-                      tag.color
-                    }-300/20 ${
+                    className={`cursor-pointer px-4 py-2 flex items-center justify-between rounded-xl border backdrop-blur-lg relative transition-all duration-200 ${
+                      baseClasses
+                    } ${
                       isActive
-                        ? `ring ring-${tag.color}-300 shadow-[0_0_10px] shadow-${tag.color}-400/40 scale-[1.05] bg-${tag.color}-500/10`
+                        ? activeClasses
                         : "hover:bg-white/20"
                     }`}
                     style={{
@@ -139,14 +164,10 @@ export default function NotesOverviewPage() {
                         : "rgba(255,255,255,0.025)",
                     }}
                   >
-                    <span
-                      className={`text-sm font-medium truncate w-40 text-${tag.color}-300`}
-                    >
+                    <span className={`text-sm font-medium truncate w-40 ${baseClasses.split(' ')[0]}`}>
                       {tag.name}
                     </span>
-                    <div
-                      className={`text-xs font-semibold rounded bg-white/10 text-${tag.color}-300 border border-${tag.color}-300/30 px-2 py-1 min-w-[32px] text-center`}
-                    >
+                    <div className={`text-xs font-semibold rounded bg-white/10 ${baseClasses.split(' ')[0]} border ${baseClasses.split(' ')[1]} px-2 py-1 min-w-[32px] text-center`}>
                       {tag.count}
                     </div>
                   </motion.div>
@@ -163,6 +184,25 @@ export default function NotesOverviewPage() {
                 </button>
               </div>
             )}
+            
+            {/* Notes Counter */}
+            <div className="flex justify-center pt-3 border-t border-white/10">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 shadow-inner min-w-[60px]"
+              >
+                <div className="text-center">
+                  <div className="text-lg font-bold text-slate-200 leading-none">
+                    {filteredNotes.length.toString().padStart(2, '0')}
+                  </div>
+                  <div className="text-xs text-slate-400 uppercase tracking-wider mt-0.5">
+                    {filteredNotes.length === 1 ? 'Note' : 'Notes'}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           </GlassPanel>
         </aside>
       )}
@@ -185,26 +225,43 @@ export default function NotesOverviewPage() {
           {/* Mobile tag filter bar */}
           {allTags.length > 0 && (
             <div className="xl:hidden overflow-x-auto flex gap-2 py-3 px-1 -mx-1">
-              {allTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  onClick={() => toggleTag(tag.name)}
-                  className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap ${
-                    activeTags.includes(tag.name)
-                      ? `bg-${tag.color}-500/20 border-${tag.color}-300 text-${tag.color}-300`
-                      : `border-${tag.color}-300/40 text-${tag.color}-300 hover:bg-white/10`
-                  }`}
-                >
-                  {tag.name}
-                </button>
-              ))}
+              {allTags.map((tag, i) => {
+                const isActive = activeTags.includes(tag.name);
+                const color = tag.color || "slate";
+                const baseClasses = tagColorClasses[color];
+                
+                return (
+                  <motion.button
+                    key={tag.id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => toggleTag(tag.name)}
+                    className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap transition-all duration-200 ${
+                      baseClasses
+                    } ${
+                      isActive
+                        ? `bg-${color}-500/20 ring-1 ring-${color}-300/50`
+                        : `hover:bg-white/10`
+                    }`}
+                  >
+                    {tag.name}
+                  </motion.button>
+                );
+              })}
               {activeTags.length > 0 && (
-                <button
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: allTags.length * 0.05 }}
+                  whileHover={{ scale: 1.05 }}
                   onClick={() => setActiveTags([])}
-                  className="text-xs text-cyan-300 underline ml-auto"
+                  className="text-xs text-cyan-300 underline ml-auto hover:text-cyan-200 transition"
                 >
                   Clear
-                </button>
+                </motion.button>
               )}
             </div>
           )}
