@@ -108,11 +108,11 @@ export default function NotesOverviewPage() {
   };
 
   return (
-    <div className="w-full min-h-screen flex flex-col xl:flex-row px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-24 pb-10 gap-6">
+    <div className="w-full h-[calc(100vh-3rem)] flex flex-col xl:flex-row px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
       {/* Sidebar (desktop only) */}
       {allTags.length > 0 && (
         <aside className="hidden xl:block w-[260px] shrink-0">
-          <GlassPanel className="flex flex-col max-h-[calc(100vh-120px)] overflow-y-auto p-4 gap-4 shadow-xl rounded-2xl backdrop-blur-md bg-white/5 border border-white/10">
+          <GlassPanel className="flex flex-col max-h-[calc(100vh-8rem)] overflow-y-auto p-4 gap-4 shadow-xl rounded-2xl backdrop-blur-md bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 text-slate-200 uppercase text-xs font-semibold tracking-widest">
               <Tag size={20} /> Tags
             </div>
@@ -168,8 +168,8 @@ export default function NotesOverviewPage() {
       )}
 
       {/* Main content */}
-      <main className="flex-grow flex flex-col items-center gap-6 overflow-y-auto">
-        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-6">
+      <main className="flex-grow flex flex-col items-center gap-4 sm:gap-6 min-h-0">
+        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <h2 className="text-slate-100 text-3xl font-bold tracking-wide">
               Your Notes
@@ -184,7 +184,7 @@ export default function NotesOverviewPage() {
 
           {/* Mobile tag filter bar */}
           {allTags.length > 0 && (
-            <div className="xl:hidden overflow-x-auto flex gap-2 py-3 px-1">
+            <div className="xl:hidden overflow-x-auto flex gap-2 py-3 px-1 -mx-1">
               {allTags.map((tag) => (
                 <button
                   key={tag.id}
@@ -210,74 +210,82 @@ export default function NotesOverviewPage() {
           )}
 
           {loading ? (
-            <p className="text-slate-400 text-center text-lg">Loading...</p>
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-slate-400 text-center text-lg">Loading...</p>
+            </div>
           ) : error ? (
-            <p className="text-red-400 text-center text-lg">{error}</p>
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-red-400 text-center text-lg">{error}</p>
+            </div>
           ) : filteredNotes.length === 0 ? (
-            <p className="text-slate-400 text-center text-lg">
-              No notes match your filter.
-            </p>
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-slate-400 text-center text-lg">
+                No notes match your filter.
+              </p>
+            </div>
           ) : (
-            <>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentPage + activeTags.join(",")}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 max-h-[calc(100vh-280px)] overflow-y-auto pr-1"
-                >
-                  {currentNotes.map((note, i) => (
-                    <motion.div
-                      key={note.id}
-                      custom={i}
-                      variants={cardVariants}
-                      initial="hidden"
-                      animate="visible"
-                      className="relative rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-6 shadow-lg hover:shadow-2xl hover:bg-white/10 transition-all overflow-hidden flex flex-col justify-between h-full"
-                    >
-                      <div>
-                        <h3 className="text-slate-100 text-xl font-semibold mb-3 truncate">
-                          {note.title}
-                        </h3>
-                        <p className="text-slate-400 text-sm leading-relaxed mb-5 overflow-hidden line-clamp-5">
-                          {note.content.slice(0, 250)}...
-                        </p>
-                      </div>
-                      {note.tags && note.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {note.tags.map((tag) => (
-                            <span
-                              key={tag.id}
-                              className={`px-3 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition text-${
-                                tag.color ?? "slate"
-                              }-300 border-${tag.color ?? "slate"}-300/30`}
-                            >
-                              {tag.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div
-                        className="mt-4 text-xs text-slate-400"
-                        title={new Date(note.createdAt).toLocaleString()}
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 overflow-y-auto">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentPage + activeTags.join(",")}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 w-full"
+                  >
+                    {currentNotes.map((note, i) => (
+                      <motion.div
+                        key={note.id}
+                        custom={i}
+                        variants={cardVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="relative rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-4 sm:p-6 shadow-lg hover:shadow-2xl hover:bg-white/10 transition-all overflow-hidden flex flex-col justify-between h-full"
                       >
-                        {formatDistanceToNow(new Date(note.createdAt), {
-                          addSuffix: true,
-                        })}
-                      </div>
-                      <Link
-                        href={`/notes/${note.id}`}
-                        className="absolute inset-0 z-10"
-                      />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </AnimatePresence>
+                        <div>
+                          <h3 className="text-slate-100 text-lg sm:text-xl font-semibold mb-2 sm:mb-3 truncate">
+                            {note.title}
+                          </h3>
+                          <p className="text-slate-400 text-sm leading-relaxed mb-3 sm:mb-5 overflow-hidden line-clamp-4 sm:line-clamp-5">
+                            {note.content.slice(0, 200)}...
+                          </p>
+                        </div>
+                        {note.tags && note.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
+                            {note.tags.map((tag) => (
+                              <span
+                                key={tag.id}
+                                className={`px-2 sm:px-3 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition text-${
+                                  tag.color ?? "slate"
+                                }-300 border-${tag.color ?? "slate"}-300/30`}
+                              >
+                                {tag.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div
+                          className="mt-3 sm:mt-4 text-xs text-slate-400"
+                          title={new Date(note.createdAt).toLocaleString()}
+                        >
+                          {formatDistanceToNow(new Date(note.createdAt), {
+                            addSuffix: true,
+                          })}
+                        </div>
+                        <Link
+                          href={`/notes/${note.id}`}
+                          className="absolute inset-0 z-10"
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
 
-              {/* Pagination */}
-              <div className="pt-6">
+              {/* Pagination - Always visible at bottom */}
+              <div className="flex-shrink-0 pt-4 border-t border-white/10">
                 <div className="flex items-center gap-2 flex-wrap justify-center">
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -311,7 +319,7 @@ export default function NotesOverviewPage() {
                   </button>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </GlassPanel>
       </main>

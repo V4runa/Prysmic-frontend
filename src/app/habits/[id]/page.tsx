@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import {
   CheckCircle2,
@@ -199,8 +199,8 @@ export default function HabitDetailPage() {
 
   return (
     <PageTransition>
-      <div className="mt-20 min-h-screen w-full flex flex-col items-center justify-start py-[var(--page-y)] px-[var(--page-x)]">
-        <GlassPanel className={clsx("w-full max-w-3xl flex flex-col gap-6", bgPanelMap[color])}>
+      <div className="w-full h-[calc(100vh-3rem)] flex flex-col items-center px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
+        <GlassPanel className={clsx("w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0", bgPanelMap[color])}>
           <div className="flex justify-between items-center">
             <h2 className="text-3xl font-bold text-slate-100 tracking-wide">
               {edit ? "Edit Contract" : "Habit Contract"}
@@ -213,168 +213,192 @@ export default function HabitDetailPage() {
             </button>
           </div>
 
-          {edit ? (
-            <>
-              <input
-                value={form.name || ""}
-                onChange={(e) => handleChange("name", e.target.value)}
-                className="w-full px-4 py-2 bg-white/10 text-slate-100 rounded-md"
-              />
-              <textarea
-                value={form.description || ""}
-                onChange={(e) => handleChange("description", e.target.value)}
-                className="w-full px-4 py-2 bg-white/10 text-slate-300 rounded-md"
-                rows={2}
-              />
-              <textarea
-                value={form.intent || ""}
-                onChange={(e) => handleChange("intent", e.target.value)}
-                className="w-full px-4 py-2 bg-white/10 text-indigo-300 rounded-md"
-                rows={2}
-              />
-              <textarea
-                value={form.affirmation || ""}
-                onChange={(e) => handleChange("affirmation", e.target.value)}
-                className="w-full px-4 py-2 bg-white/10 text-emerald-300 rounded-md"
-                rows={2}
-              />
-
-              <div className="flex flex-col gap-2">
-                <label className="text-slate-300 text-sm">Color</label>
-                <div className="flex flex-wrap gap-3">
-                  {colorChoices.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => handleChange("color", c)}
-                      className={clsx(
-                        "w-8 h-8 rounded-full",
-                        form.color === c
-                          ? `ring-2 ${colorClassMap[c]}`
-                          : "border border-white/10 bg-white/10"
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-slate-300 text-sm">Icon</label>
-                <div className="flex flex-wrap gap-3">
-                  {iconChoices.map((icon) => {
-                    const Icon = iconMap[icon as IconKey];
-                    return (
-                      <button
-                        key={icon}
-                        onClick={() => handleChange("icon", icon)}
-                        className={clsx(
-                          "p-2 rounded-md border",
-                          form.icon === icon
-                            ? "bg-white/10 border-cyan-400"
-                            : "border-white/10 hover:bg-white/10"
-                        )}
-                      >
-                        <Icon className="h-5 w-5 text-slate-100" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={saveEdits}
-                  className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-300/20 rounded-md"
+          <div className="flex-1 flex flex-col min-h-0">
+            <AnimatePresence mode="wait">
+              {edit ? (
+                <motion.div
+                  key="edit"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex-1 flex flex-col gap-4 sm:gap-6"
                 >
-                  <Save className="h-5 w-5 text-cyan-300" />
-                </button>
-                <button
-                  onClick={() => setEdit(false)}
-                  className="p-2 border border-white/10 hover:bg-white/10 rounded-md"
-                >
-                  <X className="h-5 w-5 text-slate-300" />
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  {IconComponent && (
-                    <span className={`p-2 rounded-full bg-${color}-500/10`}>
-                      <IconComponent className={`h-6 w-6 text-${color}-300`} />
-                    </span>
-                  )}
-                  <h3 className="text-xl font-semibold text-slate-100">
-                    {habit.name}
-                  </h3>
-                  {habit.frequency && (
-                    <span className={clsx(
-                      "text-xs px-2 py-1 rounded-md font-medium tracking-wide",
-                      {
-                        daily: "bg-cyan-500/10 text-cyan-300 border border-cyan-300/20",
-                        weekly: "bg-violet-500/10 text-violet-300 border border-violet-300/20",
-                        monthly: "bg-amber-500/10 text-amber-300 border border-amber-300/20",
-                      }[habit.frequency]
-                    )}>
-                      {habit.frequency.charAt(0).toUpperCase() + habit.frequency.slice(1)}
-                    </span>
-                  )}
-                </div>
-
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  whileHover={{ scale: 1.05 }}
-                  animate={{
-                    boxShadow: isCheckedToday
-                      ? `0 0 12px rgba(0, 255, 255, 0.3)`
-                      : "none",
-                  }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                  onClick={toggleCheck}
-                  className={clsx(
-                    "rounded-full p-2 border transition-all",
-                    isCheckedToday
-                      ? "bg-cyan-400/20 border-cyan-300/30"
-                      : "bg-white/10 border-white/10 hover:bg-white/20"
-                  )}
-                >
-                  <CheckCircle2
-                    className={clsx(
-                      "h-5 w-5 transition-colors",
-                      isCheckedToday ? "text-cyan-300" : "text-slate-300"
-                    )}
+                  <input
+                    value={form.name || ""}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    className="w-full px-4 py-3 bg-white/10 text-slate-100 rounded-md text-lg sm:text-xl"
                   />
-                </motion.button>
-              </div>
+                  <textarea
+                    value={form.description || ""}
+                    onChange={(e) => handleChange("description", e.target.value)}
+                    className="w-full px-4 py-3 bg-white/10 text-slate-300 rounded-md"
+                    rows={2}
+                  />
+                  <textarea
+                    value={form.intent || ""}
+                    onChange={(e) => handleChange("intent", e.target.value)}
+                    className="w-full px-4 py-3 bg-white/10 text-indigo-300 rounded-md"
+                    rows={2}
+                  />
+                  <textarea
+                    value={form.affirmation || ""}
+                    onChange={(e) => handleChange("affirmation", e.target.value)}
+                    className="w-full px-4 py-3 bg-white/10 text-emerald-300 rounded-md"
+                    rows={2}
+                  />
 
-              {habit.description && (
-                <p className="text-slate-400 whitespace-pre-line">{habit.description}</p>
-              )}
-              {habit.intent && (
-                <p className="text-indigo-300 whitespace-pre-line text-sm">{habit.intent}</p>
-              )}
-              {habit.affirmation && (
-                <p className="text-emerald-300 italic whitespace-pre-line text-sm">
-                  “{habit.affirmation}”
-                </p>
-              )}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-slate-300 text-sm">Color</label>
+                    <div className="flex flex-wrap gap-3">
+                      {colorChoices.map((c, i) => (
+                        <motion.button
+                          key={c}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.05 }}
+                          onClick={() => handleChange("color", c)}
+                          className={clsx(
+                            "w-8 h-8 rounded-full transition",
+                            form.color === c
+                              ? `ring-2 ${colorClassMap[c]}`
+                              : "border border-white/10 bg-white/10 hover:bg-white/20"
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setEdit(true)}
-                  className="p-2 border border-cyan-300/20 hover:bg-cyan-400/10 rounded-md"
+                  <div className="flex flex-col gap-2">
+                    <label className="text-slate-300 text-sm">Icon</label>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                      {iconChoices.map((icon, i) => {
+                        const Icon = iconMap[icon as IconKey];
+                        return (
+                          <motion.button
+                            key={icon}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.02 }}
+                            onClick={() => handleChange("icon", icon)}
+                            className={clsx(
+                              "p-2 rounded-md border transition",
+                              form.icon === icon
+                                ? "bg-white/10 border-cyan-400"
+                                : "border-white/10 hover:bg-white/10"
+                            )}
+                          >
+                            <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-slate-100" />
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={saveEdits}
+                      className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-300/20 rounded-md"
+                    >
+                      <Save className="h-5 w-5 text-cyan-300" />
+                    </button>
+                    <button
+                      onClick={() => setEdit(false)}
+                      className="p-2 border border-white/10 hover:bg-white/10 rounded-md"
+                    >
+                      <X className="h-5 w-5 text-slate-300" />
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="view"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex-1 flex flex-col gap-4 sm:gap-6"
                 >
-                  <PencilIcon className="h-5 w-5 text-cyan-300" />
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="p-2 border border-red-300/20 hover:bg-red-400/10 rounded-md"
-                >
-                  Delete
-                </button>
-              </div>
-            </>
-          )}
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      {IconComponent && (
+                        <span className={`p-2 rounded-full bg-${color}-500/10`}>
+                          <IconComponent className={`h-6 w-6 text-${color}-300`} />
+                        </span>
+                      )}
+                      <h3 className="text-lg sm:text-xl font-semibold text-slate-100">
+                        {habit.name}
+                      </h3>
+                      {habit.frequency && (
+                        <span className={clsx(
+                          "text-xs px-2 py-1 rounded-md font-medium tracking-wide",
+                          {
+                            daily: "bg-cyan-500/10 text-cyan-300 border border-cyan-300/20",
+                            weekly: "bg-violet-500/10 text-violet-300 border border-violet-300/20",
+                            monthly: "bg-amber-500/10 text-amber-300 border border-amber-300/20",
+                          }[habit.frequency]
+                        )}>
+                          {habit.frequency.charAt(0).toUpperCase() + habit.frequency.slice(1)}
+                        </span>
+                      )}
+                    </div>
+
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.05 }}
+                      animate={{
+                        boxShadow: isCheckedToday
+                          ? `0 0 12px rgba(0, 255, 255, 0.3)`
+                          : "none",
+                      }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                      onClick={toggleCheck}
+                      className={clsx(
+                        "rounded-full p-2 border transition-all",
+                        isCheckedToday
+                          ? "bg-cyan-400/20 border-cyan-300/30"
+                          : "bg-white/10 border-white/10 hover:bg-white/20"
+                      )}
+                    >
+                      <CheckCircle2
+                        className={clsx(
+                          "h-5 w-5 transition-colors",
+                          isCheckedToday ? "text-cyan-300" : "text-slate-300"
+                        )}
+                      />
+                    </motion.button>
+                  </div>
+
+                  {habit.description && (
+                    <p className="text-slate-400 whitespace-pre-line text-sm sm:text-base">{habit.description}</p>
+                  )}
+                  {habit.intent && (
+                    <p className="text-indigo-300 whitespace-pre-line text-sm">{habit.intent}</p>
+                  )}
+                  {habit.affirmation && (
+                    <p className="text-emerald-300 italic whitespace-pre-line text-sm">
+                      "{habit.affirmation}"
+                    </p>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setEdit(true)}
+                      className="p-2 border border-cyan-300/20 hover:bg-cyan-400/10 rounded-md"
+                    >
+                      <PencilIcon className="h-5 w-5 text-cyan-300" />
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="p-2 border border-red-300/20 hover:bg-red-400/10 rounded-md"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
         </GlassPanel>

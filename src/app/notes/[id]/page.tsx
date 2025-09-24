@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import GlassPanel from "../../components/GlassPanel";
+import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
 import { Pencil, Trash2, ArrowLeft, Save, X } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Tag {
   id: number;
@@ -147,8 +148,9 @@ export default function ViewNotePage() {
   };
 
   return (
-    <div className="w-full h-[calc(100vh-64px)] px-[clamp(1rem,4vw,2rem)] mt-[64px] pb-6 flex items-center justify-center bg-transparent">
-      <GlassPanel className="w-full max-w-5xl h-[70vh] flex flex-col gap-4 justify-start overflow-hidden">
+    <PageTransition>
+      <div className="w-full h-[calc(100vh-3rem)] flex flex-col items-center px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
+        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
         <div className="flex justify-between items-center">
           <h2 className="text-slate-100 text-3xl font-bold tracking-wide">
             {editing ? "Editing Note" : "Viewing Note"}
@@ -180,47 +182,75 @@ export default function ViewNotePage() {
         </div>
 
         {loading ? (
-          <p className="text-slate-400 text-lg">Loading...</p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-slate-400 text-lg">Loading...</p>
+          </div>
         ) : error ? (
-          <p className="text-red-400 text-lg">{error}</p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-red-400 text-lg">{error}</p>
+          </div>
         ) : (
-          <>
-            <div className="flex-grow overflow-y-auto pr-2 flex flex-col gap-4 hide-scrollbar">
-              {editing ? (
-                <input value={editedTitle} onChange={(e) => setEditedTitle(e.target.value)} className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-2xl font-semibold" />
-              ) : (
-                <h3 className="text-slate-100 text-2xl font-bold">{note?.title}</h3>
-              )}
-              {editing ? (
-                <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} rows={10} className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md resize-none" />
-              ) : (
-                <p className="text-slate-300 whitespace-pre-wrap text-base leading-relaxed">{note?.content}</p>
-              )}
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={editing ? "edit" : "view"}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex flex-col gap-4"
+                >
+                  {editing ? (
+                    <input 
+                      value={editedTitle} 
+                      onChange={(e) => setEditedTitle(e.target.value)} 
+                      className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-xl sm:text-2xl font-semibold" 
+                    />
+                  ) : (
+                    <h3 className="text-slate-100 text-xl sm:text-2xl font-bold">{note?.title}</h3>
+                  )}
+                  {editing ? (
+                    <textarea 
+                      value={editedContent} 
+                      onChange={(e) => setEditedContent(e.target.value)} 
+                      rows={8} 
+                      className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md resize-none text-sm sm:text-base" 
+                    />
+                  ) : (
+                    <p className="text-slate-300 whitespace-pre-wrap text-sm sm:text-base leading-relaxed">{note?.content}</p>
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
-            <div className="flex flex-wrap gap-3 mt-2">
-              {(editing ? availableTags : note?.tags || []).map((tag) => {
+            <div className="flex-shrink-0 flex flex-wrap gap-2 sm:gap-3 mt-4">
+              {(editing ? availableTags : note?.tags || []).map((tag, i) => {
                 const color = tag.color || "slate";
                 const active = selectedTagIds.includes(tag.id);
                 const base = tagColorClasses[color];
                 return (
-                  <button
+                  <motion.button
                     key={tag.id}
                     type="button"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
                     onClick={() => editing && toggleTag(tag.id)}
-                    className={`px-4 py-1 rounded-full text-xs border backdrop-blur-md shadow-sm transition ${
+                    className={`px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition ${
                       active
                         ? `${base} ring-1 ring-white/20`
                         : "text-slate-300 border-white/10 hover:bg-white/10"
                     }`}
                   >
                     {tag.name}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
-          </>
+          </div>
         )}
-      </GlassPanel>
-    </div>
+        </GlassPanel>
+      </div>
+    </PageTransition>
   );
 }

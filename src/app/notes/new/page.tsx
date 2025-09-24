@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import GlassPanel from "../../components/GlassPanel";
+import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Tag {
   id: number;
@@ -82,8 +83,9 @@ export default function CreateNotePage() {
   };
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden bg-transparent">
-      <GlassPanel className="w-full max-w-6xl h-[65vh] flex flex-col justify-start gap-8">
+    <PageTransition>
+      <div className="w-full h-[calc(100vh-3rem)] flex flex-col items-center px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
+        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
         {/* Top Row */}
         <div className="flex justify-between items-center">
           <h2 className="text-slate-100 text-3xl font-bold tracking-wide">
@@ -98,58 +100,82 @@ export default function CreateNotePage() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <input
-            type="text"
-            placeholder="Title your thought..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-2 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-lg"
-          />
+        <div className="flex-1 flex flex-col min-h-0">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-6 h-full">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="flex-1 flex flex-col gap-4 sm:gap-6"
+            >
+              <input
+                type="text"
+                placeholder="Title your thought..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-lg sm:text-xl"
+              />
 
-          <textarea
-            placeholder="Let it flow onto the pond..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={8}
-            className="w-full px-4 py-2 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md resize-none text-base"
-          />
+              <textarea
+                placeholder="Let it flow onto the pond..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={8}
+                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md resize-none text-sm sm:text-base flex-1"
+              />
 
-          <div className="flex flex-col gap-3">
-            <h4 className="text-slate-300 text-sm uppercase tracking-wider mb-1">
-              Attach tags (optional)
-            </h4>
-            <div className="flex flex-wrap gap-3">
-              {tags.map((tag) => (
-                <motion.button
-                  key={tag.id}
-                  type="button"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => toggleTag(tag.id)}
-                  className={`px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition ${
-                    selectedTagIds.includes(tag.id)
-                      ? `${tagColorClasses[tag.color ?? "cyan"]} ring-1 ring-inset ring-white/20`
-                      : `text-slate-300 border-white/10 hover:bg-white/10`
-                  }`}
-                >
-                  {tag.name}
-                </motion.button>
-              ))}
+              <div className="flex flex-col gap-3">
+                <h4 className="text-slate-300 text-sm uppercase tracking-wider">
+                  Attach tags (optional)
+                </h4>
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  <AnimatePresence>
+                    {tags.map((tag, i) => (
+                      <motion.button
+                        key={tag.id}
+                        type="button"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ delay: i * 0.05 }}
+                        whileHover={{ scale: 1.05 }}
+                        onClick={() => toggleTag(tag.id)}
+                        className={`px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition ${
+                          selectedTagIds.includes(tag.id)
+                            ? `${tagColorClasses[tag.color ?? "cyan"]} ring-1 ring-inset ring-white/20`
+                            : `text-slate-300 border-white/10 hover:bg-white/10`
+                        }`}
+                      >
+                        {tag.name}
+                      </motion.button>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
+
+            <div className="flex-shrink-0 flex justify-end gap-3 mt-4">
+              <button
+                type="submit"
+                className="px-4 sm:px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 transition text-sm"
+              >
+                Save
+              </button>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            className="self-end px-5 py-2 mt-4 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 transition text-sm"
-          >
-            Save
-          </button>
-
-          {error && (
-            <p className="text-red-400 text-sm mt-3 text-center">{error}</p>
-          )}
-        </form>
-      </GlassPanel>
-    </div>
+            {error && (
+              <motion.p 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-400 text-sm text-center"
+              >
+                {error}
+              </motion.p>
+            )}
+          </form>
+        </div>
+        </GlassPanel>
+      </div>
+    </PageTransition>
   );
 }

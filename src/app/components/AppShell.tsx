@@ -58,14 +58,50 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Top Navigation Bar */}
       <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/5 border-b border-white/10 px-4 py-2 flex justify-between items-center shadow-sm h-12">
-        <div className="flex gap-6 items-center">
-          <h1 className="text-xl font-bold tracking-wide">Prysmic</h1>
+        <div className="flex gap-2 sm:gap-4 lg:gap-6 items-center min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold tracking-wide">Prysmic</h1>
+          <div className="hidden sm:flex gap-2 sm:gap-4 lg:gap-6 items-center">
+            {navItems.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`text-xs sm:text-sm hover:text-cyan-300 transition whitespace-nowrap ${
+                  pathname === item.href ? "text-cyan-300" : "text-slate-300"
+                } ${item.disabled ? "opacity-30 cursor-not-allowed" : ""}`}
+                onClick={(e) => item.disabled && e.preventDefault()}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-2 sm:gap-4 items-center text-xs sm:text-sm min-w-0">
+          {username && (
+            <span className="text-slate-400 italic hidden sm:inline">
+              Wandering as {username}
+            </span>
+          )}
+          <button
+            onClick={handleLogout}
+            className="bg-white/10 hover:bg-white/20 px-2 sm:px-3 py-1 rounded-md border border-white/10 text-xs sm:text-sm"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Navigation Menu */}
+      <div className="sm:hidden fixed top-12 left-0 right-0 z-40 backdrop-blur-lg bg-white/5 border-b border-white/10 px-4 py-2">
+        <div className="flex gap-2 overflow-x-auto">
           {navItems.map((item) => (
             <Link
               key={item.label}
               href={item.href}
-              className={`text-sm hover:text-cyan-300 transition ${
-                pathname === item.href ? "text-cyan-300" : "text-slate-300"
+              className={`text-xs hover:text-cyan-300 transition whitespace-nowrap px-2 py-1 rounded ${
+                pathname === item.href 
+                  ? "text-cyan-300 bg-cyan-400/10" 
+                  : "text-slate-300 hover:bg-white/10"
               } ${item.disabled ? "opacity-30 cursor-not-allowed" : ""}`}
               onClick={(e) => item.disabled && e.preventDefault()}
             >
@@ -73,24 +109,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </div>
-
-        <div className="flex gap-4 items-center text-sm">
-          {username && (
-            <span className="text-slate-400 italic">
-              Wandering as {username}
-            </span>
-          )}
-          <button
-            onClick={handleLogout}
-            className="bg-white/10 hover:bg-white/20 px-3 py-1 rounded-md border border-white/10"
-          >
-            Logout
-          </button>
-        </div>
       </div>
 
       {/* Main Content */}
-      <main className="relative z-10">
+      <main className="relative z-10 pt-12 sm:pt-12">
         <PageTransition>{children}</PageTransition>
       </main>
     </div>
