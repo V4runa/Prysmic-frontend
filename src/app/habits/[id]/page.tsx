@@ -377,7 +377,7 @@ export default function HabitDetailPage() {
                   )}
                   {habit.affirmation && (
                     <p className="text-emerald-300 italic whitespace-pre-line text-sm">
-                      "{habit.affirmation}"
+                      &ldquo;{habit.affirmation}&rdquo;
                     </p>
                   )}
 
