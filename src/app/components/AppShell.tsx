@@ -32,6 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { label: "Tags", href: "/tags" },
     { label: "Habits", href: "/habits" },
     { label: "Tasks", href: "/tasks" },
+    { label: "Moods", href: "/moods" },
     { label: "Coming Soon...", href: "#", disabled: true },
   ];
 
@@ -99,8 +100,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               key={item.label}
               href={item.href}
               className={`text-xs hover:text-cyan-300 transition whitespace-nowrap px-2 py-1 rounded ${
-                pathname === item.href 
-                  ? "text-cyan-300 bg-cyan-400/10" 
+                pathname === item.href
+                  ? "text-cyan-300 bg-cyan-400/10"
                   : "text-slate-300 hover:bg-white/10"
               } ${item.disabled ? "opacity-30 cursor-not-allowed" : ""}`}
               onClick={(e) => item.disabled && e.preventDefault()}
