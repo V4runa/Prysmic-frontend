@@ -54,6 +54,7 @@ export default function MoodPage() {
 
   const todayKey = new Date().toLocaleDateString("en-CA");
 
+  // 🧠 Load moods and detect today's entry
   useEffect(() => {
     (async () => {
       try {
@@ -66,9 +67,7 @@ export default function MoodPage() {
           return;
         }
 
-        const todayMood = normalized.find((m) =>
-          m.date.startsWith(todayKey)
-        );
+        const todayMood = normalized.find((m) => m.date.startsWith(todayKey));
         if (todayMood) {
           setPhase(MoodPhase.TIMELINE);
           localStorage.setItem("lastMoodDate", todayKey);
@@ -84,19 +83,25 @@ export default function MoodPage() {
     })();
   }, [todayKey]);
 
+  // 🎭 When a mood is picked
   const handleMoodSelect = (mood: string) => {
     setSelectedMood(mood);
     setPhase(MoodPhase.REFLECT);
   };
 
+  // 🧘 Handle reflection + save mood
   const handleReflectionSubmit = async (note?: string) => {
     try {
       const emoji = selectedMood ? moodToEmoji[selectedMood] : undefined;
       if (!selectedMood || !emoji) throw new Error("Invalid mood selection");
 
+      const token = localStorage.getItem("token");
       await apiFetch("/moods", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           moodType: selectedMood,
           emoji,
@@ -135,6 +140,7 @@ export default function MoodPage() {
       <div className={outerClass}>
         <GlassPanel className={panelClass}>
           <AnimatePresence mode="wait">
+            {/* 🌞 Pick Phase */}
             {phase === MoodPhase.PICK && (
               <motion.div
                 key="picker"
@@ -148,6 +154,7 @@ export default function MoodPage() {
               </motion.div>
             )}
 
+            {/* ✍️ Reflection Phase */}
             {phase === MoodPhase.REFLECT && (
               <motion.div
                 key="reflect"
@@ -165,6 +172,7 @@ export default function MoodPage() {
               </motion.div>
             )}
 
+            {/* 📈 Timeline Phase */}
             {phase === MoodPhase.TIMELINE && (
               <motion.div
                 key="timeline"
