@@ -37,7 +37,7 @@ const moodToEmoji: Record<string, string> = {
   hopeful: "🌈",
 };
 
-const normalizeMoods = (moods: any[]): MoodEntry[] =>
+const normalizeMoods = (moods: MoodEntry[]): MoodEntry[] =>
   moods
     .map((m) => ({
       ...m,
