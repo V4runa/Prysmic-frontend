@@ -78,6 +78,9 @@ interface Habit {
   color?: string;
   icon?: IconKey;
   checks?: { date: string }[];
+  checkedToday: boolean;
+  currentStreak: number;
+  longestStreak: number;
   createdAt: string;
 }
 
@@ -85,36 +88,77 @@ export default function HabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [error, setError] = useState("");
   const [animatingId, setAnimatingId] = useState<number | null>(null);
+  const [lastCheckDate, setLastCheckDate] = useState<string>("");
   const router = useRouter();
 
-  useEffect(() => {
-    apiFetch<Habit[]>("/habits")
-      .then(setHabits)
-      .catch(() => setError("Failed to load habits"));
-  }, []);
-
-  const isCheckedToday = (habit: Habit) => {
-    const today = new Date().toISOString().split("T")[0];
-    return habit.checks?.some((c) => c.date === today);
+  const fetchHabits = async () => {
+    try {
+      const data = await apiFetch<Habit[]>("/habits");
+      setHabits(data);
+      setLastCheckDate(new Date().toISOString().split("T")[0]);
+    } catch {
+      setError("Failed to load habits");
+    }
   };
 
-  const handleCheck = async (habitId: number) => {
+  useEffect(() => {
+    fetchHabits();
+  }, []);
+
+  // Auto-refresh when date changes (morning reset)
+  useEffect(() => {
+    const checkDateChange = () => {
+      const today = new Date().toISOString().split("T")[0];
+      if (lastCheckDate && lastCheckDate !== today) {
+        fetchHabits();
+      }
+    };
+
+    // Check on mount and set up interval to check periodically
+    checkDateChange();
+    const interval = setInterval(checkDateChange, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [lastCheckDate]);
+
+  const handleCheck = async (habitId: number, currentChecked: boolean) => {
+    const previousState = habits.find((h) => h.id === habitId);
+    if (!previousState) return;
+
+    // Optimistic update
+    setHabits((prev) =>
+      prev.map((h) =>
+        h.id === habitId
+          ? {
+              ...h,
+              checkedToday: !currentChecked,
+              currentStreak: !currentChecked
+                ? h.currentStreak + 1
+                : Math.max(0, h.currentStreak - 1),
+            }
+          : h
+      )
+    );
+    setAnimatingId(habitId);
+    setTimeout(() => setAnimatingId(null), 1400);
+
     try {
-      await apiFetch(`/habits/${habitId}/check`, { method: "POST" });
+      await apiFetch<{ checked: boolean }>(`/habits/${habitId}/check`, {
+        method: "POST",
+      });
+      
+      // Re-fetch to get accurate streak data from backend
+      const updatedHabit = await apiFetch<Habit>(`/habits/${habitId}`);
       setHabits((prev) =>
-        prev.map((h) =>
-          h.id === habitId
-            ? {
-                ...h,
-                checks: [...(h.checks || []), { date: new Date().toISOString().split("T")[0] }],
-              }
-            : h
-        )
+        prev.map((h) => (h.id === habitId ? updatedHabit : h))
       );
-      setAnimatingId(habitId);
-      setTimeout(() => setAnimatingId(null), 1400);
     } catch {
-      setError("Failed to mark habit as complete.");
+      // Revert on error
+      setHabits((prev) =>
+        prev.map((h) => (h.id === habitId ? previousState : h))
+      );
+      setError("Failed to toggle habit check.");
+      setAnimatingId(null);
     }
   };
 
@@ -157,7 +201,7 @@ export default function HabitsPage() {
                 {habits.map((habit, i) => {
                 const iconKey: IconKey = habit.icon && iconMap[habit.icon] ? habit.icon : "star";
                 const IconComponent = iconMap[iconKey];
-                const isTodayChecked = isCheckedToday(habit);
+                const isTodayChecked = habit.checkedToday;
                 const color = habit.color || "cyan";
                 const animating = animatingId === habit.id;
 
@@ -233,12 +277,22 @@ export default function HabitsPage() {
                       </p>
                     )}
 
+                    {/* Streak Badge */}
+                    {habit.currentStreak > 0 && (
+                      <div className="flex items-center gap-1 z-10 relative">
+                        <Flame className={`h-3 w-3 sm:h-4 sm:w-4 text-${color}-400`} />
+                        <span className={`text-xs sm:text-sm font-medium text-${color}-300`}>
+                          {habit.currentStreak} day{habit.currentStreak !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    )}
+
                     {/* ✅ Check Button */}
                     <div
                       className="absolute top-2 right-2 z-20"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!isTodayChecked) handleCheck(habit.id);
+                        handleCheck(habit.id, isTodayChecked);
                       }}
                     >
                       {isTodayChecked ? (

@@ -114,6 +114,9 @@ interface Habit {
   icon?: IconKey;
   frequency?: HabitFrequency;
   checks?: { date: string }[];
+  checkedToday: boolean;
+  currentStreak: number;
+  longestStreak: number;
   createdAt: string;
 }
 
@@ -126,38 +129,50 @@ export default function HabitDetailPage() {
   const [form, setForm] = useState<Partial<Habit>>({});
   const [error, setError] = useState("");
 
-  const today = new Date().toISOString().split("T")[0];
-
   useEffect(() => {
-    apiFetch(`/habits/${id}`)
-      .then((data: unknown) => {
-        const habitData = data as Habit;
+    const fetchHabit = async () => {
+      try {
+        const habitData = await apiFetch<Habit>(`/habits/${id}`);
         setHabit(habitData);
         setForm(habitData);
-      })
-      .catch(() => setError("Could not load habit"));
+      } catch {
+        setError("Could not load habit");
+      }
+    };
+    fetchHabit();
   }, [id]);
 
-  const isCheckedToday = habit?.checks?.some((c) => c.date === today);
+  const isCheckedToday = habit?.checkedToday ?? false;
   const color = form.color || habit?.color || "cyan";
   const iconKey = (form.icon || habit?.icon || "star") as IconKey;
   const IconComponent = iconMap[iconKey];
 
   const toggleCheck = async () => {
+    if (!habit) return;
+    
+    const previousState = habit;
+
+    // Optimistic update
+    setHabit({
+      ...habit,
+      checkedToday: !habit.checkedToday,
+      currentStreak: !habit.checkedToday
+        ? habit.currentStreak + 1
+        : Math.max(0, habit.currentStreak - 1),
+    });
+
     try {
-      const res = await apiFetch<{ checked: boolean }>(`/habits/${id}/check`, {
+      await apiFetch<{ checked: boolean }>(`/habits/${id}/check`, {
         method: "POST",
       });
-      const newCheck = { date: today };
-      if (habit) {
-        setHabit({
-          ...habit,
-          checks: res.checked
-            ? [...(habit.checks || []), newCheck]
-            : (habit.checks || []).filter((c) => c.date !== today),
-        });
-      }
+      
+      // Re-fetch to get accurate streak data from backend
+      const habitData = await apiFetch<Habit>(`/habits/${id}`);
+      setHabit(habitData);
+      setForm(habitData);
     } catch {
+      // Revert on error
+      setHabit(previousState);
       setError("Failed to toggle check-in");
     }
   };
@@ -367,6 +382,32 @@ export default function HabitDetailPage() {
                         )}
                       />
                     </motion.button>
+                  </div>
+
+                  {/* Streak Information */}
+                  <div className="flex gap-4 items-center">
+                    {habit.currentStreak > 0 && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                        <Flame className={`h-4 w-4 text-${color}-400`} />
+                        <div className="flex flex-col">
+                          <span className="text-xs text-slate-400">Current Streak</span>
+                          <span className={`text-sm font-semibold text-${color}-300`}>
+                            {habit.currentStreak} day{habit.currentStreak !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {habit.longestStreak > 0 && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                        <Target className={`h-4 w-4 text-${color}-400/70`} />
+                        <div className="flex flex-col">
+                          <span className="text-xs text-slate-400">Longest Streak</span>
+                          <span className={`text-sm font-semibold text-${color}-300/70`}>
+                            {habit.longestStreak} day{habit.longestStreak !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {habit.description && (
