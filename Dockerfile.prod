@@ -13,7 +13,7 @@ COPY . .
 
 # Ensure .env.prod is used during build
 ENV NODE_ENV=production
-ENV NEXT_PUBLIC_API_URL=https://api.prysmic.me
+ENV NEXT_PUBLIC_API_BASE_URL=https://api.prysmic.me
 ENV PORT=3000
 
 # Build the app
@@ -26,7 +26,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NEXT_PUBLIC_API_URL=https://api.prysmic.me
+ENV NEXT_PUBLIC_API_BASE_URL=https://api.prysmic.me
 ENV PORT=3000
 
 # Copy only necessary files
