@@ -147,34 +147,34 @@ export default function ViewNotePage() {
 
   return (
     <PageTransition>
-      <div className="w-full h-[calc(100vh-3rem)] flex flex-col items-center px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
+      <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
         <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
-        <div className="flex justify-between items-center">
-          <h2 className="text-slate-100 text-3xl font-bold tracking-wide">
+        <div className="flex justify-between items-center gap-3">
+          <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide truncate">
             {editing ? "Editing Note" : "Viewing Note"}
           </h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {!editing ? (
               <>
-                <motion.button {...tactile} className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={() => setEditing(true)} title="Edit">
+                <motion.button {...tactile} className="tap-target flex items-center justify-center p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={() => setEditing(true)} title="Edit">
                   <Pencil className="h-5 w-5 text-cyan-300" />
                 </motion.button>
-                <motion.button {...tactile} className="p-2 bg-red-400/10 hover:bg-red-400/20 rounded-md border border-red-300/20" onClick={handleDelete} disabled={deleting} title="Delete">
+                <motion.button {...tactile} className="tap-target flex items-center justify-center p-2 bg-red-400/10 hover:bg-red-400/20 rounded-md border border-red-300/20" onClick={handleDelete} disabled={deleting} title="Delete">
                   <Trash2 className="h-5 w-5 text-red-300" />
                 </motion.button>
               </>
             ) : (
               <>
-                <motion.button {...tactile} className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={handleSaveUpdate} title="Save">
+                <motion.button {...tactile} className="tap-target flex items-center justify-center p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={handleSaveUpdate} title="Save">
                   <Save className="h-5 w-5 text-cyan-300" />
                 </motion.button>
-                <motion.button {...tactile} className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" onClick={handleCancelEdit} title="Cancel">
+                <motion.button {...tactile} className="tap-target flex items-center justify-center p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" onClick={handleCancelEdit} title="Cancel">
                   <X className="h-5 w-5 text-slate-300" />
                 </motion.button>
               </>
             )}
             <motion.div {...tactile} className="inline-flex">
-              <Link href="/notes" className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" title="Back">
+              <Link href="/notes" className="tap-target flex items-center justify-center p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" title="Back">
                 <ArrowLeft className="h-5 w-5 text-slate-300" />
               </Link>
             </motion.div>
@@ -227,7 +227,7 @@ export default function ViewNotePage() {
                       </span>
                     </>
                   ) : (
-                    <p className="text-slate-300 whitespace-pre-wrap text-sm sm:text-base leading-relaxed">{note?.content}</p>
+                    <p className="selectable-text text-slate-300 whitespace-pre-wrap text-sm sm:text-base leading-relaxed">{note?.content}</p>
                   )}
                 </motion.div>
               </AnimatePresence>

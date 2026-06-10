@@ -40,6 +40,52 @@
   --glass-border: rgba(255, 255, 255, 0.045);
   --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
   --accent-glow: rgba(150, 220, 255, 0.05);
+
+  /* --- Responsive app chrome (drives every page's usable height) --- */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  /* Fixed top bar height (+ notch inset when present). */
+  --header-h: calc(3rem + var(--safe-top));
+  /* Bottom tab bar: only present on mobile (set in the media query below). */
+  --bottomnav-h: 0px;
+}
+
+/* On phones a native-style bottom tab bar reserves space. */
+@media (max-width: 639px) {
+  :root {
+    --bottomnav-h: calc(3.75rem + var(--safe-bottom));
+  }
+}
+
+/* Height available to a page between the top bar and bottom nav.
+   Uses dvh so mobile browser chrome (URL bar) doesn't clip content. */
+.app-page-h {
+  height: calc(100dvh - var(--header-h) - var(--bottomnav-h));
+}
+
+/* Fixed top header: grows to clear the notch, stays 3rem on desktop. */
+.app-header {
+  height: var(--header-h);
+  padding-top: var(--safe-top);
+}
+
+/* Main content sits below the fixed header. */
+.app-main {
+  padding-top: var(--header-h);
+}
+
+/* Native-style bottom tab bar (mobile only). */
+.app-bottom-nav {
+  height: var(--bottomnav-h);
+  padding-bottom: var(--safe-bottom);
+}
+
+/* Smooth, contained momentum scrolling inside app panels. */
+.app-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* --- Base Styles --- */
@@ -52,6 +98,9 @@ body {
   font-weight: 400;
   letter-spacing: 0.01em;
   transition: background 0.5s ease;
+  /* App chrome is UI, not a document — default arrow, never the text I-beam. */
+  cursor: default;
+  user-select: none;
 }
 
 @media (prefers-color-scheme: light) {
@@ -66,11 +115,28 @@ body {
 
 /* --- Interaction Polish --- */
 
-/* Everything clickable should feel clickable — never show the text I-beam. */
+/* Restore selection + text cursor only where users read or type. */
+input,
+textarea,
+select,
+[contenteditable="true"],
+.selectable-text {
+  user-select: text;
+}
+
+input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+}
+
+/* Interactive surfaces: pointer, never I-beam. */
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]),
 a,
-.interactive-chip {
+.interactive-chip,
+label[for],
+select {
   cursor: pointer;
   user-select: none;
 }
@@ -129,6 +195,24 @@ input.focus-band:focus-visible,
 textarea.focus-band:focus-visible,
 select.focus-band:focus-visible {
   box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.25);
+}
+
+/* Prevent iOS Safari from auto-zooming when focusing inputs:
+   any control under 16px triggers it, so floor font-size on phones. */
+@media (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Larger, comfortable tap targets on touch devices (opt-in, mouse UI unchanged). */
+@media (hover: none) and (pointer: coarse) {
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 /* Respect users who prefer less motion. */

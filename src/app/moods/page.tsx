@@ -117,7 +117,7 @@ export default function MoodPage() {
   if (loading) {
     return (
       <PageTransition>
-        <div className="flex h-[calc(100vh-3rem)] items-center justify-center text-slate-400">
+        <div className="flex app-page-h items-center justify-center text-slate-400">
           Loading...
         </div>
       </PageTransition>
@@ -125,9 +125,9 @@ export default function MoodPage() {
   }
 
   const outerClass =
-    "w-full min-h-[calc(100vh-1rem)] flex items-start justify-center px-6 pt-4 pb-10";
+    "w-full app-page-h app-scroll overflow-y-auto flex items-start justify-center px-3 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-10";
   const panelClass =
-    "w-full max-w-[1200px] min-h-[700px] flex flex-col items-stretch justify-start relative overflow-hidden pb-6 mb-4";
+    "w-full max-w-[1200px] min-h-[480px] sm:min-h-[700px] flex flex-col items-stretch justify-start relative overflow-hidden pb-6";
 
   return (
     <PageTransition>

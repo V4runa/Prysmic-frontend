@@ -67,7 +67,7 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
   }
 
   return (
-    <div className="relative w-full flex-1 flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-32 pb-20">
+    <div className="app-scroll relative w-full flex-1 flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-16 sm:pt-32 pb-24 sm:pb-20 px-2 sm:px-0">
       {/* 🔥 Streak header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -76,7 +76,7 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
         className="flex flex-col items-center relative z-10 overflow-visible"
       >
         <motion.div
-          className="relative text-8xl"
+          className="relative text-6xl sm:text-8xl"
           animate={{ scale: [1, 1.08, 1] }}
           transition={{
             repeat: Infinity,
@@ -94,8 +94,8 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
       </motion.div>
 
       {/* 🌙 Timeline entries */}
-      <div className="relative mx-auto w-full max-w-3xl mt-10 mb-8">
-        <div className="absolute left-[5.25rem] top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-white/15 via-white/8 to-transparent rounded-full" />
+      <div className="relative mx-auto w-full max-w-3xl mt-8 sm:mt-10 mb-8 px-1 sm:px-0">
+        <div className="absolute left-[4.5rem] sm:left-[5.25rem] top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-white/15 via-white/8 to-transparent rounded-full" />
 
         <AnimatePresence>
           {timeline.map((mood, i) => {
@@ -119,9 +119,9 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="relative flex items-center gap-6 mb-10 sm:mb-12"
+                className="relative flex items-center gap-4 sm:gap-6 mb-8 sm:mb-12"
               >
-                <div className="text-right text-slate-400 text-xs sm:text-sm w-16 shrink-0">
+                <div className="text-right text-slate-400 text-xs sm:text-sm w-[3.25rem] sm:w-16 shrink-0">
                   {format(new Date(mood.date), "MMM d")}
                 </div>
 
@@ -148,7 +148,7 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
                 </div>
 
                 <motion.div
-                  className={`flex-1 bg-white/[0.05] border border-white/10 rounded-2xl p-5 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] ${cc.cardHover} transition-all duration-300`}
+                  className={`min-w-0 flex-1 bg-white/[0.05] border border-white/10 rounded-2xl p-4 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] ${cc.cardHover} transition-all duration-300`}
                   whileHover={{ scale: 1.02, y: -2 }}
                 >
                   <div className="flex items-center gap-3 mb-2">
@@ -162,7 +162,7 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
                     </span>
                   </div>
                   {mood.note ? (
-                    <p className="text-slate-200 text-sm sm:text-base leading-relaxed">
+                    <p className="selectable-text text-slate-200 text-sm sm:text-base leading-relaxed">
                       {mood.note}
                     </p>
                   ) : (

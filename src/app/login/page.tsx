@@ -35,11 +35,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-transparent">
+    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 bg-transparent">
       <PageTransition>
         {" "}
         {/* ✅ */}
-        <GlassPanel>
+        <GlassPanel className="w-full max-w-sm">
           <h2 className="text-slate-100 text-2xl font-medium mb-6 text-center tracking-wide">
             Enter the Flow
           </h2>
@@ -61,7 +61,7 @@ export default function LoginPage() {
             />
             <button
               type="submit"
-              className="w-full py-2 mt-2 bg-white/5 hover:bg-cyan-200/10 text-slate-100 rounded-md border border-white/10"
+              className="tap-target w-full py-2.5 mt-2 bg-white/5 hover:bg-cyan-200/10 text-slate-100 rounded-md border border-white/10"
             >
               Log In
             </button>

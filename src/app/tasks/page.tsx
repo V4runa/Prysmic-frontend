@@ -34,7 +34,7 @@ export default function TasksPage() {
 
   return (
     <PageTransition>
-      <div className="w-full h-[calc(100vh-3rem)] flex flex-col items-center px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
+      <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
         <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-4">
@@ -65,7 +65,7 @@ export default function TasksPage() {
                 onClick={() =>
                   setActiveTab(tab as "active" | "completed" | "archived")
                 }
-                className={`px-3 sm:px-4 py-2 -mb-px font-medium whitespace-nowrap text-sm relative transition-colors ${
+                className={`select-none px-3 sm:px-4 py-2 -mb-px font-medium whitespace-nowrap text-sm relative transition-colors ${
                   activeTab === tab
                     ? "text-cyan-300"
                     : "text-white/40 hover:text-white"

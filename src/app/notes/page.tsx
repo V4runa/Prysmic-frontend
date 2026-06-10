@@ -125,7 +125,7 @@ export default function NotesOverviewPage() {
 
   return (
     <PageTransition>
-    <div className="w-full h-[calc(100vh-3rem)] flex flex-col xl:flex-row px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
+    <div className="w-full app-page-h flex flex-col xl:flex-row px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
       {/* Sidebar (desktop only) */}
       {allTags.length > 0 && (
         <aside className="hidden xl:block w-[260px] shrink-0">
@@ -216,7 +216,7 @@ export default function NotesOverviewPage() {
       <main className="flex-grow flex flex-col items-center gap-4 sm:gap-6 min-h-0">
         <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
           <div className="flex justify-between items-center flex-wrap gap-4">
-            <h2 className="text-slate-100 text-3xl font-bold tracking-wide">
+            <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
               Your Notes
             </h2>
             <motion.div {...tactile} className="inline-flex">

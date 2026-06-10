@@ -418,10 +418,14 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
 
         {/* Menu (top-right) */}
         <div className="relative">
-          <MoreVertical
-            className="h-5 w-5 text-white/40 cursor-pointer hover:text-white"
+          <button
+            type="button"
+            aria-label="Task options"
+            className="tap-target flex items-center justify-center -mr-1.5 -mt-1.5 p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/10"
             onClick={() => setShowMenu((prev) => !prev)}
-          />
+          >
+            <MoreVertical className="h-5 w-5" />
+          </button>
           {showMenu && (
             <div className="absolute right-0 mt-2 w-28 bg-zinc-800 border border-white/10 shadow-xl rounded-md z-30 overflow-hidden">
               <button
@@ -464,7 +468,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
           {...tactileSubtle}
           title="Toggle complete"
           className={clsx(
-            "relative z-20 rounded-full border p-2 transition-colors",
+            "tap-target flex items-center justify-center relative z-20 rounded-full border p-2 transition-colors",
             task.isComplete
               ? "border-green-400/30 bg-green-400/10 hover:bg-green-400/20"
               : "border-white/20 hover:bg-white/10 hover:border-white/40"

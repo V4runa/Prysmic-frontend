@@ -96,7 +96,7 @@ export default function TagsPage() {
 
   return (
     <PageTransition>
-      <div className="w-full h-[calc(100vh-3rem)] flex flex-col items-center px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
+      <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
       <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
         {/* Header */}
         <h2 className="text-slate-100 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-wide">
@@ -193,17 +193,17 @@ export default function TagsPage() {
                             {...tactileSubtle}
                             onClick={() => handleSaveEdit(tag.id)}
                             title="Save"
-                            className="p-1 border border-cyan-300/20 rounded-md hover:bg-cyan-400/10"
+                            className="tap-target flex items-center justify-center p-2 sm:p-1 border border-cyan-300/20 rounded-md hover:bg-cyan-400/10"
                           >
-                            <Save className="h-3 w-3 sm:h-4 sm:w-4 text-cyan-300" />
+                            <Save className="h-4 w-4 text-cyan-300" />
                           </motion.button>
                           <motion.button
                             {...tactileSubtle}
                             onClick={() => setEditingId(null)}
                             title="Cancel"
-                            className="p-1 border border-white/10 rounded-md hover:bg-white/10"
+                            className="tap-target flex items-center justify-center p-2 sm:p-1 border border-white/10 rounded-md hover:bg-white/10"
                           >
-                            <X className="h-3 w-3 sm:h-4 sm:w-4 text-slate-300" />
+                            <X className="h-4 w-4 text-slate-300" />
                           </motion.button>
                         </div>
                       </div>
@@ -221,17 +221,17 @@ export default function TagsPage() {
                               setEditedColor(tag.color || "cyan");
                             }}
                             title="Edit"
-                            className="p-1 border border-cyan-300/20 rounded-md hover:bg-cyan-400/10"
+                            className="tap-target flex items-center justify-center p-2 sm:p-1 border border-cyan-300/20 rounded-md hover:bg-cyan-400/10"
                           >
-                            <Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-cyan-300" />
+                            <Pencil className="h-4 w-4 text-cyan-300" />
                           </motion.button>
                           <motion.button
                             {...tactileSubtle}
                             onClick={() => handleDelete(tag.id)}
                             title="Delete"
-                            className="p-1 border border-red-300/20 rounded-md hover:bg-red-400/10"
+                            className="tap-target flex items-center justify-center p-2 sm:p-1 border border-red-300/20 rounded-md hover:bg-red-400/10"
                           >
-                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-red-300" />
+                            <Trash2 className="h-4 w-4 text-red-300" />
                           </motion.button>
                         </div>
                       </>

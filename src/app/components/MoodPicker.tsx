@@ -25,18 +25,18 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
   const [selected, setSelected] = useState<string | null>(null);
 
   return (
-    <div className="flex flex-col items-center justify-center text-center w-full h-full px-6 py-8">
+    <div className="flex flex-col items-center justify-center text-center w-full h-full px-4 py-6 sm:px-6 sm:py-8">
       <motion.h2
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="text-3xl sm:text-4xl font-semibold text-slate-100 mb-12 tracking-wide"
+        className="text-2xl sm:text-4xl font-semibold text-slate-100 mb-8 sm:mb-12 tracking-wide"
       >
         How are you feeling today?
       </motion.h2>
 
       <motion.div
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8 place-items-center w-full max-w-5xl"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-8 place-items-center w-full max-w-5xl"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.8 }}

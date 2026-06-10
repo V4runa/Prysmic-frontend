@@ -160,7 +160,7 @@ export default function HabitDetailPage() {
 
   if (!habit) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="app-page-h flex items-center justify-center">
         {error ? (
           <p className="text-slate-400">{error}</p>
         ) : (
@@ -172,16 +172,16 @@ export default function HabitDetailPage() {
 
   return (
     <PageTransition>
-      <div className="w-full h-[calc(100vh-3rem)] flex flex-col items-center px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
+      <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
         <GlassPanel className={clsx("w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0", bgPanelMap[color])}>
           <div className="flex justify-between items-center">
-            <h2 className="text-3xl font-bold text-slate-100 tracking-wide">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-100 tracking-wide">
               {edit ? "Edit Contract" : "Habit Contract"}
             </h2>
             <motion.button
               {...tactile}
               onClick={() => router.push("/habits")}
-              className="p-2 border border-white/10 rounded-md hover:bg-white/10"
+              className="tap-target p-2 border border-white/10 rounded-md hover:bg-white/10"
             >
               <ArrowLeft className="h-5 w-5 text-slate-300" />
             </motion.button>
@@ -272,15 +272,17 @@ export default function HabitDetailPage() {
                   <div className="flex gap-3 pt-2">
                     <button
                       onClick={saveEdits}
-                      className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-300/20 rounded-md"
+                      className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-300/20 rounded-md"
                     >
                       <Save className="h-5 w-5 text-cyan-300" />
+                      <span className="sm:hidden text-cyan-300 text-sm font-medium">Save</span>
                     </button>
                     <button
                       onClick={() => setEdit(false)}
-                      className="p-2 border border-white/10 hover:bg-white/10 rounded-md"
+                      className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 border border-white/10 hover:bg-white/10 rounded-md"
                     >
                       <X className="h-5 w-5 text-slate-300" />
+                      <span className="sm:hidden text-slate-300 text-sm font-medium">Cancel</span>
                     </button>
                   </div>
                 </motion.div>
@@ -293,19 +295,19 @@ export default function HabitDetailPage() {
                   transition={{ duration: 0.3 }}
                   className="flex-1 flex flex-col gap-4 sm:gap-6"
                 >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
+                  <div className="flex justify-between items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                       {IconComponent && (
-                        <span className={`p-2 rounded-full ${c.detailIconBg}`}>
+                        <span className={`shrink-0 p-2 rounded-full ${c.detailIconBg}`}>
                           <IconComponent className={`h-6 w-6 ${c.icon}`} />
                         </span>
                       )}
-                      <h3 className="text-lg sm:text-xl font-semibold text-slate-100">
+                      <h3 className="text-lg sm:text-xl font-semibold text-slate-100 truncate">
                         {habit.name}
                       </h3>
                       {habit.frequency && (
                         <span className={clsx(
-                          "text-xs px-2 py-1 rounded-md font-medium tracking-wide",
+                          "shrink-0 text-xs px-2 py-1 rounded-md font-medium tracking-wide",
                           {
                             daily: "bg-cyan-500/10 text-cyan-300 border border-cyan-300/20",
                             weekly: "bg-violet-500/10 text-violet-300 border border-violet-300/20",
@@ -317,7 +319,7 @@ export default function HabitDetailPage() {
                       )}
                     </div>
 
-                    <div className="relative">
+                    <div className="relative shrink-0">
                       {justChecked && <Sparkles color={c.spark} count={12} />}
                       <motion.button
                         {...tactileSubtle}
@@ -329,7 +331,7 @@ export default function HabitDetailPage() {
                         transition={{ type: "spring", stiffness: 300 }}
                         onClick={toggleCheck}
                         className={clsx(
-                          "relative z-10 rounded-full p-2 border transition-colors",
+                          "tap-target relative z-10 rounded-full p-2 border transition-colors flex items-center justify-center",
                           isCheckedToday
                             ? `${c.detailIconBg} ${c.checkBorder}`
                             : "bg-white/10 border-white/10 hover:bg-white/20"
@@ -354,7 +356,7 @@ export default function HabitDetailPage() {
                   </div>
 
                   {/* Streak Information */}
-                  <div className="flex gap-4 items-center">
+                  <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
                     {habit.currentStreak > 0 && (
                       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
                         <Flame className={`h-4 w-4 ${c.flame}`} />
@@ -394,13 +396,14 @@ export default function HabitDetailPage() {
                   <div className="flex gap-3 pt-2">
                     <button
                       onClick={() => setEdit(true)}
-                      className="p-2 border border-cyan-300/20 hover:bg-cyan-400/10 rounded-md"
+                      className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 border border-cyan-300/20 hover:bg-cyan-400/10 rounded-md"
                     >
                       <PencilIcon className="h-5 w-5 text-cyan-300" />
+                      <span className="sm:hidden text-cyan-300 text-sm font-medium">Edit</span>
                     </button>
                     <button
                       onClick={handleDelete}
-                      className="p-2 border border-red-300/20 hover:bg-red-400/10 rounded-md"
+                      className="tap-target flex items-center justify-center px-4 py-2 text-red-300 text-sm font-medium border border-red-300/20 hover:bg-red-400/10 rounded-md"
                     >
                       Delete
                     </button>
