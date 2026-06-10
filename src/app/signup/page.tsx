@@ -6,6 +6,7 @@ import Link from "next/link";
 import GlassPanel from "../components/GlassPanel";
 import { apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition"; // ✅ Add this import
+import { markOnboardingPending } from "../components/OnboardingModal";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function SignupPage() {
       });
 
       localStorage.setItem("token", res.access_token);
+      markOnboardingPending();
       router.push("/notes");
     } catch (err: Error | unknown) {
       console.error("Signup failed", err);

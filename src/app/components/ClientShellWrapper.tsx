@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import AppShell from "./AppShell";
+import OnboardingModal from "./OnboardingModal";
 import { SessionToastProvider, useSessionToast } from "./SessionToastContext";
 import QueryProvider from "../providers/QueryProvider";
 
@@ -56,7 +57,14 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, isPublic, triggerToast]);
 
-  return isPublic ? children : <AppShell>{children}</AppShell>;
+  if (isPublic) return <>{children}</>;
+
+  return (
+    <AppShell>
+      {children}
+      <OnboardingModal />
+    </AppShell>
+  );
 }
 
 export default function ClientShellWrapper({ children }: { children: React.ReactNode }) {
