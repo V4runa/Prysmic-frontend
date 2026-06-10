@@ -115,12 +115,12 @@ export default function NotesOverviewPage() {
   };
 
   const tagActiveClasses: Record<string, string> = {
-    cyan: "ring ring-cyan-300 shadow-[0_0_10px] shadow-cyan-400/40 scale-[1.05] bg-cyan-500/10",
-    rose: "ring ring-rose-300 shadow-[0_0_10px] shadow-rose-400/40 scale-[1.05] bg-rose-500/10",
-    slate: "ring ring-slate-300 shadow-[0_0_10px] shadow-slate-400/40 scale-[1.05] bg-slate-500/10",
-    violet: "ring ring-violet-300 shadow-[0_0_10px] shadow-violet-400/40 scale-[1.05] bg-violet-500/10",
-    emerald: "ring ring-emerald-300 shadow-[0_0_10px] shadow-emerald-400/40 scale-[1.05] bg-emerald-500/10",
-    amber: "ring ring-amber-300 shadow-[0_0_10px] shadow-amber-400/40 scale-[1.05] bg-amber-500/10",
+    cyan: "ring ring-cyan-300 shadow-[0_0_10px] shadow-cyan-400/40 bg-cyan-500/10",
+    rose: "ring ring-rose-300 shadow-[0_0_10px] shadow-rose-400/40 bg-rose-500/10",
+    slate: "ring ring-slate-300 shadow-[0_0_10px] shadow-slate-400/40 bg-slate-500/10",
+    violet: "ring ring-violet-300 shadow-[0_0_10px] shadow-violet-400/40 bg-violet-500/10",
+    emerald: "ring ring-emerald-300 shadow-[0_0_10px] shadow-emerald-400/40 bg-emerald-500/10",
+    amber: "ring ring-amber-300 shadow-[0_0_10px] shadow-amber-400/40 bg-amber-500/10",
   };
 
   return (
@@ -143,14 +143,20 @@ export default function NotesOverviewPage() {
                 return (
                   <motion.div
                     key={tag.id}
+                    role="button"
+                    tabIndex={0}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05, type: "spring", stiffness: 180, damping: 18 }}
-                    layout
                     whileTap={{ scale: 0.98 }}
-                    whileHover={{ scale: 1.02 }}
                     onClick={() => toggleTag(tag.name)}
-                    className={`cursor-pointer px-4 py-2 flex items-center justify-between rounded-xl border backdrop-blur-lg relative transition-all duration-200 ${
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleTag(tag.name);
+                      }
+                    }}
+                    className={`interactive-chip card-lift px-4 py-2 flex items-center justify-between rounded-xl border backdrop-blur-lg relative ${
                       baseClasses
                     } ${
                       isActive
@@ -234,13 +240,13 @@ export default function NotesOverviewPage() {
                 return (
                   <motion.button
                     key={tag.id}
+                    type="button"
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
-                    whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => toggleTag(tag.name)}
-                    className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap transition-all duration-200 ${
+                    className={`interactive-chip text-xs px-3 py-1 rounded-full border whitespace-nowrap transition-colors duration-200 ${
                       baseClasses
                     } ${isActive ? tagActiveClasses[color] : "hover:bg-white/10"}`}
                   >
@@ -250,12 +256,12 @@ export default function NotesOverviewPage() {
               })}
               {activeTags.length > 0 && (
                 <motion.button
+                  type="button"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: allTags.length * 0.05 }}
-                  whileHover={{ scale: 1.05 }}
                   onClick={() => setActiveTags([])}
-                  className="text-xs text-cyan-300 underline ml-auto hover:text-cyan-200 transition"
+                  className="interactive-chip text-xs text-cyan-300 underline ml-auto hover:text-cyan-200 transition-colors"
                 >
                   Clear
                 </motion.button>
@@ -279,14 +285,14 @@ export default function NotesOverviewPage() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto p-1">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentPage + activeTags.join(",")}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4 }}
+                    transition={{ duration: 0.25 }}
                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 w-full"
                   >
                     {currentNotes.map((note, i) => (
@@ -296,9 +302,7 @@ export default function NotesOverviewPage() {
                         variants={cardVariants}
                         initial="hidden"
                         animate="visible"
-                        whileHover={{ scale: 1.02, y: -3 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                        className="relative rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 hover:border-white/20 p-4 sm:p-6 shadow-lg hover:shadow-2xl hover:bg-white/10 transition-colors overflow-hidden flex flex-col justify-between h-full"
+                        className="card-lift relative rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 hover:border-white/20 p-4 sm:p-6 shadow-lg hover:shadow-2xl hover:bg-white/10 overflow-hidden flex flex-col justify-between h-full"
                       >
                         <div>
                           <h3 className="text-slate-100 text-lg sm:text-xl font-semibold mb-2 sm:mb-3 truncate">

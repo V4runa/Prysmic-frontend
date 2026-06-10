@@ -104,14 +104,14 @@ export default function CreateNotePage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 autoFocus
-                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-lg sm:text-xl border border-transparent focus:border-cyan-400/40 focus:bg-white/[0.07] focus:shadow-[0_0_22px_rgba(103,232,249,0.12)] outline-none transition"
+                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-lg sm:text-xl border border-transparent focus-band transition"
               />
 
               <AutoGrowTextarea
                 placeholder="Let it flow onto the pond..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-sm sm:text-base leading-relaxed min-h-[14rem] border border-transparent focus:border-cyan-400/40 focus:bg-white/[0.07] focus:shadow-[0_0_22px_rgba(103,232,249,0.12)] outline-none transition"
+                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-sm sm:text-base leading-relaxed min-h-[14rem] max-h-[30rem] border border-transparent focus-band transition"
               />
 
               <div className="flex flex-col gap-3">
@@ -128,10 +128,9 @@ export default function CreateNotePage() {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         transition={{ delay: i * 0.05 }}
-                        whileHover={{ scale: 1.08 }}
                         whileTap={{ scale: 0.93 }}
                         onClick={() => toggleTag(tag.id)}
-                        className={`px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition ${
+                        className={`interactive-chip px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition-colors ${
                           selectedTagIds.includes(tag.id)
                             ? `${tagColorClasses[tag.color ?? "cyan"]} ring-1 ring-inset ring-white/20`
                             : `text-slate-300 border-white/10 hover:bg-white/10`

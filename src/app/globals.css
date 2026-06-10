@@ -66,15 +66,47 @@ body {
 
 /* --- Interaction Polish --- */
 
-/* Everything clickable should feel clickable. */
+/* Everything clickable should feel clickable — never show the text I-beam. */
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]),
-a {
+a,
+.interactive-chip {
   cursor: pointer;
+  user-select: none;
 }
 
 button:disabled {
   cursor: not-allowed;
+}
+
+/* Dark-native selects so dropdown options stay readable. */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #13161a;
+  color: #e2e8f0;
+}
+
+/* Subtle focus band — a nice touch on form controls, not a full identity shift. */
+.focus-band:focus {
+  outline: none;
+  border-color: rgba(103, 232, 249, 0.4) !important;
+  box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.25);
+}
+
+/* Card lift without scale — avoids clipping inside overflow containers. */
+.card-lift {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-2px);
 }
 
 /* On-brand text selection. */
@@ -92,10 +124,11 @@ button:disabled {
     0 0 0 4px rgba(103, 232, 249, 0.5);
 }
 
-/* Inputs already carry their own glow; avoid doubling up. */
-input:focus-visible,
-textarea:focus-visible {
-  box-shadow: none;
+/* Form controls with .focus-band handle their own glow. */
+input.focus-band:focus-visible,
+textarea.focus-band:focus-visible,
+select.focus-band:focus-visible {
+  box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.25);
 }
 
 /* Respect users who prefer less motion. */

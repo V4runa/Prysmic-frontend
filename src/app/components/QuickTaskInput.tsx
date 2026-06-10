@@ -86,7 +86,7 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-white/10 border border-white/20 text-white placeholder-white/40 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 transition"
+          className="flex-1 bg-white/10 border border-white/20 text-white placeholder-white/40 px-4 py-2 rounded-md focus-band transition"
         />
 
         <motion.button
@@ -149,11 +149,11 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
                   onChange={(e) =>
                     setPriority(Number(e.target.value) as TaskPriority)
                   }
-                  className="w-full bg-white/10 text-white border border-white/20 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  className="w-full bg-[#13161a] text-slate-100 border border-white/20 px-4 py-2 rounded-md focus-band transition"
                 >
-                  <option value={TaskPriority.LOW}>Low</option>
-                  <option value={TaskPriority.MEDIUM}>Medium</option>
-                  <option value={TaskPriority.HIGH}>High</option>
+                  <option value={TaskPriority.LOW} className="bg-[#13161a] text-slate-100">Low</option>
+                  <option value={TaskPriority.MEDIUM} className="bg-[#13161a] text-slate-100">Medium</option>
+                  <option value={TaskPriority.HIGH} className="bg-[#13161a] text-slate-100">High</option>
                 </select>
               </div>
 
@@ -163,7 +163,7 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full bg-white/10 text-white border border-white/20 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  className="w-full bg-white/10 text-white border border-white/20 px-4 py-2 rounded-md focus-band transition [color-scheme:dark]"
                 />
               </div>
             </div>
@@ -175,7 +175,7 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 placeholder="Optional task details..."
-                className="w-full bg-white/10 text-white border border-white/20 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                className="w-full bg-white/10 text-white border border-white/20 px-4 py-2 rounded-md focus-band transition"
               />
             </div>
           </motion.div>

@@ -111,7 +111,7 @@ export default function TagsPage() {
             value={newTagName}
             onChange={(e) => setNewTagName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            className="flex-grow px-3 sm:px-4 py-2 sm:py-3 bg-white/10 text-slate-200 rounded-md border border-white/10 min-w-[150px] sm:min-w-[200px] text-sm sm:text-base"
+            className="flex-grow px-3 sm:px-4 py-2 sm:py-3 bg-white/10 text-slate-200 rounded-md border border-white/10 focus-band min-w-[150px] sm:min-w-[200px] text-sm sm:text-base"
           />
           <motion.button
             {...tactile}
@@ -128,10 +128,9 @@ export default function TagsPage() {
             <motion.button
               key={c.value}
               type="button"
-              whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               onClick={() => setNewTagColor(c.value)}
-              className={`px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm rounded-full border backdrop-blur-md transition ${
+              className={`interactive-chip px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm rounded-full border backdrop-blur-md transition-colors ${
                 newTagColor === c.value
                   ? `${tagColorClasses[c.value]} ${selectedColorClasses[c.value]}`
                   : `border-white/10 text-slate-400 hover:text-white hover:border-white/20`
@@ -144,7 +143,7 @@ export default function TagsPage() {
 
         {/* Tags Grid */}
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-1">
             <AnimatePresence mode="wait">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -162,10 +161,8 @@ export default function TagsPage() {
                     variants={cardVariants}
                     initial="hidden"
                     animate="visible"
-                    whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.99 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                    className={`rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/10 bg-white/5 flex items-center justify-between shadow-md ${colorClass}`}
+                    className={`card-lift rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/10 bg-white/5 flex items-center justify-between shadow-md ${colorClass}`}
                   >
                     {editingId === tag.id ? (
                       <div className="flex flex-col gap-2 w-full">
@@ -179,10 +176,9 @@ export default function TagsPage() {
                             <motion.button
                               key={c.value}
                               type="button"
-                              whileHover={{ scale: 1.08 }}
                               whileTap={{ scale: 0.92 }}
                               onClick={() => setEditedColor(c.value)}
-                              className={`px-2 sm:px-3 py-1 text-xs rounded-full border backdrop-blur-md transition ${
+                              className={`interactive-chip px-2 sm:px-3 py-1 text-xs rounded-full border backdrop-blur-md transition-colors ${
                                 editedColor === c.value
                                   ? `${tagColorClasses[c.value]} ${selectedColorClasses[c.value]}`
                                   : `border-white/10 text-slate-400 hover:text-white hover:border-white/20`

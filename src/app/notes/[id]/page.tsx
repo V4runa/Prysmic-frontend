@@ -207,7 +207,7 @@ export default function ViewNotePage() {
                       value={editedTitle}
                       onChange={(e) => setEditedTitle(e.target.value)}
                       autoFocus
-                      className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-xl sm:text-2xl font-semibold border border-transparent focus:border-cyan-400/40 focus:bg-white/[0.07] focus:shadow-[0_0_22px_rgba(103,232,249,0.12)] outline-none transition"
+                      className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-xl sm:text-2xl font-semibold border border-transparent focus-band transition"
                     />
                   ) : (
                     <h3 className="text-slate-100 text-xl sm:text-2xl font-bold">{note?.title}</h3>
@@ -217,7 +217,7 @@ export default function ViewNotePage() {
                       <AutoGrowTextarea
                         value={editedContent}
                         onChange={(e) => setEditedContent(e.target.value)}
-                        className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-sm sm:text-base leading-relaxed min-h-[12rem] border border-transparent focus:border-cyan-400/40 focus:bg-white/[0.07] focus:shadow-[0_0_22px_rgba(103,232,249,0.12)] outline-none transition"
+                        className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-sm sm:text-base leading-relaxed min-h-[12rem] max-h-[30rem] border border-transparent focus-band transition"
                       />
                       <span className="text-xs text-slate-500 tabular-nums">
                         {wordCount} {wordCount === 1 ? "word" : "words"}
@@ -244,10 +244,9 @@ export default function ViewNotePage() {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
-                    whileHover={editing ? { scale: 1.08 } : undefined}
                     whileTap={editing ? { scale: 0.93 } : undefined}
                     onClick={() => editing && toggleTag(tag.id)}
-                    className={`px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition ${
+                    className={`${editing ? "interactive-chip" : ""} px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition-colors ${
                       active
                         ? `${base} ring-1 ring-white/20`
                         : "text-slate-300 border-white/10 hover:bg-white/10"

@@ -62,26 +62,20 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
 
       if (!task.isComplete) {
         setAnimating(true);
-        setTimeout(() => {
-          setIsCompleting(true);
-        }, 1000);
-
+        setTimeout(() => setIsCompleting(true), 700);
         setTimeout(() => {
           onUpdate?.();
           setIsCompleting(false);
           setAnimating(false);
-        }, 2000);
+        }, 1100);
       } else {
         setAnimating(true);
-        setTimeout(() => {
-          setIsUncompleting(true);
-        }, 200); // Start uncompleting animation at 0.2s
-
+        setTimeout(() => setIsUncompleting(true), 150);
         setTimeout(() => {
           onUpdate?.();
           setIsUncompleting(false);
           setAnimating(false);
-        }, 1200); // 1.2 seconds - uncompleting completes
+        }, 800);
       }
     } finally {
       setUpdating(false);
@@ -131,44 +125,20 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
         "bg-white/5 border-white/10 hover:shadow-lg hover:shadow-black/30 hover:border-white/20",
         updating && "opacity-50 pointer-events-none",
         task.isComplete && "bg-green-500/5 border-green-400/20",
-        isCompleting && "opacity-0 scale-95"
       )}
       initial={false}
       animate={
         isCompleting
-          ? {
-              opacity: 0,
-              scale: 0.95,
-              y: -20,
-              rotateX: -5,
-            }
+          ? { opacity: 0, y: -8 }
           : isUncompleting
-          ? {
-              opacity: 0.9,
-              scale: 1.02,
-              y: -2,
-              rotateX: 1,
-            }
+          ? { opacity: 0, y: 8 }
           : isArchiving
-          ? {
-              opacity: 0,
-              scale: 0.9,
-              y: 20,
-              rotateX: 5,
-            }
-          : animating
-          ? { scale: 1.02 }
-          : { scale: 1, opacity: 1, y: 0, rotateX: 0 }
+          ? { opacity: 0, y: 12 }
+          : { opacity: 1, y: 0 }
       }
       transition={{
-        type: "spring",
-        stiffness: 100,
-        damping: 30,
-        duration: isCompleting
-          ? 1.0
-          : isUncompleting || isArchiving
-          ? 1.0
-          : 0.3,
+        duration: isCompleting || isUncompleting || isArchiving ? 0.35 : 0.2,
+        ease: "easeOut",
       }}
     >
       {/* ✅ Completion animation overlay */}

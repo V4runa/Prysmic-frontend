@@ -127,13 +127,13 @@ export default function HabitsPage() {
         </div>
 
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-1">
             <AnimatePresence mode="wait">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.25 }}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
               >
                 {habits.map((habit, i) => {
@@ -150,11 +150,10 @@ export default function HabitsPage() {
                     variants={cardVariants}
                     initial="hidden"
                     animate="visible"
-                    whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.99 }}
                     transition={{ type: "spring", stiffness: 300, damping: 24 }}
                     onClick={() => router.push(`/habits/${habit.id}`)}
-                    className={`group relative flex flex-col gap-3 rounded-2xl p-4 sm:p-5 cursor-pointer overflow-hidden backdrop-blur-md transition-colors border ${
+                    className={`card-lift group relative flex flex-col gap-3 rounded-2xl p-4 sm:p-5 cursor-pointer overflow-hidden backdrop-blur-md border ${
                       isTodayChecked ? c.cardChecked : c.cardIdle
                     }`}
                   >

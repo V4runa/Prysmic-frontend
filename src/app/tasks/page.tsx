@@ -31,34 +31,6 @@ export default function TasksPage() {
       ? completedTasks // Only completed, non-archived tasks
       : archivedTasks; // Only archived tasks
 
-  const cardVariants = {
-    hidden: { opacity: 0, y: 5, scale: 0.99 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        delay: i * 0.01,
-        duration: 0.6,
-        ease: "easeOut",
-        type: "spring",
-        stiffness: 100,
-        damping: 20,
-      },
-    }),
-    exit: {
-      opacity: 0,
-      scale: 0.95,
-      y: -10,
-      transition: {
-        duration: 0.5,
-        ease: "easeIn",
-        type: "spring",
-        stiffness: 120,
-        damping: 25,
-      },
-    },
-  };
 
   return (
     <PageTransition>
@@ -124,64 +96,40 @@ export default function TasksPage() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 overflow-y-auto">
+              <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{
-                    duration: 0.3,
-                    ease: "easeInOut",
-                    type: "spring",
-                    stiffness: 200,
-                    damping: 25,
-                  }}
-                  className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex-1 overflow-y-auto p-1"
                 >
-                  <AnimatePresence mode="popLayout">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleTasks.map((task, i) => (
                       <motion.div
                         key={task.id}
-                        custom={i}
-                        variants={cardVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        layout
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.02, duration: 0.22 }}
                         className="h-full"
-                        transition={{
-                          layout: {
-                            duration: 1.0,
-                            ease: "easeInOut",
-                            type: "spring",
-                            stiffness: 60,
-                            damping: 30,
-                          },
-                          ...cardVariants.visible(i).transition,
-                        }}
                       >
                         <TaskCard task={task} onUpdate={fetchTasks} />
                       </motion.div>
                     ))}
-                  </AnimatePresence>
-                  {visibleTasks.length === 0 && (
-                    <motion.div
-                      className="col-span-full flex items-center justify-center py-8"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      <p className="text-white/40 text-sm">
-                        {activeTab === "active" &&
-                          "No active tasks. Create one above!"}
-                        {activeTab === "completed" && "No completed tasks yet."}
-                        {activeTab === "archived" && "No archived tasks."}
-                      </p>
-                    </motion.div>
-                  )}
+                    {visibleTasks.length === 0 && (
+                      <div className="col-span-full flex items-center justify-center py-8">
+                        <p className="text-white/40 text-sm">
+                          {activeTab === "active" &&
+                            "No active tasks. Create one above!"}
+                          {activeTab === "completed" && "No completed tasks yet."}
+                          {activeTab === "archived" && "No archived tasks."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
-              </div>
+              </AnimatePresence>
             </div>
           )}
         </GlassPanel>
