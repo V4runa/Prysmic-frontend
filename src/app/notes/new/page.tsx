@@ -7,8 +7,10 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
+import AutoGrowTextarea from "../../components/AutoGrowTextarea";
 import { apiFetch } from "../../hooks/useApi";
 import { useTags } from "../../hooks/useTags";
+import { tactile } from "../../lib/motion";
 import { motion, AnimatePresence } from "framer-motion";
 
 const tagColorClasses: Record<string, string> = {
@@ -29,10 +31,19 @@ export default function CreateNotePage() {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [error, setError] = useState("");
 
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+
   const toggleTag = (tagId: number) => {
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
     );
+  };
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      handleSubmit(e as unknown as React.FormEvent);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,27 +87,31 @@ export default function CreateNotePage() {
 
         {/* Form */}
         <div className="flex-1 flex flex-col min-h-0">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-6 h-full">
+          <form
+            onSubmit={handleSubmit}
+            onKeyDown={handleEditorKeyDown}
+            className="flex flex-col gap-4 sm:gap-6 h-full"
+          >
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="flex-1 flex flex-col gap-4 sm:gap-6"
+              className="flex-1 flex flex-col gap-4 sm:gap-6 overflow-y-auto pr-1"
             >
               <input
                 type="text"
                 placeholder="Title your thought..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-lg sm:text-xl"
+                autoFocus
+                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-lg sm:text-xl border border-transparent focus:border-cyan-400/40 focus:bg-white/[0.07] focus:shadow-[0_0_22px_rgba(103,232,249,0.12)] outline-none transition"
               />
 
-              <textarea
+              <AutoGrowTextarea
                 placeholder="Let it flow onto the pond..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                rows={8}
-                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md resize-none text-sm sm:text-base flex-1"
+                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-sm sm:text-base leading-relaxed min-h-[14rem] border border-transparent focus:border-cyan-400/40 focus:bg-white/[0.07] focus:shadow-[0_0_22px_rgba(103,232,249,0.12)] outline-none transition"
               />
 
               <div className="flex flex-col gap-3">
@@ -113,7 +128,8 @@ export default function CreateNotePage() {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         transition={{ delay: i * 0.05 }}
-                        whileHover={{ scale: 1.05 }}
+                        whileHover={{ scale: 1.08 }}
+                        whileTap={{ scale: 0.93 }}
                         onClick={() => toggleTag(tag.id)}
                         className={`px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition ${
                           selectedTagIds.includes(tag.id)
@@ -129,13 +145,20 @@ export default function CreateNotePage() {
               </div>
             </motion.div>
 
-            <div className="flex-shrink-0 flex justify-end gap-3 mt-4">
-              <button
+            <div className="flex-shrink-0 flex justify-between items-center gap-3 mt-4">
+              <span className="text-xs text-slate-500 tabular-nums">
+                {wordCount} {wordCount === 1 ? "word" : "words"}
+                <span className="hidden sm:inline text-slate-600">
+                  {"  ·  "}⌘/Ctrl + S to save
+                </span>
+              </span>
+              <motion.button
+                {...tactile}
                 type="submit"
-                className="px-4 sm:px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 transition text-sm"
+                className="px-4 sm:px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 hover:shadow-[0_0_18px_rgba(103,232,249,0.2)] transition-shadow text-sm"
               >
                 Save
-              </button>
+              </motion.button>
             </div>
 
             {error && (

@@ -4,7 +4,8 @@ import { useState, useRef } from "react";
 import { apiFetch } from "../hooks/useApi";
 import { motion, AnimatePresence } from "framer-motion";
 import { TaskPriority } from "../tasks/types/task";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Check } from "lucide-react";
+import { tactile } from "../lib/motion";
 
 interface QuickTaskInputProps {
   onTaskCreated?: () => void;
@@ -17,6 +18,7 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
   const [dueDate, setDueDate] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
   const [error, setError] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -50,6 +52,8 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
       setPriority(TaskPriority.MEDIUM);
       setDueDate("");
       setExpanded(false);
+      setJustAdded(true);
+      setTimeout(() => setJustAdded(false), 1100);
       titleRef.current?.focus();
       onTaskCreated?.();
     } catch (err) {
@@ -85,10 +89,11 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           className="flex-1 bg-white/10 border border-white/20 text-white placeholder-white/40 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 transition"
         />
 
-        <button
+        <motion.button
+          {...tactile}
           onClick={toggleExpanded}
           type="button"
-          className="px-3 py-2 text-white/70 hover:text-white border border-white/20 rounded-md transition flex items-center gap-1"
+          className="px-3 py-2 text-white/70 hover:text-white border border-white/20 rounded-md transition-colors flex items-center gap-1"
         >
           {expanded ? (
             <>
@@ -99,15 +104,31 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
               More <ChevronDown className="h-4 w-4" />
             </>
           )}
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
+          {...tactile}
           onClick={handleSubmit}
           disabled={loading}
-          className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-md font-medium transition disabled:opacity-50"
+          animate={
+            justAdded
+              ? { backgroundColor: "rgb(22,163,74)" }
+              : { backgroundColor: "rgb(8,145,178)" }
+          }
+          className="px-4 py-2 text-white rounded-md font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 min-w-[88px] justify-center"
         >
-          {loading ? "Adding..." : "Add"}
-        </button>
+          {loading ? (
+            "Adding..."
+          ) : justAdded ? (
+            <>
+              <Check className="h-4 w-4" /> Added
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4" /> Add
+            </>
+          )}
+        </motion.button>
       </div>
 
       <AnimatePresence initial={false}>

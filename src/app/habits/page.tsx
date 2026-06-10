@@ -7,6 +7,9 @@ import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
 import { apiFetch } from "../hooks/useApi";
 import { habitIconMap, IconKey } from "../components/habitIcons";
+import { getHabitColor } from "../lib/habitColors";
+import { tactile, tactileSubtle } from "../lib/motion";
+import Sparkles from "../components/Sparkles";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Flame } from "lucide-react";
 
@@ -114,12 +117,13 @@ export default function HabitsPage() {
             <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Your Contracts</h2>
             <p className="text-slate-400 text-sm sm:text-base">Sacred commitments to self-discipline and growth.</p>
           </div>
-          <button
+          <motion.button
+            {...tactile}
             onClick={() => router.push("/habits/new")}
-            className="px-3 sm:px-4 py-2 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-400/10 rounded-md text-sm sm:text-base"
+            className="px-3 sm:px-4 py-2 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-400/10 hover:shadow-[0_0_18px_rgba(103,232,249,0.25)] rounded-md text-sm sm:text-base transition-shadow"
           >
             + New Contract
-          </button>
+          </motion.button>
         </div>
 
         <div className="flex-1 flex flex-col min-h-0">
@@ -136,7 +140,7 @@ export default function HabitsPage() {
                 const iconKey: IconKey = habit.icon && iconMap[habit.icon] ? habit.icon : "star";
                 const IconComponent = iconMap[iconKey];
                 const isTodayChecked = habit.checkedToday;
-                const color = habit.color || "cyan";
+                const c = getHabitColor(habit.color);
                 const animating = animatingId === habit.id;
 
                 return (
@@ -146,51 +150,46 @@ export default function HabitsPage() {
                     variants={cardVariants}
                     initial="hidden"
                     animate="visible"
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.99 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 24 }}
                     onClick={() => router.push(`/habits/${habit.id}`)}
-                    className={`relative flex flex-col gap-3 rounded-2xl p-4 sm:p-5 cursor-pointer overflow-hidden backdrop-blur-md transition border ${
-                      isTodayChecked
-                        ? `bg-${color}-900/20 border-${color}-500/20 backdrop-blur-sm saturate-50 ring-2 ring-${color}-300/40`
-                        : `bg-${color}-400/5 border-${color}-400/20`
+                    className={`group relative flex flex-col gap-3 rounded-2xl p-4 sm:p-5 cursor-pointer overflow-hidden backdrop-blur-md transition-colors border ${
+                      isTodayChecked ? c.cardChecked : c.cardIdle
                     }`}
                   >
                     {/* 🎆 Completion Burst */}
                     {animating && (
                       <>
+                        <Sparkles color={c.spark} />
                         <motion.div
-                          className={`absolute inset-0 bg-${color}-300/20 blur-2xl rounded-2xl z-0`}
+                          className={`absolute inset-0 ${c.burstGlow} blur-2xl rounded-2xl z-0`}
                           initial={{ opacity: 0.6, scale: 0.9 }}
                           animate={{ opacity: 0, scale: 1.7 }}
                           transition={{ duration: 1, ease: "easeOut" }}
                         />
                         <motion.div
-                          className={`absolute inset-0 border-2 border-${color}-400/40 rounded-2xl z-0`}
+                          className={`absolute inset-0 border-2 ${c.burstRing} rounded-2xl z-0`}
                           initial={{ opacity: 0.5, scale: 0.8 }}
                           animate={{ opacity: 0, scale: 1.3 }}
                           transition={{ duration: 1.1, ease: "easeOut" }}
                         />
-                        <motion.div
-                          className={`absolute top-2 right-2 z-10`}
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1.4, opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ type: "spring", stiffness: 300 }}
-                        >
-                          <CheckCircle2 className={`h-6 w-6 sm:h-7 sm:w-7 text-${color}-300`} />
-                        </motion.div>
                       </>
                     )}
 
                     {/* Main Card Content */}
-                    <div className="flex items-center gap-3 z-10 relative">
+                    <div className="flex items-center gap-3 z-10 relative pr-8">
                       {IconComponent && (
-                        <IconComponent
-                          className={`h-4 w-4 sm:h-5 sm:w-5 ${
-                            isTodayChecked
-                              ? `text-${color}-400/50`
-                              : `text-${color}-300`
-                          }`}
-                        />
+                        <motion.span
+                          animate={animating ? { scale: [1, 1.35, 1], rotate: [0, -8, 8, 0] } : {}}
+                          transition={{ duration: 0.7 }}
+                        >
+                          <IconComponent
+                            className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                              isTodayChecked ? c.iconMuted : c.icon
+                            }`}
+                          />
+                        </motion.span>
                       )}
                       <h3
                         className={`text-base sm:text-lg font-semibold ${
@@ -213,9 +212,14 @@ export default function HabitsPage() {
 
                     {/* Streak Badge */}
                     {habit.currentStreak > 0 && (
-                      <div className="flex items-center gap-1 z-10 relative">
-                        <Flame className={`h-3 w-3 sm:h-4 sm:w-4 text-${color}-400`} />
-                        <span className={`text-xs sm:text-sm font-medium text-${color}-300`}>
+                      <div className="flex items-center gap-1 z-10 relative mt-auto">
+                        <motion.span
+                          animate={animating ? { scale: [1, 1.4, 1] } : {}}
+                          transition={{ duration: 0.6 }}
+                        >
+                          <Flame className={`h-3 w-3 sm:h-4 sm:w-4 ${c.flame}`} />
+                        </motion.span>
+                        <span className={`text-xs sm:text-sm font-medium ${c.streakText}`}>
                           {habit.currentStreak} day{habit.currentStreak !== 1 ? "s" : ""}
                         </span>
                       </div>
@@ -230,14 +234,21 @@ export default function HabitsPage() {
                       }}
                     >
                       {isTodayChecked ? (
-                        <CheckCircle2 className={`h-4 w-4 sm:h-5 sm:w-5 text-${color}-300`} />
+                        <motion.span
+                          initial={{ scale: 0.6, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 14 }}
+                          className="inline-flex"
+                        >
+                          <CheckCircle2 className={`h-5 w-5 sm:h-6 sm:w-6 ${c.icon}`} />
+                        </motion.span>
                       ) : (
                         <motion.button
-                          whileTap={{ scale: 0.9 }}
+                          {...tactileSubtle}
                           title="Mark as complete"
-                          className={`h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center rounded-full border border-${color}-300/30 bg-white/10 hover:bg-${color}-400/10`}
+                          className={`h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center rounded-full border ${c.checkBorder} bg-white/10 ${c.checkHover}`}
                         >
-                          <CheckCircle2 className={`h-3 w-3 sm:h-4 sm:w-4 text-${color}-300`} />
+                          <CheckCircle2 className={`h-3 w-3 sm:h-4 sm:w-4 ${c.icon}`} />
                         </motion.button>
                       )}
                     </div>

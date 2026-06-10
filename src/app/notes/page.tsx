@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
+import Spinner from "../components/Spinner";
 import { apiFetch } from "../hooks/useApi";
 import { getUserFromToken } from "../hooks/useAuth";
 import { useTags } from "../hooks/useTags";
+import { tactile } from "../lib/motion";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tag } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -211,12 +213,14 @@ export default function NotesOverviewPage() {
             <h2 className="text-slate-100 text-3xl font-bold tracking-wide">
               Your Notes
             </h2>
-            <Link
-              href="/notes/new"
-              className="px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 transition text-sm"
-            >
-              + New Note
-            </Link>
+            <motion.div {...tactile} className="inline-flex">
+              <Link
+                href="/notes/new"
+                className="px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 hover:shadow-[0_0_18px_rgba(103,232,249,0.2)] transition-shadow text-sm"
+              >
+                + New Note
+              </Link>
+            </motion.div>
           </div>
 
           {/* Mobile tag filter bar */}
@@ -238,11 +242,7 @@ export default function NotesOverviewPage() {
                     onClick={() => toggleTag(tag.name)}
                     className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap transition-all duration-200 ${
                       baseClasses
-                    } ${
-                      isActive
-                        ? `bg-${color}-500/20 ring-1 ring-${color}-300/50`
-                        : `hover:bg-white/10`
-                    }`}
+                    } ${isActive ? tagActiveClasses[color] : "hover:bg-white/10"}`}
                   >
                     {tag.name}
                   </motion.button>
@@ -265,7 +265,7 @@ export default function NotesOverviewPage() {
 
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-slate-400 text-center text-lg">Loading...</p>
+              <Spinner label="Gathering your thoughts..." />
             </div>
           ) : error ? (
             <div className="flex-1 flex items-center justify-center">
@@ -296,7 +296,9 @@ export default function NotesOverviewPage() {
                         variants={cardVariants}
                         initial="hidden"
                         animate="visible"
-                        className="relative rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-4 sm:p-6 shadow-lg hover:shadow-2xl hover:bg-white/10 transition-all overflow-hidden flex flex-col justify-between h-full"
+                        whileHover={{ scale: 1.02, y: -3 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                        className="relative rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 hover:border-white/20 p-4 sm:p-6 shadow-lg hover:shadow-2xl hover:bg-white/10 transition-colors overflow-hidden flex flex-col justify-between h-full"
                       >
                         <div>
                           <h3 className="text-slate-100 text-lg sm:text-xl font-semibold mb-2 sm:mb-3 truncate">
@@ -311,9 +313,9 @@ export default function NotesOverviewPage() {
                             {note.tags.map((tag) => (
                               <span
                                 key={tag.id}
-                                className={`px-2 sm:px-3 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition text-${
-                                  tag.color ?? "slate"
-                                }-300 border-${tag.color ?? "slate"}-300/30`}
+                                className={`px-2 sm:px-3 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm ${
+                                  tagColorClasses[tag.color ?? "slate"]
+                                }`}
                               >
                                 {tag.name}
                               </span>

@@ -63,3 +63,49 @@ body {
     --accent-glow: rgba(30, 144, 255, 0.1);
   }
 }
+
+/* --- Interaction Polish --- */
+
+/* Everything clickable should feel clickable. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* On-brand text selection. */
+::selection {
+  background: rgba(103, 232, 249, 0.25);
+  color: #ffffff;
+}
+
+/* Calm, consistent keyboard focus ring (only for keyboard users). */
+:focus-visible {
+  outline: none;
+  border-radius: 0.5rem;
+  box-shadow:
+    0 0 0 2px rgba(11, 12, 15, 0.9),
+    0 0 0 4px rgba(103, 232, 249, 0.5);
+}
+
+/* Inputs already carry their own glow; avoid doubling up. */
+input:focus-visible,
+textarea:focus-visible {
+  box-shadow: none;
+}
+
+/* Respect users who prefer less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

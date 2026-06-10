@@ -15,6 +15,8 @@ import {
 import clsx from "clsx";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
+import Sparkles from "./Sparkles";
+import { tactileSubtle } from "../lib/motion";
 
 interface TaskCardProps {
   task: Task;
@@ -125,8 +127,8 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
   return (
     <motion.div
       className={clsx(
-        "relative group p-4 rounded-xl border backdrop-blur-lg shadow-md transition min-h-[120px]",
-        "bg-white/5 border-white/10 hover:shadow-lg",
+        "relative group flex flex-col h-full min-h-[150px] p-4 rounded-xl border backdrop-blur-lg shadow-md transition-shadow",
+        "bg-white/5 border-white/10 hover:shadow-lg hover:shadow-black/30 hover:border-white/20",
         updating && "opacity-50 pointer-events-none",
         task.isComplete && "bg-green-500/5 border-green-400/20",
         isCompleting && "opacity-0 scale-95"
@@ -177,6 +179,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
+          <Sparkles color="rgb(74, 222, 128)" count={14} distance={70} />
           {/* Checkmark animation */}
           <motion.div
             className="relative z-10"
@@ -471,7 +474,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
       </div>
 
       {/* Bottom section with priority and completion status */}
-      <div className="flex justify-between items-center">
+      <div className="mt-auto pt-3 flex justify-between items-center">
         <div
           className={clsx(
             "inline-block px-2 py-0.5 text-xs rounded-full border font-medium",
@@ -484,26 +487,32 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
             ? "Completed"
             : `${priorityMap[task.priority].label} Priority`}
         </div>
-      </div>
 
-      {/* ✅ Completion button (bottom-right) */}
-      <div className="absolute bottom-4 right-4 z-20">
+        {/* ✅ Completion button */}
         <motion.button
           onClick={toggleComplete}
-          whileTap={{ scale: 0.9 }}
+          {...tactileSubtle}
           title="Toggle complete"
           className={clsx(
-            "rounded-full border p-2 transition",
+            "relative z-20 rounded-full border p-2 transition-colors",
             task.isComplete
               ? "border-green-400/30 bg-green-400/10 hover:bg-green-400/20"
-              : "border-white/20 hover:bg-white/10"
+              : "border-white/20 hover:bg-white/10 hover:border-white/40"
           )}
         >
-          {task.isComplete ? (
-            <CheckCircle2 className="h-4 w-4 text-green-400" />
-          ) : (
-            <Circle className="h-4 w-4 text-white/30" />
-          )}
+          <motion.span
+            key={task.isComplete ? "done" : "todo"}
+            initial={{ scale: 0.5, rotate: -25 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 14 }}
+            className="inline-flex"
+          >
+            {task.isComplete ? (
+              <CheckCircle2 className="h-4 w-4 text-green-400" />
+            ) : (
+              <Circle className="h-4 w-4 text-white/30" />
+            )}
+          </motion.span>
         </motion.button>
       </div>
     </motion.div>

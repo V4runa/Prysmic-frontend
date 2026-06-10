@@ -22,6 +22,10 @@ import {
   habitIconChoices as iconChoices,
   IconKey,
 } from "../../components/habitIcons";
+import { getHabitColor } from "../../lib/habitColors";
+import { tactile, tactileSubtle } from "../../lib/motion";
+import Sparkles from "../../components/Sparkles";
+import Spinner from "../../components/Spinner";
 import { HabitFrequency } from "../../enums/habit-frequency.enum";
 
 const colorChoices = ["cyan", "violet", "rose", "amber", "emerald", "blue"] as const;
@@ -85,6 +89,8 @@ export default function HabitDetailPage() {
 
   const isCheckedToday = habit?.checkedToday ?? false;
   const color = form.color || habit?.color || "cyan";
+  const c = getHabitColor(color);
+  const [justChecked, setJustChecked] = useState(false);
   const iconKey = (form.icon || habit?.icon || "star") as IconKey;
   const IconComponent = iconMap[iconKey];
 
@@ -94,13 +100,18 @@ export default function HabitDetailPage() {
     const previousState = habit;
 
     // Optimistic update
+    const willCheck = !habit.checkedToday;
     setHabit({
       ...habit,
-      checkedToday: !habit.checkedToday,
-      currentStreak: !habit.checkedToday
+      checkedToday: willCheck,
+      currentStreak: willCheck
         ? habit.currentStreak + 1
         : Math.max(0, habit.currentStreak - 1),
     });
+    if (willCheck) {
+      setJustChecked(true);
+      setTimeout(() => setJustChecked(false), 900);
+    }
 
     try {
       // The check endpoint returns the fully updated habit, so no follow-up
@@ -150,7 +161,11 @@ export default function HabitDetailPage() {
   if (!habit) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-slate-400">{error || "Loading..."}</p>
+        {error ? (
+          <p className="text-slate-400">{error}</p>
+        ) : (
+          <Spinner label="Summoning contract..." />
+        )}
       </div>
     );
   }
@@ -163,12 +178,13 @@ export default function HabitDetailPage() {
             <h2 className="text-3xl font-bold text-slate-100 tracking-wide">
               {edit ? "Edit Contract" : "Habit Contract"}
             </h2>
-            <button
+            <motion.button
+              {...tactile}
               onClick={() => router.push("/habits")}
               className="p-2 border border-white/10 rounded-md hover:bg-white/10"
             >
               <ArrowLeft className="h-5 w-5 text-slate-300" />
-            </button>
+            </motion.button>
           </div>
 
           <div className="flex-1 flex flex-col min-h-0">
@@ -280,8 +296,8 @@ export default function HabitDetailPage() {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       {IconComponent && (
-                        <span className={`p-2 rounded-full bg-${color}-500/10`}>
-                          <IconComponent className={`h-6 w-6 text-${color}-300`} />
+                        <span className={`p-2 rounded-full ${c.detailIconBg}`}>
+                          <IconComponent className={`h-6 w-6 ${c.icon}`} />
                         </span>
                       )}
                       <h3 className="text-lg sm:text-xl font-semibold text-slate-100">
@@ -301,40 +317,50 @@ export default function HabitDetailPage() {
                       )}
                     </div>
 
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      whileHover={{ scale: 1.05 }}
-                      animate={{
-                        boxShadow: isCheckedToday
-                          ? `0 0 12px rgba(0, 255, 255, 0.3)`
-                          : "none",
-                      }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                      onClick={toggleCheck}
-                      className={clsx(
-                        "rounded-full p-2 border transition-all",
-                        isCheckedToday
-                          ? "bg-cyan-400/20 border-cyan-300/30"
-                          : "bg-white/10 border-white/10 hover:bg-white/20"
-                      )}
-                    >
-                      <CheckCircle2
+                    <div className="relative">
+                      {justChecked && <Sparkles color={c.spark} count={12} />}
+                      <motion.button
+                        {...tactileSubtle}
+                        animate={{
+                          boxShadow: isCheckedToday
+                            ? `0 0 14px ${c.spark}`
+                            : "0 0 0px rgba(0,0,0,0)",
+                        }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                        onClick={toggleCheck}
                         className={clsx(
-                          "h-5 w-5 transition-colors",
-                          isCheckedToday ? "text-cyan-300" : "text-slate-300"
+                          "relative z-10 rounded-full p-2 border transition-colors",
+                          isCheckedToday
+                            ? `${c.detailIconBg} ${c.checkBorder}`
+                            : "bg-white/10 border-white/10 hover:bg-white/20"
                         )}
-                      />
-                    </motion.button>
+                      >
+                        <motion.span
+                          key={isCheckedToday ? "on" : "off"}
+                          initial={{ scale: 0.5, rotate: -30 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 14 }}
+                          className="inline-flex"
+                        >
+                          <CheckCircle2
+                            className={clsx(
+                              "h-5 w-5",
+                              isCheckedToday ? c.icon : "text-slate-300"
+                            )}
+                          />
+                        </motion.span>
+                      </motion.button>
+                    </div>
                   </div>
 
                   {/* Streak Information */}
                   <div className="flex gap-4 items-center">
                     {habit.currentStreak > 0 && (
                       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
-                        <Flame className={`h-4 w-4 text-${color}-400`} />
+                        <Flame className={`h-4 w-4 ${c.flame}`} />
                         <div className="flex flex-col">
                           <span className="text-xs text-slate-400">Current Streak</span>
-                          <span className={`text-sm font-semibold text-${color}-300`}>
+                          <span className={`text-sm font-semibold ${c.streakText}`}>
                             {habit.currentStreak} day{habit.currentStreak !== 1 ? "s" : ""}
                           </span>
                         </div>
@@ -342,10 +368,10 @@ export default function HabitDetailPage() {
                     )}
                     {habit.longestStreak > 0 && (
                       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
-                        <Target className={`h-4 w-4 text-${color}-400/70`} />
+                        <Target className={`h-4 w-4 ${c.flameMuted}`} />
                         <div className="flex flex-col">
                           <span className="text-xs text-slate-400">Longest Streak</span>
-                          <span className={`text-sm font-semibold text-${color}-300/70`}>
+                          <span className={`text-sm font-semibold ${c.streakTextMuted}`}>
                             {habit.longestStreak} day{habit.longestStreak !== 1 ? "s" : ""}
                           </span>
                         </div>

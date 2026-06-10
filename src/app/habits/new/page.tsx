@@ -10,6 +10,7 @@ import { HabitFrequency } from "../../enums/habit-frequency.enum";
 import { motion } from "framer-motion";
 import clsx from "clsx";
 import { Check } from "lucide-react";
+import { tactile, tactileSubtle } from "../../lib/motion";
 import {
   habitIconMap as iconMap,
   habitIconChoices as iconChoices,
@@ -86,6 +87,8 @@ export default function NewHabitPage() {
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: i * 0.05 }}
+                      whileHover={{ scale: 1.18 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={() => handleChange("color", c)}
                       className={clsx(
                         "w-8 h-8 rounded-full transition",
@@ -109,10 +112,12 @@ export default function NewHabitPage() {
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: i * 0.02 }}
+                        whileHover={{ scale: 1.12 }}
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => handleChange("icon", icon)}
-                        className={`p-2 rounded-md border transition ${
+                        className={`p-2 rounded-md border transition-colors ${
                           form.icon === icon
-                            ? "bg-white/10 border-cyan-400"
+                            ? "bg-white/10 border-cyan-400 shadow-[0_0_12px_rgba(103,232,249,0.25)]"
                             : "border-white/10 hover:bg-white/10"
                         }`}
                       >
@@ -179,19 +184,21 @@ export default function NewHabitPage() {
               </div>
 
               <div className="flex gap-3 mt-4">
-                <button
+                <motion.button
+                  {...tactileSubtle}
                   onClick={() => router.push("/habits")}
-                  className="px-4 sm:px-5 py-2 sm:py-3 border border-white/10 text-slate-300 rounded-md hover:bg-white/10 transition text-sm sm:text-base"
+                  className="px-4 sm:px-5 py-2 sm:py-3 border border-white/10 text-slate-300 rounded-md hover:bg-white/10 transition-colors text-sm sm:text-base"
                 >
                   Cancel
-                </button>
-                <button
+                </motion.button>
+                <motion.button
+                  {...tactile}
                   onClick={handleSubmit}
-                  className="px-4 sm:px-5 py-2 sm:py-3 bg-cyan-400/10 border border-cyan-300 text-cyan-300 rounded-md hover:bg-cyan-400/20 transition text-sm sm:text-base"
+                  className="px-4 sm:px-5 py-2 sm:py-3 bg-cyan-400/10 border border-cyan-300 text-cyan-300 rounded-md hover:bg-cyan-400/20 hover:shadow-[0_0_20px_rgba(103,232,249,0.3)] transition-shadow text-sm sm:text-base"
                 >
                   <Check className="inline mr-2 w-4 h-4" />
                   Forge Contract
-                </button>
+                </motion.button>
               </div>
 
               {error && (

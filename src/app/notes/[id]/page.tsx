@@ -7,8 +7,11 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
+import AutoGrowTextarea from "../../components/AutoGrowTextarea";
+import Spinner from "../../components/Spinner";
 import { apiFetch } from "../../hooks/useApi";
 import { useTags } from "../../hooks/useTags";
+import { tactile } from "../../lib/motion";
 import { Pencil, Trash2, ArrowLeft, Save, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -131,6 +134,17 @@ export default function ViewNotePage() {
     setEditing(false);
   };
 
+  const wordCount = editedContent.trim()
+    ? editedContent.trim().split(/\s+/).length
+    : 0;
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent) => {
+    if (editing && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      handleSaveUpdate();
+    }
+  };
+
   return (
     <PageTransition>
       <div className="w-full h-[calc(100vh-3rem)] flex flex-col items-center px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
@@ -142,32 +156,34 @@ export default function ViewNotePage() {
           <div className="flex items-center gap-3">
             {!editing ? (
               <>
-                <motion.button whileHover={{ scale: 1.15 }} className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={() => setEditing(true)} title="Edit">
+                <motion.button {...tactile} className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={() => setEditing(true)} title="Edit">
                   <Pencil className="h-5 w-5 text-cyan-300" />
                 </motion.button>
-                <motion.button whileHover={{ scale: 1.15 }} className="p-2 bg-red-400/10 hover:bg-red-400/20 rounded-md border border-red-300/20" onClick={handleDelete} disabled={deleting} title="Delete">
+                <motion.button {...tactile} className="p-2 bg-red-400/10 hover:bg-red-400/20 rounded-md border border-red-300/20" onClick={handleDelete} disabled={deleting} title="Delete">
                   <Trash2 className="h-5 w-5 text-red-300" />
                 </motion.button>
               </>
             ) : (
               <>
-                <motion.button whileHover={{ scale: 1.15 }} className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={handleSaveUpdate} title="Save">
+                <motion.button {...tactile} className="p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={handleSaveUpdate} title="Save">
                   <Save className="h-5 w-5 text-cyan-300" />
                 </motion.button>
-                <motion.button whileHover={{ scale: 1.15 }} className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" onClick={handleCancelEdit} title="Cancel">
+                <motion.button {...tactile} className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" onClick={handleCancelEdit} title="Cancel">
                   <X className="h-5 w-5 text-slate-300" />
                 </motion.button>
               </>
             )}
-            <Link href="/notes" className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" title="Back">
-              <ArrowLeft className="h-5 w-5 text-slate-300" />
-            </Link>
+            <motion.div {...tactile} className="inline-flex">
+              <Link href="/notes" className="p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" title="Back">
+                <ArrowLeft className="h-5 w-5 text-slate-300" />
+              </Link>
+            </motion.div>
           </div>
         </div>
 
         {loading ? (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-slate-400 text-lg">Loading...</p>
+            <Spinner label="Unrolling your note..." />
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center">
@@ -183,24 +199,33 @@ export default function ViewNotePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.3 }}
+                  onKeyDown={handleEditorKeyDown}
                   className="flex flex-col gap-4"
                 >
                   {editing ? (
-                    <input 
-                      value={editedTitle} 
-                      onChange={(e) => setEditedTitle(e.target.value)} 
-                      className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-xl sm:text-2xl font-semibold" 
+                    <input
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      autoFocus
+                      className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-xl sm:text-2xl font-semibold border border-transparent focus:border-cyan-400/40 focus:bg-white/[0.07] focus:shadow-[0_0_22px_rgba(103,232,249,0.12)] outline-none transition"
                     />
                   ) : (
                     <h3 className="text-slate-100 text-xl sm:text-2xl font-bold">{note?.title}</h3>
                   )}
                   {editing ? (
-                    <textarea 
-                      value={editedContent} 
-                      onChange={(e) => setEditedContent(e.target.value)} 
-                      rows={8} 
-                      className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md resize-none text-sm sm:text-base" 
-                    />
+                    <>
+                      <AutoGrowTextarea
+                        value={editedContent}
+                        onChange={(e) => setEditedContent(e.target.value)}
+                        className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-sm sm:text-base leading-relaxed min-h-[12rem] border border-transparent focus:border-cyan-400/40 focus:bg-white/[0.07] focus:shadow-[0_0_22px_rgba(103,232,249,0.12)] outline-none transition"
+                      />
+                      <span className="text-xs text-slate-500 tabular-nums">
+                        {wordCount} {wordCount === 1 ? "word" : "words"}
+                        <span className="hidden sm:inline text-slate-600">
+                          {"  ·  "}⌘/Ctrl + S to save
+                        </span>
+                      </span>
+                    </>
                   ) : (
                     <p className="text-slate-300 whitespace-pre-wrap text-sm sm:text-base leading-relaxed">{note?.content}</p>
                   )}
@@ -219,6 +244,8 @@ export default function ViewNotePage() {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
+                    whileHover={editing ? { scale: 1.08 } : undefined}
+                    whileTap={editing ? { scale: 0.93 } : undefined}
                     onClick={() => editing && toggleTag(tag.id)}
                     className={`px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition ${
                       active

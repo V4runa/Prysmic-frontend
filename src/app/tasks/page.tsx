@@ -5,6 +5,7 @@ import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
 import TaskCard from "../components/TaskCard";
 import QuickTaskInput from "../components/QuickTaskInput";
+import Spinner from "../components/Spinner";
 import { useTasks, useInvalidateTasks } from "../hooks/useTasks";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -92,21 +93,21 @@ export default function TasksPage() {
                 onClick={() =>
                   setActiveTab(tab as "active" | "completed" | "archived")
                 }
-                className={`px-3 sm:px-4 py-2 -mb-px font-medium whitespace-nowrap text-sm relative ${
+                className={`px-3 sm:px-4 py-2 -mb-px font-medium whitespace-nowrap text-sm relative transition-colors ${
                   activeTab === tab
                     ? "text-cyan-300"
                     : "text-white/40 hover:text-white"
                 }`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                whileHover={{ scale: 1.08, y: -1 }}
+                whileTap={{ scale: 0.92 }}
+                transition={{ type: "spring", stiffness: 400, damping: 18 }}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
                 {activeTab === tab && (
                   <motion.div
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400 shadow-[0_0_8px_rgba(103,232,249,0.7)]"
                     layoutId="activeTab"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
               </motion.button>
@@ -119,7 +120,7 @@ export default function TasksPage() {
 
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-white/60 text-sm">Loading tasks...</p>
+              <Spinner label="Gathering your tasks..." />
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0">
@@ -148,6 +149,7 @@ export default function TasksPage() {
                         animate="visible"
                         exit="exit"
                         layout
+                        className="h-full"
                         transition={{
                           layout: {
                             duration: 1.0,

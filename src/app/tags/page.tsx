@@ -7,6 +7,7 @@ import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
 import { apiFetch } from "../hooks/useApi";
 import { Tag, useTags, useInvalidateTags } from "../hooks/useTags";
+import { tactile, tactileSubtle } from "../lib/motion";
 
 const colorOptions = [
   { name: "Astral", value: "cyan" },
@@ -24,6 +25,17 @@ const tagColorClasses: Record<string, string> = {
   violet: "text-violet-300 border-violet-300/30 shadow-violet-300/10",
   emerald: "text-emerald-300 border-emerald-300/30 shadow-emerald-300/10",
   amber: "text-amber-300 border-amber-300/30 shadow-amber-300/10",
+};
+
+// Fully-spelled classes for the selected color swatch (Tailwind v4 can't see
+// `ring-${value}-300`, so these must be literal strings).
+const selectedColorClasses: Record<string, string> = {
+  cyan: "ring-2 ring-cyan-300 text-cyan-200 border-cyan-300",
+  rose: "ring-2 ring-rose-300 text-rose-200 border-rose-300",
+  slate: "ring-2 ring-slate-300 text-slate-200 border-slate-300",
+  violet: "ring-2 ring-violet-300 text-violet-200 border-violet-300",
+  emerald: "ring-2 ring-emerald-300 text-emerald-200 border-emerald-300",
+  amber: "ring-2 ring-amber-300 text-amber-200 border-amber-300",
 };
 
 export default function TagsPage() {
@@ -101,29 +113,32 @@ export default function TagsPage() {
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
             className="flex-grow px-3 sm:px-4 py-2 sm:py-3 bg-white/10 text-slate-200 rounded-md border border-white/10 min-w-[150px] sm:min-w-[200px] text-sm sm:text-base"
           />
-          <button
+          <motion.button
+            {...tactile}
             onClick={handleCreate}
-            className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-slate-300 hover:text-white border border-white/10 rounded-md hover:bg-white/10 transition"
+            className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-slate-300 hover:text-white border border-white/10 rounded-md hover:bg-white/10 hover:shadow-[0_0_18px_rgba(103,232,249,0.18)] transition-shadow"
           >
             + Create
-          </button>
+          </motion.button>
         </div>
 
         {/* Color options */}
         <div className="flex flex-wrap gap-2 sm:gap-3">
           {colorOptions.map((c) => (
-            <button
+            <motion.button
               key={c.value}
               type="button"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => setNewTagColor(c.value)}
               className={`px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm rounded-full border backdrop-blur-md transition ${
                 newTagColor === c.value
-                  ? `${tagColorClasses[c.value]} ring-2 ring-${c.value}-300 text-${c.value}-200 border-${c.value}-300`
+                  ? `${tagColorClasses[c.value]} ${selectedColorClasses[c.value]}`
                   : `border-white/10 text-slate-400 hover:text-white hover:border-white/20`
               }`}
             >
               {c.name}
-            </button>
+            </motion.button>
           ))}
         </div>
 
@@ -147,7 +162,9 @@ export default function TagsPage() {
                     variants={cardVariants}
                     initial="hidden"
                     animate="visible"
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.04, y: -2 }}
+                    whileTap={{ scale: 0.99 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
                     className={`rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/10 bg-white/5 flex items-center justify-between shadow-md ${colorClass}`}
                   >
                     {editingId === tag.id ? (
@@ -159,35 +176,39 @@ export default function TagsPage() {
                         />
                         <div className="flex gap-1 sm:gap-2 flex-wrap">
                           {colorOptions.map((c) => (
-                            <button
+                            <motion.button
                               key={c.value}
                               type="button"
+                              whileHover={{ scale: 1.08 }}
+                              whileTap={{ scale: 0.92 }}
                               onClick={() => setEditedColor(c.value)}
                               className={`px-2 sm:px-3 py-1 text-xs rounded-full border backdrop-blur-md transition ${
                                 editedColor === c.value
-                                  ? `${tagColorClasses[c.value]} ring-2 ring-${c.value}-300 text-${c.value}-200 border-${c.value}-300`
+                                  ? `${tagColorClasses[c.value]} ${selectedColorClasses[c.value]}`
                                   : `border-white/10 text-slate-400 hover:text-white hover:border-white/20`
                               }`}
                             >
                               {c.name}
-                            </button>
+                            </motion.button>
                           ))}
                         </div>
                         <div className="flex gap-2 mt-2">
-                          <button
+                          <motion.button
+                            {...tactileSubtle}
                             onClick={() => handleSaveEdit(tag.id)}
                             title="Save"
                             className="p-1 border border-cyan-300/20 rounded-md hover:bg-cyan-400/10"
                           >
                             <Save className="h-3 w-3 sm:h-4 sm:w-4 text-cyan-300" />
-                          </button>
-                          <button
+                          </motion.button>
+                          <motion.button
+                            {...tactileSubtle}
                             onClick={() => setEditingId(null)}
                             title="Cancel"
                             className="p-1 border border-white/10 rounded-md hover:bg-white/10"
                           >
                             <X className="h-3 w-3 sm:h-4 sm:w-4 text-slate-300" />
-                          </button>
+                          </motion.button>
                         </div>
                       </div>
                     ) : (
@@ -196,7 +217,8 @@ export default function TagsPage() {
                           {tag.name}
                         </span>
                         <div className="flex gap-1 sm:gap-2">
-                          <button
+                          <motion.button
+                            {...tactileSubtle}
                             onClick={() => {
                               setEditingId(tag.id);
                               setEditedName(tag.name);
@@ -206,14 +228,15 @@ export default function TagsPage() {
                             className="p-1 border border-cyan-300/20 rounded-md hover:bg-cyan-400/10"
                           >
                             <Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-cyan-300" />
-                          </button>
-                          <button
+                          </motion.button>
+                          <motion.button
+                            {...tactileSubtle}
                             onClick={() => handleDelete(tag.id)}
                             title="Delete"
                             className="p-1 border border-red-300/20 rounded-md hover:bg-red-400/10"
                           >
                             <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-red-300" />
-                          </button>
+                          </motion.button>
                         </div>
                       </>
                     )}

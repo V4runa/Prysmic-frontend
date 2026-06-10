@@ -15,6 +15,28 @@ interface MoodTimelineProps {
   timeline?: MoodEntry[];
 }
 
+interface MoodColorClasses {
+  lineTop: string;
+  lineBottom: string;
+  dot: string;
+  label: string;
+  cardHover: string;
+}
+
+// Fully-spelled per-color classes; Tailwind v4 can't compile `bg-${color}`.
+const moodColorClasses: Record<string, MoodColorClasses> = {
+  amber: { lineTop: "bg-gradient-to-b from-amber-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-amber-400/40 to-transparent", dot: "border-amber-300/40 bg-amber-400/70", label: "text-amber-300", cardHover: "hover:shadow-amber-500/30" },
+  cyan: { lineTop: "bg-gradient-to-b from-cyan-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-cyan-400/40 to-transparent", dot: "border-cyan-300/40 bg-cyan-400/70", label: "text-cyan-300", cardHover: "hover:shadow-cyan-500/30" },
+  blue: { lineTop: "bg-gradient-to-b from-blue-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-blue-400/40 to-transparent", dot: "border-blue-300/40 bg-blue-400/70", label: "text-blue-300", cardHover: "hover:shadow-blue-500/30" },
+  violet: { lineTop: "bg-gradient-to-b from-violet-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-violet-400/40 to-transparent", dot: "border-violet-300/40 bg-violet-400/70", label: "text-violet-300", cardHover: "hover:shadow-violet-500/30" },
+  rose: { lineTop: "bg-gradient-to-b from-rose-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-rose-400/40 to-transparent", dot: "border-rose-300/40 bg-rose-400/70", label: "text-rose-300", cardHover: "hover:shadow-rose-500/30" },
+  emerald: { lineTop: "bg-gradient-to-b from-emerald-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-emerald-400/40 to-transparent", dot: "border-emerald-300/40 bg-emerald-400/70", label: "text-emerald-300", cardHover: "hover:shadow-emerald-500/30" },
+  yellow: { lineTop: "bg-gradient-to-b from-yellow-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-yellow-400/40 to-transparent", dot: "border-yellow-300/40 bg-yellow-400/70", label: "text-yellow-300", cardHover: "hover:shadow-yellow-500/30" },
+  slate: { lineTop: "bg-gradient-to-b from-slate-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-slate-400/40 to-transparent", dot: "border-slate-300/40 bg-slate-400/70", label: "text-slate-300", cardHover: "hover:shadow-slate-500/30" },
+  red: { lineTop: "bg-gradient-to-b from-red-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-red-400/40 to-transparent", dot: "border-red-300/40 bg-red-400/70", label: "text-red-300", cardHover: "hover:shadow-red-500/30" },
+  fuchsia: { lineTop: "bg-gradient-to-b from-fuchsia-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-fuchsia-400/40 to-transparent", dot: "border-fuchsia-300/40 bg-fuchsia-400/70", label: "text-fuchsia-300", cardHover: "hover:shadow-fuchsia-500/30" },
+};
+
 export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
   const moodMeta: Record<
     string,
@@ -79,6 +101,7 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
           {timeline.map((mood, i) => {
             const meta = moodMeta[mood.moodType ?? "calm"];
             const color = meta.color;
+            const cc = moodColorClasses[color] ?? moodColorClasses.cyan;
 
             let isBreak = false;
             if (i > 0) {
@@ -105,13 +128,11 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
                 <div className="relative w-5 h-full flex items-center justify-center">
                   <motion.div
                     className={`absolute left-1/2 -translate-x-1/2 top-0 h-1/2 w-[2px] ${
-                      isBreak
-                        ? "bg-slate-700/40"
-                        : `bg-gradient-to-b from-${color}-400/50 to-transparent`
+                      isBreak ? "bg-slate-700/40" : cc.lineTop
                     }`}
                   />
                   <motion.div
-                    className={`relative z-10 w-[14px] h-[14px] rounded-full border border-${color}-300/40 bg-${color}-400/70 shadow-[0_0_12px_rgba(255,255,255,0.25)]`}
+                    className={`relative z-10 w-[14px] h-[14px] rounded-full border ${cc.dot} shadow-[0_0_12px_rgba(255,255,255,0.25)]`}
                     animate={{ scale: [1, 1.12, 1] }}
                     transition={{
                       repeat: Infinity,
@@ -121,23 +142,21 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
                   />
                   <motion.div
                     className={`absolute left-1/2 -translate-x-1/2 bottom-0 h-1/2 w-[2px] ${
-                      isBreak
-                        ? "bg-slate-700/40"
-                        : `bg-gradient-to-t from-${color}-400/40 to-transparent`
+                      isBreak ? "bg-slate-700/40" : cc.lineBottom
                     }`}
                   />
                 </div>
 
                 <motion.div
-                  className={`flex-1 bg-white/[0.05] border border-white/10 rounded-2xl p-5 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] hover:shadow-${color}-500/30 transition-all duration-300`}
-                  whileHover={{ scale: 1.02 }}
+                  className={`flex-1 bg-white/[0.05] border border-white/10 rounded-2xl p-5 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] ${cc.cardHover} transition-all duration-300`}
+                  whileHover={{ scale: 1.02, y: -2 }}
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <span className="text-2xl sm:text-3xl drop-shadow">
                       {meta.emoji}
                     </span>
                     <span
-                      className={`text-${color}-300 text-lg sm:text-xl font-semibold tracking-wide`}
+                      className={`${cc.label} text-lg sm:text-xl font-semibold tracking-wide`}
                     >
                       {meta.label}
                     </span>
