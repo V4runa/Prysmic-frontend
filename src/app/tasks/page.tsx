@@ -1,44 +1,27 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Task } from "../tasks/types/task";
-import { apiFetch } from "../hooks/useApi";
+import { useState } from "react";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
 import TaskCard from "../components/TaskCard";
 import QuickTaskInput from "../components/QuickTaskInput";
+import { useTasks, useInvalidateTasks } from "../hooks/useTasks";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
-  const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
+  const {
+    active: tasks,
+    completed: completedTasks,
+    archived: archivedTasks,
+    isLoading: loading,
+  } = useTasks();
+  const invalidateTasks = useInvalidateTasks();
+  const fetchTasks = () => {
+    invalidateTasks();
+  };
   const [activeTab, setActiveTab] = useState<
     "active" | "completed" | "archived"
   >("active");
-  const [loading, setLoading] = useState(false);
-
-  const fetchTasks = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [active, completed, archived] = await Promise.all([
-        apiFetch<Task[]>("/tasks?complete=false&archived=false"),
-        apiFetch<Task[]>("/tasks?complete=true&archived=false"),
-        apiFetch<Task[]>("/tasks?archived=true"),
-      ]);
-      setTasks(active.sort((a, b) => a.priority - b.priority));
-      setCompletedTasks(completed);
-      setArchivedTasks(archived);
-    } catch (err) {
-      console.error("Failed to fetch tasks:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
 
   const visibleTasks =
     activeTab === "active"

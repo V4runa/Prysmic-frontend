@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import PageTransition from "./PageTransition";
 import { motion } from "framer-motion";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -114,7 +113,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="relative z-10 pt-12 sm:pt-12">
-        <PageTransition>{children}</PageTransition>
+        {children}
       </main>
     </div>
   );

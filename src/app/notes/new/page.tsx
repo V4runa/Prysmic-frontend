@@ -1,19 +1,15 @@
 // === /notes/new/page.tsx ===
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
+import { useTags } from "../../hooks/useTags";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface Tag {
-  id: number;
-  name: string;
-  color?: string;
-}
 
 const tagColorClasses: Record<string, string> = {
   cyan: "text-cyan-300 border-cyan-300/30 shadow-cyan-300/10",
@@ -26,27 +22,12 @@ const tagColorClasses: Record<string, string> = {
 
 export default function CreateNotePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [tags, setTags] = useState<Tag[]>([]);
+  const { data: tags = [] } = useTags();
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("Unauthorized");
-      return;
-    }
-
-    apiFetch("/tags", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((data) => setTags(data as Tag[]))
-      .catch((err) => {
-        console.error("Failed to fetch tags", err);
-      });
-  }, []);
 
   const toggleTag = (tagId: number) => {
     setSelectedTagIds((prev) =>
@@ -58,16 +39,9 @@ export default function CreateNotePage() {
     e.preventDefault();
     setError("");
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("You must be logged in to create a note.");
-      return;
-    }
-
     try {
       await apiFetch("/notes", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           title,
           content,
@@ -75,6 +49,7 @@ export default function CreateNotePage() {
         }),
       });
 
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
       router.push("/notes");
     } catch (err: Error | unknown) {
       console.error("Note creation failed", err);

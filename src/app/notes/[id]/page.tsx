@@ -4,9 +4,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
+import { useTags } from "../../hooks/useTags";
 import { Pencil, Trash2, ArrowLeft, Save, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -34,84 +36,60 @@ const tagColorClasses: Record<string, string> = {
 
 export default function ViewNotePage() {
   const { id } = useParams();
+  const noteId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
-  const [note, setNote] = useState<Note | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedContent, setEditedContent] = useState("");
-  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [actionError, setActionError] = useState("");
 
+  const {
+    data: note = null,
+    isLoading: loading,
+    isError,
+  } = useQuery({
+    queryKey: ["note", noteId],
+    queryFn: () => apiFetch<Note>(`/notes/${noteId}`),
+    enabled: !!noteId,
+  });
+
+  const { data: availableTags = [] } = useTags(!!noteId);
+
+  const error =
+    actionError || (isError ? "Note could not be found." : "");
+
+  // Seed the edit form whenever the fetched note changes.
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token || !id) {
-      setError("Unauthorized or missing note ID");
-      setLoading(false);
-      return;
+    if (note) {
+      setEditedTitle(note.title);
+      setEditedContent(note.content);
+      setSelectedTagIds(note.tags?.map((tag) => tag.id) || []);
     }
-
-    apiFetch(`/notes/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((data) => {
-        const noteData = data as Note;
-        setNote(noteData);
-        setEditedTitle(noteData.title);
-        setEditedContent(noteData.content);
-        setSelectedTagIds(noteData.tags?.map(tag => tag.id) || []);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch note", err);
-        setError("Note could not be found.");
-      })
-      .finally(() => setLoading(false));
-
-    apiFetch("/tags", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((data) => setAvailableTags(data as Tag[]))
-      .catch(() => {});
-  }, [id]);
+  }, [note]);
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this note?")) return;
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("Unauthorized");
-      return;
-    }
-
     try {
       setDeleting(true);
-      await apiFetch(`/notes/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      await apiFetch(`/notes/${noteId}`, { method: "DELETE" });
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
       router.push("/notes");
     } catch (err) {
       console.error("Failed to delete note", err);
-      setError("Failed to delete note.");
+      setActionError("Failed to delete note.");
     } finally {
       setDeleting(false);
     }
   };
 
   const handleSaveUpdate = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("Unauthorized");
-      return;
-    }
-
     try {
-      await apiFetch(`/notes/${id}`, {
+      await apiFetch(`/notes/${noteId}`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           title: editedTitle,
           content: editedContent,
@@ -119,18 +97,24 @@ export default function ViewNotePage() {
         }),
       });
 
-      setNote({
-        ...note,
-        title: editedTitle,
-        content: editedContent,
-        tags: availableTags.filter(tag => selectedTagIds.includes(tag.id)),
-        id: note?.id || "",
-      } as Note);
+      queryClient.setQueryData<Note | null>(["note", noteId], (old) =>
+        old
+          ? {
+              ...old,
+              title: editedTitle,
+              content: editedContent,
+              tags: availableTags.filter((tag) =>
+                selectedTagIds.includes(tag.id)
+              ),
+            }
+          : old
+      );
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
 
       setEditing(false);
     } catch (err) {
       console.error("Failed to update note", err);
-      setError("Failed to update note.");
+      setActionError("Failed to update note.");
     }
   };
 

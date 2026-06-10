@@ -1,75 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
 import { apiFetch } from "../hooks/useApi";
+import { habitIconMap, IconKey } from "../components/habitIcons";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  CheckCircle2,
-  Flame,
-  Moon,
-  Book,
-  Star,
-  Wand2,
-  Palette,
-  Feather,
-  Bolt,
-  TreePine,
-  Circle,
-  Bell,
-  Cloud,
-  Compass,
-  Droplet,
-  Eye,
-  Heart,
-  Key,
-  Leaf,
-  Lightbulb,
-  Mountain,
-  Sun,
-  Target,
-  Thermometer,
-  Umbrella,
-  BrainCircuit,
-  Shield,
-  Anchor,
-  Infinity,
-} from "lucide-react";
+import { CheckCircle2, Flame } from "lucide-react";
 
-const iconMap = {
-  flame: Flame,
-  moon: Moon,
-  book: Book,
-  star: Star,
-  wand2: Wand2,
-  palette: Palette,
-  feather: Feather,
-  bolt: Bolt,
-  treepine: TreePine,
-  circle: Circle,
-  bell: Bell,
-  cloud: Cloud,
-  compass: Compass,
-  droplet: Droplet,
-  eye: Eye,
-  heart: Heart,
-  key: Key,
-  leaf: Leaf,
-  lightbulb: Lightbulb,
-  mountain: Mountain,
-  sun: Sun,
-  target: Target,
-  thermometer: Thermometer,
-  umbrella: Umbrella,
-  braincircuit: BrainCircuit,
-  shield: Shield,
-  anchor: Anchor,
-  infinity: Infinity,
-} as const;
-
-type IconKey = keyof typeof iconMap;
+const iconMap = habitIconMap;
 
 interface Habit {
   id: number;
@@ -84,50 +25,44 @@ interface Habit {
   createdAt: string;
 }
 
+const habitsQueryKey = ["habits"] as const;
+
 export default function HabitsPage() {
-  const [habits, setHabits] = useState<Habit[]>([]);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { data: habits = [], isError } = useQuery({
+    queryKey: habitsQueryKey,
+    queryFn: () => apiFetch<Habit[]>("/habits"),
+  });
   const [error, setError] = useState("");
   const [animatingId, setAnimatingId] = useState<number | null>(null);
-  const [lastCheckDate, setLastCheckDate] = useState<string>("");
-  const router = useRouter();
-
-  const fetchHabits = async () => {
-    try {
-      const data = await apiFetch<Habit[]>("/habits");
-      setHabits(data);
-      setLastCheckDate(new Date().toISOString().split("T")[0]);
-    } catch {
-      setError("Failed to load habits");
-    }
-  };
+  const lastCheckDate = useRef<string>(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
-    fetchHabits();
-  }, []);
+    if (isError) setError("Failed to load habits");
+  }, [isError]);
 
-  // Auto-refresh when date changes (morning reset)
+  // Auto-refresh when the calendar day changes (morning reset)
   useEffect(() => {
-    const checkDateChange = () => {
+    const interval = setInterval(() => {
       const today = new Date().toISOString().split("T")[0];
-      if (lastCheckDate && lastCheckDate !== today) {
-        fetchHabits();
+      if (lastCheckDate.current !== today) {
+        lastCheckDate.current = today;
+        queryClient.invalidateQueries({ queryKey: habitsQueryKey });
       }
-    };
-
-    // Check on mount and set up interval to check periodically
-    checkDateChange();
-    const interval = setInterval(checkDateChange, 60000); // Check every minute
+    }, 60000);
 
     return () => clearInterval(interval);
-  }, [lastCheckDate]);
+  }, [queryClient]);
 
   const handleCheck = async (habitId: number, currentChecked: boolean) => {
-    const previousState = habits.find((h) => h.id === habitId);
+    const previous = queryClient.getQueryData<Habit[]>(habitsQueryKey);
+    const previousState = previous?.find((h) => h.id === habitId);
     if (!previousState) return;
 
     // Optimistic update
-    setHabits((prev) =>
-      prev.map((h) =>
+    queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
+      (prev ?? []).map((h) =>
         h.id === habitId
           ? {
               ...h,
@@ -143,19 +78,18 @@ export default function HabitsPage() {
     setTimeout(() => setAnimatingId(null), 1400);
 
     try {
-      await apiFetch<{ checked: boolean }>(`/habits/${habitId}/check`, {
+      // The check endpoint returns the fully updated habit (with accurate
+      // streaks), so no follow-up GET is needed.
+      const updatedHabit = await apiFetch<Habit>(`/habits/${habitId}/check`, {
         method: "POST",
       });
-      
-      // Re-fetch to get accurate streak data from backend
-      const updatedHabit = await apiFetch<Habit>(`/habits/${habitId}`);
-      setHabits((prev) =>
-        prev.map((h) => (h.id === habitId ? updatedHabit : h))
+      queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
+        (prev ?? []).map((h) => (h.id === habitId ? updatedHabit : h))
       );
     } catch {
       // Revert on error
-      setHabits((prev) =>
-        prev.map((h) => (h.id === habitId ? previousState : h))
+      queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
+        (prev ?? []).map((h) => (h.id === habitId ? previousState : h))
       );
       setError("Failed to toggle habit check.");
       setAnimatingId(null);

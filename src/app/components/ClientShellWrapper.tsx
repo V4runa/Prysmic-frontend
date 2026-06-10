@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import AppShell from "./AppShell";
 import { SessionToastProvider, useSessionToast } from "./SessionToastContext";
+import QueryProvider from "../providers/QueryProvider";
 
 function ClientShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,8 +14,6 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
   const triggerToast = useSessionToast();
 
   useEffect(() => {
-    console.log("✅ ClientShellInner mounted");
-
     const checkToken = () => {
       const token = localStorage.getItem("token");
       if (!token || isPublic || toastTriggeredRef.current) return;
@@ -22,16 +21,14 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
       try {
         const { exp } = JSON.parse(atob(token.split(".")[1]));
         const now = Math.floor(Date.now() / 1000);
-        console.log("🧠 Token exp:", exp, "| Now:", now);
 
         if (now >= exp) {
-          console.log("💀 Token expired (polling loop)");
           toastTriggeredRef.current = true;
           localStorage.removeItem("token");
           triggerToast();
         }
       } catch (err) {
-        console.warn("❌ Token decode failed", err);
+        console.warn("Token decode failed", err);
       }
     };
 
@@ -46,7 +43,6 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
     // 🌐 Listen to manual session expiration triggers
     const handleTokenExpired = () => {
       if (!toastTriggeredRef.current) {
-        console.log("💥 Token expired (event)");
         toastTriggeredRef.current = true;
         triggerToast();
       }
@@ -65,8 +61,10 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
 
 export default function ClientShellWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <SessionToastProvider>
-      <ClientShellInner>{children}</ClientShellInner>
-    </SessionToastProvider>
+    <QueryProvider>
+      <SessionToastProvider>
+        <ClientShellInner>{children}</ClientShellInner>
+      </SessionToastProvider>
+    </QueryProvider>
   );
 }

@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@fontsource/inter";
 
 /* Scrollbar Styles */
 * {
@@ -49,7 +48,7 @@ body {
   overflow: hidden;
   background: var(--background);
   color: var(--foreground);
-  font-family: 'InterVariable', sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-weight: 400;
   letter-spacing: 0.01em;
   transition: background 0.5s ease;

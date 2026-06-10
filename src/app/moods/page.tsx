@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../hooks/useApi";
 import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
@@ -46,42 +47,43 @@ const normalizeMoods = (moods: MoodEntry[]): MoodEntry[] =>
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 export default function MoodPage() {
+  const queryClient = useQueryClient();
   const [phase, setPhase] = useState<MoodPhase>(MoodPhase.PICK);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [timeline, setTimeline] = useState<MoodEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   const todayKey = new Date().toLocaleDateString("en-CA");
 
-  // 🧠 Load moods and detect today's entry
+  const {
+    data: moodsRaw = [],
+    isLoading: loading,
+    isError,
+  } = useQuery({
+    queryKey: ["moods"],
+    queryFn: () => apiFetch<MoodEntry[]>("/moods"),
+  });
+
+  const timeline = useMemo(() => normalizeMoods(moodsRaw), [moodsRaw]);
+  const error = saveError || (isError ? "Failed to load moods." : "");
+
+  // 🧠 Detect today's entry and pick the starting phase once moods load.
   useEffect(() => {
-    (async () => {
-      try {
-        const moods = await apiFetch<MoodEntry[]>("/moods");
-        const normalized = normalizeMoods(moods);
-        setTimeline(normalized);
+    if (loading) return;
 
-        if (normalized.length === 0) {
-          setPhase(MoodPhase.PICK);
-          return;
-        }
+    if (timeline.length === 0) {
+      setPhase(MoodPhase.PICK);
+      return;
+    }
 
-        const todayMood = normalized.find((m) => m.date.startsWith(todayKey));
-        if (todayMood) {
-          setPhase(MoodPhase.TIMELINE);
-          localStorage.setItem("lastMoodDate", todayKey);
-        } else {
-          const lastSaved = localStorage.getItem("lastMoodDate");
-          if (lastSaved !== todayKey) setPhase(MoodPhase.PICK);
-        }
-      } catch {
-        setError("Failed to load moods.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [todayKey]);
+    const todayMood = timeline.find((m) => m.date.startsWith(todayKey));
+    if (todayMood) {
+      setPhase(MoodPhase.TIMELINE);
+      localStorage.setItem("lastMoodDate", todayKey);
+    } else {
+      const lastSaved = localStorage.getItem("lastMoodDate");
+      if (lastSaved !== todayKey) setPhase(MoodPhase.PICK);
+    }
+  }, [loading, timeline, todayKey]);
 
   // 🎭 When a mood is picked
   const handleMoodSelect = (mood: string) => {
@@ -95,13 +97,8 @@ export default function MoodPage() {
       const emoji = selectedMood ? moodToEmoji[selectedMood] : undefined;
       if (!selectedMood || !emoji) throw new Error("Invalid mood selection");
 
-      const token = localStorage.getItem("token");
       await apiFetch("/moods", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({
           moodType: selectedMood,
           emoji,
@@ -110,13 +107,10 @@ export default function MoodPage() {
       });
 
       localStorage.setItem("lastMoodDate", todayKey);
-
-      const updated = await apiFetch<MoodEntry[]>("/moods");
-      const normalized = normalizeMoods(updated);
-      setTimeline(normalized);
       setPhase(MoodPhase.TIMELINE);
+      await queryClient.invalidateQueries({ queryKey: ["moods"] });
     } catch {
-      setError("Failed to save mood.");
+      setSaveError("Failed to save mood.");
     }
   };
 

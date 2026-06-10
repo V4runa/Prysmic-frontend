@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import GlassPanel from "../components/GlassPanel";
+import PageTransition from "../components/PageTransition";
 import { apiFetch } from "../hooks/useApi";
 import { getUserFromToken } from "../hooks/useAuth";
+import { useTags } from "../hooks/useTags";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tag } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -25,54 +28,43 @@ interface TagData {
 }
 
 export default function NotesOverviewPage() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [allTags, setAllTags] = useState<TagData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [notesPerPage] = useState(8);
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const user = getUserFromToken();
+  const user = typeof window !== "undefined" ? getUserFromToken() : null;
+  const userId = user?.userId;
 
-    if (!token || !user) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+  const {
+    data: notes = [],
+    isLoading: notesLoading,
+    isError: notesError,
+  } = useQuery({
+    queryKey: ["notes", userId],
+    queryFn: () => apiFetch<Note[]>(`/notes/user/${userId}`),
+    enabled: !!userId,
+  });
 
-    Promise.all([
-      apiFetch(`/notes/user/${user.userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-      apiFetch(`/tags`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-    ])
-      .then(([notesData, tagsData]) => {
-        const tagList = tagsData as TagData[];
-        const notesList = notesData as Note[];
+  const { data: tagList = [], isError: tagsError } = useTags(!!userId);
 
-        const tagCountMap: Record<string, number> = {};
-        notesList.forEach((note) => {
-          note.tags?.forEach((tag) => {
-            tagCountMap[tag.name] = (tagCountMap[tag.name] || 0) + 1;
-          });
-        });
+  const loading = !!userId && notesLoading;
+  const error = !userId
+    ? "Not authenticated"
+    : notesError || tagsError
+    ? "Could not load notes or tags."
+    : "";
 
-        const enrichedTags = tagList.map((tag) => ({
-          ...tag,
-          count: tagCountMap[tag.name] || 0,
-        }));
-
-        setNotes(notesList);
-        setAllTags(enrichedTags.sort((a, b) => a.name.localeCompare(b.name)));
-      })
-      .catch(() => setError("Could not load notes or tags."))
-      .finally(() => setLoading(false));
-  }, []);
+  const allTags = useMemo<TagData[]>(() => {
+    const tagCountMap: Record<string, number> = {};
+    notes.forEach((note) => {
+      note.tags?.forEach((tag) => {
+        tagCountMap[tag.name] = (tagCountMap[tag.name] || 0) + 1;
+      });
+    });
+    return (tagList as TagData[])
+      .map((tag) => ({ ...tag, count: tagCountMap[tag.name] || 0 }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [notes, tagList]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -84,11 +76,15 @@ export default function NotesOverviewPage() {
     );
   };
 
-  const filteredNotes = activeTags.length
-    ? notes.filter((note) =>
-        note.tags?.some((tag) => activeTags.includes(tag.name))
-      )
-    : notes;
+  const filteredNotes = useMemo(
+    () =>
+      activeTags.length
+        ? notes.filter((note) =>
+            note.tags?.some((tag) => activeTags.includes(tag.name))
+          )
+        : notes,
+    [notes, activeTags]
+  );
 
   const totalPages = Math.max(
     1,
@@ -126,6 +122,7 @@ export default function NotesOverviewPage() {
   };
 
   return (
+    <PageTransition>
     <div className="w-full h-[calc(100vh-3rem)] flex flex-col xl:flex-row px-4 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-4 pb-4 gap-4 sm:gap-6">
       {/* Sidebar (desktop only) */}
       {allTags.length > 0 && (
@@ -381,5 +378,6 @@ export default function NotesOverviewPage() {
         </GlassPanel>
       </main>
     </div>
+    </PageTransition>
   );
 }

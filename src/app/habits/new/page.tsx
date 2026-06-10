@@ -2,62 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
 import { HabitFrequency } from "../../enums/habit-frequency.enum";
 import { motion } from "framer-motion";
 import clsx from "clsx";
+import { Check } from "lucide-react";
 import {
-  Check,
-  Flame,
-  Moon,
-  Book,
-  Star,
-  Wand2,
-  Palette,
-  Feather,
-  Bolt,
-  TreePine,
-  Circle,
-  Bell,
-  Cloud,
-  Compass,
-  Droplet,
-  Eye,
-  Heart,
-  Key,
-  Leaf,
-  Lightbulb,
-  Mountain,
-  Sun,
-  Target,
-  Thermometer,
-  Umbrella,
-  BrainCircuit,
-  Shield,
-  Anchor,
-  Infinity,
-} from "lucide-react";
-
-const iconChoices = [
-  "flame", "moon", "book", "star", "wand2", "palette", "feather",
-  "bolt", "treepine", "circle", "bell", "cloud", "compass", "droplet",
-  "eye", "heart", "key", "leaf", "lightbulb", "mountain", "sun", "target",
-  "thermometer", "umbrella", "braincircuit", "shield", "anchor", "infinity",
-];
+  habitIconMap as iconMap,
+  habitIconChoices as iconChoices,
+} from "../../components/habitIcons";
 
 const colorChoices = ["cyan", "violet", "rose", "amber", "emerald", "blue"];
-
-const iconMap: Record<string, React.ElementType> = {
-  flame: Flame, moon: Moon, book: Book, star: Star, wand2: Wand2,
-  palette: Palette, feather: Feather, bolt: Bolt, treepine: TreePine,
-  circle: Circle, bell: Bell, cloud: Cloud, compass: Compass, droplet: Droplet,
-  eye: Eye, heart: Heart, key: Key, leaf: Leaf, lightbulb: Lightbulb,
-  mountain: Mountain, sun: Sun, target: Target, thermometer: Thermometer,
-  umbrella: Umbrella, braincircuit: BrainCircuit, shield: Shield,
-  anchor: Anchor, infinity: Infinity,
-};
 
 const colorClassMap: Record<string, string> = {
   cyan: "bg-cyan-400/50 border-cyan-300 ring-cyan-500",
@@ -70,6 +28,7 @@ const colorClassMap: Record<string, string> = {
 
 export default function NewHabitPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     name: "",
@@ -94,6 +53,7 @@ export default function NewHabitPage() {
         method: "POST",
         body: JSON.stringify(form),
       });
+      queryClient.invalidateQueries({ queryKey: ["habits"] });
       router.push("/habits");
     } catch {
       setError("Something went wrong while forging your contract.");

@@ -1,17 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, Trash2, Save, X } from "lucide-react";
 import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
 import { apiFetch } from "../hooks/useApi";
-
-interface Tag {
-  id: number;
-  name: string;
-  color?: string;
-}
+import { Tag, useTags, useInvalidateTags } from "../hooks/useTags";
 
 const colorOptions = [
   { name: "Astral", value: "cyan" },
@@ -32,28 +27,23 @@ const tagColorClasses: Record<string, string> = {
 };
 
 export default function TagsPage() {
-  const [tags, setTags] = useState<Tag[]>([]);
+  const { data: tags = [], isError } = useTags();
+  const invalidateTags = useInvalidateTags();
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("cyan");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editedName, setEditedName] = useState("");
   const [editedColor, setEditedColor] = useState("cyan");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    apiFetch<Tag[]>("/tags")
-      .then(setTags)
-      .catch(() => setError("Could not fetch tags"));
-  }, []);
+  const [error, setError] = useState(isError ? "Could not fetch tags" : "");
 
   const handleCreate = async () => {
     if (!newTagName.trim()) return;
     try {
-      const created = await apiFetch<Tag>("/tags", {
+      await apiFetch<Tag>("/tags", {
         method: "POST",
         body: JSON.stringify({ name: newTagName, color: newTagColor }),
       });
-      setTags((prev) => [...prev, created]);
+      await invalidateTags();
       setNewTagName("");
     } catch {
       setError("Failed to create tag");
@@ -63,7 +53,7 @@ export default function TagsPage() {
   const handleDelete = async (id: number) => {
     try {
       await apiFetch(`/tags/${id}`, { method: "DELETE" });
-      setTags((prev) => prev.filter((t) => t.id !== id));
+      await invalidateTags();
     } catch {
       setError("Failed to delete tag");
     }
@@ -72,11 +62,11 @@ export default function TagsPage() {
   const handleSaveEdit = async (id: number) => {
     if (!editedName.trim()) return;
     try {
-      const updated = await apiFetch<Tag>(`/tags/${id}`, {
+      await apiFetch<Tag>(`/tags/${id}`, {
         method: "PUT",
         body: JSON.stringify({ name: editedName, color: editedColor }),
       });
-      setTags((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      await invalidateTags();
       setEditingId(null);
     } catch {
       setError("Failed to update tag");

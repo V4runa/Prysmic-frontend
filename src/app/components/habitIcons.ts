@@ -1,0 +1,70 @@
+import {
+  Flame,
+  Moon,
+  Book,
+  Star,
+  Wand2,
+  Palette,
+  Feather,
+  Bolt,
+  TreePine,
+  Circle,
+  Bell,
+  Cloud,
+  Compass,
+  Droplet,
+  Eye,
+  Heart,
+  Key,
+  Leaf,
+  Lightbulb,
+  Mountain,
+  Sun,
+  Target,
+  Thermometer,
+  Umbrella,
+  BrainCircuit,
+  Shield,
+  Anchor,
+  Infinity,
+} from "lucide-react";
+
+/**
+ * Single source of truth for habit icons, shared across the habits list,
+ * detail, and creation pages so the (large) lucide icon set is only declared
+ * once instead of duplicated in three route bundles.
+ */
+export const habitIconMap = {
+  flame: Flame,
+  moon: Moon,
+  book: Book,
+  star: Star,
+  wand2: Wand2,
+  palette: Palette,
+  feather: Feather,
+  bolt: Bolt,
+  treepine: TreePine,
+  circle: Circle,
+  bell: Bell,
+  cloud: Cloud,
+  compass: Compass,
+  droplet: Droplet,
+  eye: Eye,
+  heart: Heart,
+  key: Key,
+  leaf: Leaf,
+  lightbulb: Lightbulb,
+  mountain: Mountain,
+  sun: Sun,
+  target: Target,
+  thermometer: Thermometer,
+  umbrella: Umbrella,
+  braincircuit: BrainCircuit,
+  shield: Shield,
+  anchor: Anchor,
+  infinity: Infinity,
+} as const;
+
+export type IconKey = keyof typeof habitIconMap;
+
+export const habitIconChoices = Object.keys(habitIconMap) as IconKey[];

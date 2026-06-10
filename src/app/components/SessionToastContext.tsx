@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 import SessionExpiredToast from "./SessionExpiredToast";
 
 const SessionToastContext = createContext<() => void>(() => {
@@ -13,16 +13,14 @@ export function useSessionToast() {
 export function SessionToastProvider({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
 
-  const triggerToast = () => {
-    console.log("✅ triggerToast() CALLED");
+  const triggerToast = useCallback(() => {
     setVisible(true);
     setTimeout(() => {
-      console.log("🔁 toast hidden and redirect triggered");
       setVisible(false);
       localStorage.removeItem("token");
       window.location.href = "/login";
     }, 3000);
-  };
+  }, []);
 
   return (
     <SessionToastContext.Provider value={triggerToast}>

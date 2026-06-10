@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
@@ -14,42 +15,14 @@ import {
   ArrowLeft,
   PencilIcon,
   Flame,
-  Moon,
-  Book,
-  Star,
-  Wand2,
-  Palette,
-  Feather,
-  Bolt,
-  TreePine,
-  Circle,
-  Bell,
-  Cloud,
-  Compass,
-  Droplet,
-  Eye,
-  Heart,
-  Key,
-  Leaf,
-  Lightbulb,
-  Mountain,
-  Sun,
   Target,
-  Thermometer,
-  Umbrella,
-  BrainCircuit,
-  Shield,
-  Anchor,
-  Infinity,
 } from "lucide-react";
+import {
+  habitIconMap as iconMap,
+  habitIconChoices as iconChoices,
+  IconKey,
+} from "../../components/habitIcons";
 import { HabitFrequency } from "../../enums/habit-frequency.enum";
-
-const iconChoices = [
-  "flame", "moon", "book", "star", "wand2", "palette", "feather",
-  "bolt", "treepine", "circle", "bell", "cloud", "compass", "droplet",
-  "eye", "heart", "key", "leaf", "lightbulb", "mountain", "sun", "target",
-  "thermometer", "umbrella", "braincircuit", "shield", "anchor", "infinity",
-] as const;
 
 const colorChoices = ["cyan", "violet", "rose", "amber", "emerald", "blue"] as const;
 
@@ -71,39 +44,6 @@ const bgPanelMap: Record<string, string> = {
   blue: "bg-blue-500/5",
 };
 
-const iconMap = {
-  flame: Flame,
-  moon: Moon,
-  book: Book,
-  star: Star,
-  wand2: Wand2,
-  palette: Palette,
-  feather: Feather,
-  bolt: Bolt,
-  treepine: TreePine,
-  circle: Circle,
-  bell: Bell,
-  cloud: Cloud,
-  compass: Compass,
-  droplet: Droplet,
-  eye: Eye,
-  heart: Heart,
-  key: Key,
-  leaf: Leaf,
-  lightbulb: Lightbulb,
-  mountain: Mountain,
-  sun: Sun,
-  target: Target,
-  thermometer: Thermometer,
-  umbrella: Umbrella,
-  braincircuit: BrainCircuit,
-  shield: Shield,
-  anchor: Anchor,
-  infinity: Infinity,
-} as const;
-
-type IconKey = keyof typeof iconMap;
-
 interface Habit {
   id: number;
   name: string;
@@ -124,6 +64,7 @@ export default function HabitDetailPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [habit, setHabit] = useState<Habit | null>(null);
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState<Partial<Habit>>({});
@@ -162,14 +103,14 @@ export default function HabitDetailPage() {
     });
 
     try {
-      await apiFetch<{ checked: boolean }>(`/habits/${id}/check`, {
+      // The check endpoint returns the fully updated habit, so no follow-up
+      // GET is needed.
+      const habitData = await apiFetch<Habit>(`/habits/${id}/check`, {
         method: "POST",
       });
-      
-      // Re-fetch to get accurate streak data from backend
-      const habitData = await apiFetch<Habit>(`/habits/${id}`);
       setHabit(habitData);
       setForm(habitData);
+      queryClient.invalidateQueries({ queryKey: ["habits"] });
     } catch {
       // Revert on error
       setHabit(previousState);
@@ -185,6 +126,7 @@ export default function HabitDetailPage() {
       });
       setHabit(updated);
       setEdit(false);
+      queryClient.invalidateQueries({ queryKey: ["habits"] });
     } catch {
       setError("Failed to save changes");
     }
@@ -194,6 +136,7 @@ export default function HabitDetailPage() {
     if (!confirm("Are you sure you want to delete this contract?")) return;
     try {
       await apiFetch(`/habits/${id}`, { method: "DELETE" });
+      queryClient.invalidateQueries({ queryKey: ["habits"] });
       router.push("/habits");
     } catch {
       setError("Failed to delete habit");
