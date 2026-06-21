@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Task, TaskPriority } from "../tasks/types/task";
 import { apiFetch } from "../hooks/useApi";
 import {
@@ -11,11 +12,13 @@ import {
   MoreVertical,
   Archive,
   Trash2,
+  X,
 } from "lucide-react";
 import clsx from "clsx";
 import { format } from "date-fns";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Sparkles from "./Sparkles";
+import TaskForm from "./TaskForm";
 import { tactileSubtle } from "../lib/motion";
 
 interface TaskCardProps {
@@ -41,6 +44,7 @@ const priorityMap = {
 export default function TaskCard({ task, onUpdate }: TaskCardProps) {
   const [updating, setUpdating] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [showMenu, setShowMenu] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -52,6 +56,20 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
+
+  useEffect(() => {
+    if (!showEdit) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowEdit(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showEdit]);
+
+  const handleEditSuccess = () => {
+    setShowEdit(false);
+    onUpdate?.();
+  };
 
   const toggleComplete = async () => {
     if (updating || animating) return;
@@ -388,7 +406,8 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
               </motion.h3>
               <Pencil
                 className="h-4 w-4 text-cyan-300 opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                onClick={() => setEditing(true)}
+                onClick={() => setShowEdit(true)}
+                aria-label="Edit task"
               />
             </div>
           )}
@@ -427,7 +446,17 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
             <MoreVertical className="h-5 w-5" />
           </button>
           {showMenu && (
-            <div className="absolute right-0 mt-2 w-28 bg-zinc-800 border border-white/10 shadow-xl rounded-md z-30 overflow-hidden">
+            <div className="absolute right-0 mt-2 w-32 bg-zinc-800 border border-white/10 shadow-xl rounded-md z-30 overflow-hidden">
+              <button
+                className="w-full flex items-center gap-2 text-sm px-3 py-2 text-white/80 hover:bg-zinc-700"
+                onClick={() => {
+                  setShowMenu(false);
+                  setShowEdit(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
               <button
                 className="w-full flex items-center gap-2 text-sm px-3 py-2 text-white/80 hover:bg-zinc-700"
                 onClick={archive}
@@ -489,6 +518,47 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
           </motion.span>
         </motion.button>
       </div>
+
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {showEdit && (
+              <motion.div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setShowEdit(false)}
+              >
+                <motion.div
+                  className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl p-6 shadow-2xl shadow-black/50"
+                  initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                  transition={{ type: "spring", stiffness: 340, damping: 28 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-5">
+                    <h2 className="text-lg font-semibold text-white tracking-wide">
+                      Edit Task
+                    </h2>
+                    <button
+                      type="button"
+                      aria-label="Close"
+                      onClick={() => setShowEdit(false)}
+                      className="tap-target flex items-center justify-center p-1.5 rounded-md text-white/50 hover:text-white hover:bg-white/10"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <TaskForm task={task} onSuccess={handleEditSuccess} />
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </motion.div>
   );
 }
