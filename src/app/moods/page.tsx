@@ -104,6 +104,7 @@ export default function MoodPage() {
           moodType: selectedMood,
           emoji,
           note,
+          date: todayKey,
         }),
       });
 
