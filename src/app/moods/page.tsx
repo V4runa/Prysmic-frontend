@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import MoodPicker from "../components/MoodPicker";
 import MoodReflection from "../components/MoodReflection";
 import MoodTimeline from "../components/MoodTimeline";
+import { localToday, localDateKey } from "../lib/date";
 
 enum MoodPhase {
   PICK = "pick",
@@ -52,7 +53,7 @@ export default function MoodPage() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [saveError, setSaveError] = useState("");
 
-  const todayKey = new Date().toLocaleDateString("en-CA");
+  const todayKey = localToday();
 
   const {
     data: moodsRaw = [],
@@ -75,7 +76,7 @@ export default function MoodPage() {
       return;
     }
 
-    const todayMood = timeline.find((m) => m.date.startsWith(todayKey));
+    const todayMood = timeline.find((m) => localDateKey(m.date) === todayKey);
     if (todayMood) {
       setPhase(MoodPhase.TIMELINE);
       localStorage.setItem("lastMoodDate", todayKey);
