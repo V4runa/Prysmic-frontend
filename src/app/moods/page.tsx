@@ -125,9 +125,9 @@ export default function MoodPage() {
   }
 
   const outerClass =
-    "w-full app-page-h app-scroll overflow-y-auto flex items-start justify-center px-3 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-10";
+    "w-full app-page-h flex flex-col items-center px-3 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-10";
   const panelClass =
-    "w-full max-w-[1200px] min-h-[480px] sm:min-h-[700px] flex flex-col items-stretch justify-start relative overflow-hidden pb-6";
+    "w-full max-w-[1200px] h-full min-h-0 flex flex-col items-stretch justify-start relative overflow-hidden pb-6";
 
   return (
     <PageTransition>
