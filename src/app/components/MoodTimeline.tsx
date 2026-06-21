@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
+import { localDateKey, localToday } from "../lib/date";
 
 interface MoodEntry {
   id: number;
@@ -55,14 +56,21 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
   };
 
   // 🔥 streak logic
+  // Count consecutive local days that have at least one mood entry, walking
+  // backwards from today. Using a Set of local-day keys makes this robust to
+  // multiple entries on the same day and to timezone offsets. A one-day grace
+  // applies: if today isn't logged yet, the streak earned through yesterday
+  // still counts (it only breaks once a full day is missed).
+  const loggedDays = new Set(timeline.map((m) => localDateKey(m.date)));
   let streak = 0;
-  if (timeline.length > 0) {
-    for (let i = 0; i < timeline.length; i++) {
-      const day = new Date(timeline[i].date);
-      const expected = new Date();
-      expected.setDate(expected.getDate() - i);
-      if (day.toDateString() === expected.toDateString()) streak++;
-      else break;
+  if (loggedDays.size > 0) {
+    const cursor = new Date();
+    if (!loggedDays.has(localToday())) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    while (loggedDays.has(localDateKey(cursor))) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
     }
   }
 
