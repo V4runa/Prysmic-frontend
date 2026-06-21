@@ -23,6 +23,7 @@ import {
   IconKey,
 } from "../../components/habitIcons";
 import { getHabitColor } from "../../lib/habitColors";
+import { localToday } from "../../lib/date";
 import { tactile, tactileSubtle } from "../../lib/motion";
 import Sparkles from "../../components/Sparkles";
 import Spinner from "../../components/Spinner";
@@ -77,7 +78,9 @@ export default function HabitDetailPage() {
   useEffect(() => {
     const fetchHabit = async () => {
       try {
-        const habitData = await apiFetch<Habit>(`/habits/${id}`);
+        const habitData = await apiFetch<Habit>(
+          `/habits/${id}?today=${localToday()}`
+        );
         setHabit(habitData);
         setForm(habitData);
       } catch {
@@ -96,18 +99,24 @@ export default function HabitDetailPage() {
 
   const toggleCheck = async () => {
     if (!habit) return;
-    
+
+    const willCheck = !habit.checkedToday;
+
+    // Undoing a completed day is the only way to break a streak by hand, so we
+    // gate it behind an explicit confirmation to prevent accidental loss.
+    if (!willCheck) {
+      const ok = window.confirm(
+        "Undo today's completion? This will remove today from your streak."
+      );
+      if (!ok) return;
+    }
+
     const previousState = habit;
 
-    // Optimistic update
-    const willCheck = !habit.checkedToday;
-    setHabit({
-      ...habit,
-      checkedToday: willCheck,
-      currentStreak: willCheck
-        ? habit.currentStreak + 1
-        : Math.max(0, habit.currentStreak - 1),
-    });
+    // Optimistically flip only `checkedToday` (not the streak number) so the
+    // displayed streak is never a wrong guess — it's reconciled from the
+    // server response below.
+    setHabit({ ...habit, checkedToday: willCheck });
     if (willCheck) {
       setJustChecked(true);
       setTimeout(() => setJustChecked(false), 900);
@@ -118,6 +127,7 @@ export default function HabitDetailPage() {
       // GET is needed.
       const habitData = await apiFetch<Habit>(`/habits/${id}/check`, {
         method: "POST",
+        body: JSON.stringify({ date: localToday() }),
       });
       setHabit(habitData);
       setForm(habitData);
@@ -125,7 +135,7 @@ export default function HabitDetailPage() {
     } catch {
       // Revert on error
       setHabit(previousState);
-      setError("Failed to toggle check-in");
+      setError("Failed to update check-in");
     }
   };
 

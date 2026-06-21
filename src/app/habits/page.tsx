@@ -8,6 +8,7 @@ import PageTransition from "../components/PageTransition";
 import { apiFetch } from "../hooks/useApi";
 import { habitIconMap, IconKey } from "../components/habitIcons";
 import { getHabitColor } from "../lib/habitColors";
+import { localToday } from "../lib/date";
 import { tactile, tactileSubtle } from "../lib/motion";
 import Sparkles from "../components/Sparkles";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,20 +36,20 @@ export default function HabitsPage() {
   const queryClient = useQueryClient();
   const { data: habits = [], isError } = useQuery({
     queryKey: habitsQueryKey,
-    queryFn: () => apiFetch<Habit[]>("/habits"),
+    queryFn: () => apiFetch<Habit[]>(`/habits?today=${localToday()}`),
   });
   const [error, setError] = useState("");
   const [animatingId, setAnimatingId] = useState<number | null>(null);
-  const lastCheckDate = useRef<string>(new Date().toISOString().split("T")[0]);
+  const lastCheckDate = useRef<string>(localToday());
 
   useEffect(() => {
     if (isError) setError("Failed to load habits");
   }, [isError]);
 
-  // Auto-refresh when the calendar day changes (morning reset)
+  // Auto-refresh when the calendar day changes (local-day reset)
   useEffect(() => {
     const interval = setInterval(() => {
-      const today = new Date().toISOString().split("T")[0];
+      const today = localToday();
       if (lastCheckDate.current !== today) {
         lastCheckDate.current = today;
         queryClient.invalidateQueries({ queryKey: habitsQueryKey });
@@ -58,23 +59,20 @@ export default function HabitsPage() {
     return () => clearInterval(interval);
   }, [queryClient]);
 
-  const handleCheck = async (habitId: number, currentChecked: boolean) => {
+  // From the grid, completing a habit is intentionally one-way: tapping an
+  // already-completed habit never un-checks it (that would silently break a
+  // streak). Undo lives in the habit detail view behind a confirmation.
+  const handleComplete = async (habitId: number) => {
     const previous = queryClient.getQueryData<Habit[]>(habitsQueryKey);
     const previousState = previous?.find((h) => h.id === habitId);
-    if (!previousState) return;
+    if (!previousState || previousState.checkedToday) return;
 
-    // Optimistic update
+    // Optimistically reflect completion. We only flip `checkedToday` (and don't
+    // guess the new streak count) so the displayed number is never wrong — the
+    // accurate streak comes back from the server response below.
     queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
       (prev ?? []).map((h) =>
-        h.id === habitId
-          ? {
-              ...h,
-              checkedToday: !currentChecked,
-              currentStreak: !currentChecked
-                ? h.currentStreak + 1
-                : Math.max(0, h.currentStreak - 1),
-            }
-          : h
+        h.id === habitId ? { ...h, checkedToday: true } : h
       )
     );
     setAnimatingId(habitId);
@@ -85,6 +83,7 @@ export default function HabitsPage() {
       // streaks), so no follow-up GET is needed.
       const updatedHabit = await apiFetch<Habit>(`/habits/${habitId}/check`, {
         method: "POST",
+        body: JSON.stringify({ date: localToday() }),
       });
       queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
         (prev ?? []).map((h) => (h.id === habitId ? updatedHabit : h))
@@ -94,7 +93,7 @@ export default function HabitsPage() {
       queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
         (prev ?? []).map((h) => (h.id === habitId ? previousState : h))
       );
-      setError("Failed to toggle habit check.");
+      setError("Failed to mark habit complete.");
       setAnimatingId(null);
     }
   };
@@ -225,14 +224,14 @@ export default function HabitsPage() {
                     )}
 
                     {/* ✅ Check Button */}
-                    <div
-                      className="absolute top-2 right-2 z-20"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCheck(habit.id, isTodayChecked);
-                      }}
-                    >
-                      {isTodayChecked ? (
+                    {isTodayChecked ? (
+                      // Completed: a non-destructive badge. Tapping it falls
+                      // through to the card click, which opens the detail view
+                      // where the day can be undone (behind a confirm).
+                      <div
+                        className="absolute top-2 right-2 z-20 pointer-events-none"
+                        title="Completed today — open to undo"
+                      >
                         <motion.span
                           initial={{ scale: 0.6, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
@@ -241,7 +240,15 @@ export default function HabitsPage() {
                         >
                           <CheckCircle2 className={`h-5 w-5 sm:h-6 sm:w-6 ${c.icon}`} />
                         </motion.span>
-                      ) : (
+                      </div>
+                    ) : (
+                      <div
+                        className="absolute top-2 right-2 z-20"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleComplete(habit.id);
+                        }}
+                      >
                         <motion.button
                           {...tactileSubtle}
                           title="Mark as complete"
@@ -249,8 +256,8 @@ export default function HabitsPage() {
                         >
                           <CheckCircle2 className={`h-3 w-3 sm:h-4 sm:w-4 ${c.icon}`} />
                         </motion.button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}
