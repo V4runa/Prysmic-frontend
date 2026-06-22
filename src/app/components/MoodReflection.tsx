@@ -68,7 +68,7 @@ export default function MoodReflection({
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.8, ease: "easeInOut" }}
       className={clsx(
-        "flex flex-col items-center justify-center text-center w-full h-full relative overflow-hidden rounded-2xl"
+        "relative w-full h-full overflow-y-auto app-scroll text-center rounded-2xl"
       )}
     >
       {/* Mood color tint background */}
@@ -78,11 +78,12 @@ export default function MoodReflection({
         className={`absolute inset-0 ${tint.glow} blur-2xl`}
       />
 
+      <div className="relative z-10 min-h-full flex flex-col items-center justify-center px-4 py-6 sm:py-8">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.8 }}
-        className="relative z-10 w-full max-w-lg flex flex-col items-center gap-6 sm:gap-8"
+        className="w-full max-w-lg flex flex-col items-center gap-6 sm:gap-8"
       >
         <h2 className="text-2xl sm:text-3xl font-semibold text-slate-100">
           Would you like to leave a reflection?
@@ -135,6 +136,7 @@ export default function MoodReflection({
           {note.length}/180 characters
         </motion.div>
       </motion.div>
+      </div>
     </motion.div>
   );
 }

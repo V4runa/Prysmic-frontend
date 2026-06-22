@@ -70,13 +70,14 @@ export default function NewHabitPage() {
             <p className="text-slate-400 text-sm sm:text-base">Define your intent. This is a sacred act.</p>
           </div>
 
-          <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+          <div className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1">
+            <div className="flex flex-col lg:flex-row gap-6 pb-2">
             {/* Color and Icon selectors */}
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
-              className="flex flex-col gap-4 sm:gap-6 lg:w-1/3"
+              className="order-2 lg:order-1 flex flex-col gap-4 sm:gap-6 lg:w-1/3"
             >
               <div className="flex flex-col gap-2">
                 <label className="text-slate-300 text-sm">Color</label>
@@ -134,7 +135,7 @@ export default function NewHabitPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="flex flex-col gap-4 sm:gap-6 lg:w-2/3"
+              className="order-1 lg:order-2 flex flex-col gap-4 sm:gap-6 lg:w-2/3"
             >
               <input
                 type="text"
@@ -183,34 +184,38 @@ export default function NewHabitPage() {
                 </select>
               </div>
 
-              <div className="flex gap-3 mt-4">
-                <motion.button
-                  {...tactileSubtle}
-                  onClick={() => router.push("/habits")}
-                  className="px-4 sm:px-5 py-2 sm:py-3 border border-white/10 text-slate-300 rounded-md hover:bg-white/10 transition-colors text-sm sm:text-base"
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  {...tactile}
-                  onClick={handleSubmit}
-                  className="px-4 sm:px-5 py-2 sm:py-3 bg-cyan-400/10 border border-cyan-300 text-cyan-300 rounded-md hover:bg-cyan-400/20 hover:shadow-[0_0_20px_rgba(103,232,249,0.3)] transition-shadow text-sm sm:text-base"
-                >
-                  <Check className="inline mr-2 w-4 h-4" />
-                  Forge Contract
-                </motion.button>
-              </div>
-
-              {error && (
-                <motion.p 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-red-400 text-sm"
-                >
-                  {error}
-                </motion.p>
-              )}
             </motion.div>
+            </div>
+          </div>
+
+          {/* Action footer — pinned below the scroll area so it's always reachable */}
+          <div className="flex flex-col gap-3 pt-1">
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-400 text-sm"
+              >
+                {error}
+              </motion.p>
+            )}
+            <div className="flex gap-3">
+              <motion.button
+                {...tactileSubtle}
+                onClick={() => router.push("/habits")}
+                className="tap-target flex-1 sm:flex-none flex items-center justify-center px-4 sm:px-5 py-2 sm:py-3 border border-white/10 text-slate-300 rounded-md hover:bg-white/10 transition-colors text-sm sm:text-base"
+              >
+                Cancel
+              </motion.button>
+              <motion.button
+                {...tactile}
+                onClick={handleSubmit}
+                className="tap-target flex-1 sm:flex-none flex items-center justify-center px-4 sm:px-5 py-2 sm:py-3 bg-cyan-400/10 border border-cyan-300 text-cyan-300 rounded-md hover:bg-cyan-400/20 hover:shadow-[0_0_20px_rgba(103,232,249,0.3)] transition-shadow text-sm sm:text-base"
+              >
+                <Check className="inline mr-2 w-4 h-4" />
+                Forge Contract
+              </motion.button>
+            </div>
           </div>
         </GlassPanel>
       </div>

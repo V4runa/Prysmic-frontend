@@ -25,7 +25,8 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
   const [selected, setSelected] = useState<string | null>(null);
 
   return (
-    <div className="flex flex-col items-center justify-center text-center w-full h-full px-4 py-6 sm:px-6 sm:py-8">
+    <div className="app-scroll w-full h-full overflow-y-auto">
+      <div className="flex flex-col items-center justify-center text-center w-full min-h-full px-4 py-6 sm:px-6 sm:py-8">
       <motion.h2
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -103,6 +104,7 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
           </motion.button>
         ))}
       </motion.div>
+      </div>
     </div>
   );
 }
