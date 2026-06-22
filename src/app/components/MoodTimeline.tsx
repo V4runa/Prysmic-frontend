@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { localDateKey, localToday } from "../lib/date";
+import { resolveMoodVisual } from "../lib/moodColors";
 
 interface MoodEntry {
   id: number;
@@ -10,51 +11,14 @@ interface MoodEntry {
   note?: string;
   date: string;
   emoji?: string;
+  color?: string;
 }
 
 interface MoodTimelineProps {
   timeline?: MoodEntry[];
 }
 
-interface MoodColorClasses {
-  lineTop: string;
-  lineBottom: string;
-  dot: string;
-  label: string;
-  cardHover: string;
-}
-
-// Fully-spelled per-color classes; Tailwind v4 can't compile `bg-${color}`.
-const moodColorClasses: Record<string, MoodColorClasses> = {
-  amber: { lineTop: "bg-gradient-to-b from-amber-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-amber-400/40 to-transparent", dot: "border-amber-300/40 bg-amber-400/70", label: "text-amber-300", cardHover: "hover:shadow-amber-500/30" },
-  cyan: { lineTop: "bg-gradient-to-b from-cyan-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-cyan-400/40 to-transparent", dot: "border-cyan-300/40 bg-cyan-400/70", label: "text-cyan-300", cardHover: "hover:shadow-cyan-500/30" },
-  blue: { lineTop: "bg-gradient-to-b from-blue-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-blue-400/40 to-transparent", dot: "border-blue-300/40 bg-blue-400/70", label: "text-blue-300", cardHover: "hover:shadow-blue-500/30" },
-  violet: { lineTop: "bg-gradient-to-b from-violet-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-violet-400/40 to-transparent", dot: "border-violet-300/40 bg-violet-400/70", label: "text-violet-300", cardHover: "hover:shadow-violet-500/30" },
-  rose: { lineTop: "bg-gradient-to-b from-rose-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-rose-400/40 to-transparent", dot: "border-rose-300/40 bg-rose-400/70", label: "text-rose-300", cardHover: "hover:shadow-rose-500/30" },
-  emerald: { lineTop: "bg-gradient-to-b from-emerald-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-emerald-400/40 to-transparent", dot: "border-emerald-300/40 bg-emerald-400/70", label: "text-emerald-300", cardHover: "hover:shadow-emerald-500/30" },
-  yellow: { lineTop: "bg-gradient-to-b from-yellow-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-yellow-400/40 to-transparent", dot: "border-yellow-300/40 bg-yellow-400/70", label: "text-yellow-300", cardHover: "hover:shadow-yellow-500/30" },
-  slate: { lineTop: "bg-gradient-to-b from-slate-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-slate-400/40 to-transparent", dot: "border-slate-300/40 bg-slate-400/70", label: "text-slate-300", cardHover: "hover:shadow-slate-500/30" },
-  red: { lineTop: "bg-gradient-to-b from-red-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-red-400/40 to-transparent", dot: "border-red-300/40 bg-red-400/70", label: "text-red-300", cardHover: "hover:shadow-red-500/30" },
-  fuchsia: { lineTop: "bg-gradient-to-b from-fuchsia-400/50 to-transparent", lineBottom: "bg-gradient-to-t from-fuchsia-400/40 to-transparent", dot: "border-fuchsia-300/40 bg-fuchsia-400/70", label: "text-fuchsia-300", cardHover: "hover:shadow-fuchsia-500/30" },
-};
-
 export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
-  const moodMeta: Record<
-    string,
-    { color: string; emoji: string; label: string }
-  > = {
-    joyful: { color: "amber", emoji: "☀️", label: "Joyful" },
-    calm: { color: "cyan", emoji: "🌊", label: "Calm" },
-    focused: { color: "blue", emoji: "🎯", label: "Focused" },
-    tired: { color: "violet", emoji: "🌙", label: "Tired" },
-    anxious: { color: "rose", emoji: "🌪️", label: "Anxious" },
-    inspired: { color: "emerald", emoji: "🔮", label: "Inspired" },
-    grateful: { color: "yellow", emoji: "🕊️", label: "Grateful" },
-    lonely: { color: "slate", emoji: "🌫️", label: "Lonely" },
-    angry: { color: "red", emoji: "🔥", label: "Angry" },
-    hopeful: { color: "fuchsia", emoji: "🌈", label: "Hopeful" },
-  };
-
   // 🔥 streak logic
   // Count consecutive local days that have at least one mood entry, walking
   // backwards from today. Using a Set of local-day keys makes this robust to
@@ -107,9 +71,8 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
 
         <AnimatePresence>
           {timeline.map((mood, i) => {
-            const meta = moodMeta[mood.moodType ?? "calm"];
-            const color = meta.color;
-            const cc = moodColorClasses[color] ?? moodColorClasses.cyan;
+            const meta = resolveMoodVisual(mood);
+            const cc = meta.classes;
 
             let isBreak = false;
             if (i > 0) {

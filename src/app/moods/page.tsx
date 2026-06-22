@@ -10,6 +10,7 @@ import MoodPicker from "../components/MoodPicker";
 import MoodReflection from "../components/MoodReflection";
 import MoodTimeline from "../components/MoodTimeline";
 import { localToday, localDateKey } from "../lib/date";
+import { MoodOption } from "../hooks/useMoodOptions";
 
 enum MoodPhase {
   PICK = "pick",
@@ -23,21 +24,9 @@ export interface MoodEntry {
   note?: string;
   date: string;
   emoji?: string;
+  color?: string;
   createdAt?: string;
 }
-
-const moodToEmoji: Record<string, string> = {
-  joyful: "☀️",
-  calm: "🌊",
-  focused: "🎯",
-  tired: "🌙",
-  anxious: "🌪️",
-  inspired: "🔮",
-  grateful: "🕊️",
-  lonely: "🌫️",
-  angry: "🔥",
-  hopeful: "🌈",
-};
 
 const normalizeMoods = (moods: MoodEntry[]): MoodEntry[] =>
   moods
@@ -50,7 +39,7 @@ const normalizeMoods = (moods: MoodEntry[]): MoodEntry[] =>
 export default function MoodPage() {
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<MoodPhase>(MoodPhase.PICK);
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [selectedMood, setSelectedMood] = useState<MoodOption | null>(null);
 
   const todayKey = localToday();
 
@@ -86,7 +75,7 @@ export default function MoodPage() {
   }, [loading, timeline, todayKey]);
 
   // 🎭 When a mood is picked
-  const handleMoodSelect = (mood: string) => {
+  const handleMoodSelect = (mood: MoodOption) => {
     setSelectedMood(mood);
     setPhase(MoodPhase.REFLECT);
   };
@@ -96,12 +85,12 @@ export default function MoodPage() {
   // getting stuck in a "Saving..." state. Retries once to ride out transient
   // failures (cold starts / flaky network) before giving up.
   const handleReflectionSubmit = async (note?: string) => {
-    const emoji = selectedMood ? moodToEmoji[selectedMood] : undefined;
-    if (!selectedMood || !emoji) throw new Error("Invalid mood selection");
+    if (!selectedMood) throw new Error("Invalid mood selection");
 
     const body = JSON.stringify({
-      moodType: selectedMood,
-      emoji,
+      moodType: selectedMood.label,
+      emoji: selectedMood.emoji,
+      color: selectedMood.color,
       note,
       date: todayKey,
     });
@@ -169,7 +158,7 @@ export default function MoodPage() {
                 className="w-full h-full flex-1"
               >
                 <MoodReflection
-                  moodType={selectedMood!}
+                  color={selectedMood?.color}
                   onSubmit={handleReflectionSubmit}
                   onSkip={() => handleReflectionSubmit()}
                 />
