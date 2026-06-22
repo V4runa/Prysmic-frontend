@@ -7,8 +7,8 @@ import { tactile } from "../lib/motion";
 
 interface MoodReflectionProps {
   moodType: string;
-  onSubmit: (note?: string) => void;
-  onSkip: () => void;
+  onSubmit: (note?: string) => void | Promise<void>;
+  onSkip: () => void | Promise<void>;
 }
 
 // Fully-spelled classes per mood tint (Tailwind v4 can't compile `bg-${color}`).
@@ -32,6 +32,7 @@ export default function MoodReflection({
 }: MoodReflectionProps) {
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   // mood → color tint mapping
   const moodColors: Record<string, string> = useMemo(
@@ -53,11 +54,29 @@ export default function MoodReflection({
   const color = moodColors[moodType] || "cyan";
   const tint = moodTint[color] ?? moodTint.cyan;
 
+  // Await the save so a failure resets the button (with an inline retry)
+  // instead of stranding the user on a permanent "Saving..." state. On success
+  // the parent transitions away and this component unmounts.
   const handleSubmit = async () => {
     setSubmitting(true);
-    setTimeout(() => {
-      onSubmit(note.trim() || undefined);
-    }, 400); // let fade animation breathe
+    setError("");
+    try {
+      await onSubmit(note.trim() || undefined);
+    } catch {
+      setError("Couldn't save your mood. Please try again.");
+      setSubmitting(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    setSubmitting(true);
+    setError("");
+    try {
+      await onSkip();
+    } catch {
+      setError("Couldn't save your mood. Please try again.");
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -116,16 +135,19 @@ export default function MoodReflection({
 
           <motion.button
             {...tactile}
-            onClick={() => {
-              setSubmitting(true);
-              setTimeout(() => onSkip(), 400);
-            }}
+            onClick={handleSkip}
             disabled={submitting}
             className="px-6 py-2 rounded-md font-medium text-slate-300 border border-white/10 hover:bg-white/10 transition-colors"
           >
             Skip
           </motion.button>
         </div>
+
+        {error && (
+          <p className="text-sm text-red-400" role="alert">
+            {error}
+          </p>
+        )}
 
         <motion.div
           className="text-xs text-slate-500 mt-1"

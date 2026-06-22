@@ -31,13 +31,13 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="text-2xl sm:text-4xl font-semibold text-slate-100 mb-8 sm:mb-12 tracking-wide"
+        className="text-xl sm:text-4xl font-semibold text-slate-100 mb-6 sm:mb-12 tracking-wide"
       >
         How are you feeling today?
       </motion.h2>
 
       <motion.div
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-8 place-items-center w-full max-w-5xl"
+        className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 place-items-center w-full max-w-5xl"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.8 }}
@@ -61,8 +61,8 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
               boxShadow: "0 0 25px rgba(255,255,255,0.2)",
             }}
             whileTap={{ scale: 0.92 }}
-            className={`relative flex flex-col items-center justify-center w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36
-              rounded-3xl bg-gradient-to-br ${mood.color}
+            className={`relative flex flex-col items-center justify-center w-full aspect-square max-w-[9rem] mx-auto p-2
+              rounded-2xl sm:rounded-3xl bg-gradient-to-br ${mood.color}
               text-white/90 shadow-md backdrop-blur-md border border-white/10 transition-all duration-300 overflow-hidden
               ${
                 selected === mood.key
@@ -74,7 +74,7 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
             `}
           >
             <motion.span
-              className="text-4xl sm:text-5xl mb-2 drop-shadow-sm"
+              className="text-3xl sm:text-5xl mb-1 sm:mb-2 drop-shadow-sm"
               animate={
                 selected === mood.key
                   ? { scale: [1, 1.4, 1], rotate: [0, 8, -8, 0] }
@@ -85,7 +85,7 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
               {mood.emoji}
             </motion.span>
 
-            <span className="text-sm sm:text-base font-medium tracking-wide z-10 text-white">
+            <span className="text-xs sm:text-base font-medium tracking-wide z-10 text-white">
               {mood.label}
             </span>
 

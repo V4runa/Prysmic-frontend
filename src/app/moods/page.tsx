@@ -51,7 +51,6 @@ export default function MoodPage() {
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<MoodPhase>(MoodPhase.PICK);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState("");
 
   const todayKey = localToday();
 
@@ -65,7 +64,7 @@ export default function MoodPage() {
   });
 
   const timeline = useMemo(() => normalizeMoods(moodsRaw), [moodsRaw]);
-  const error = saveError || (isError ? "Failed to load moods." : "");
+  const error = isError ? "Failed to load moods." : "";
 
   // 🧠 Detect today's entry and pick the starting phase once moods load.
   useEffect(() => {
@@ -92,28 +91,37 @@ export default function MoodPage() {
     setPhase(MoodPhase.REFLECT);
   };
 
-  // 🧘 Handle reflection + save mood
+  // 🧘 Handle reflection + save mood.
+  // Throws on failure so the reflection screen can surface a retry instead of
+  // getting stuck in a "Saving..." state. Retries once to ride out transient
+  // failures (cold starts / flaky network) before giving up.
   const handleReflectionSubmit = async (note?: string) => {
-    try {
-      const emoji = selectedMood ? moodToEmoji[selectedMood] : undefined;
-      if (!selectedMood || !emoji) throw new Error("Invalid mood selection");
+    const emoji = selectedMood ? moodToEmoji[selectedMood] : undefined;
+    if (!selectedMood || !emoji) throw new Error("Invalid mood selection");
 
-      await apiFetch("/moods", {
-        method: "POST",
-        body: JSON.stringify({
-          moodType: selectedMood,
-          emoji,
-          note,
-          date: todayKey,
-        }),
-      });
+    const body = JSON.stringify({
+      moodType: selectedMood,
+      emoji,
+      note,
+      date: todayKey,
+    });
 
-      localStorage.setItem("lastMoodDate", todayKey);
-      setPhase(MoodPhase.TIMELINE);
-      await queryClient.invalidateQueries({ queryKey: ["moods"] });
-    } catch {
-      setSaveError("Failed to save mood.");
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await apiFetch("/moods", { method: "POST", body });
+        lastError = undefined;
+        break;
+      } catch (err) {
+        lastError = err;
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 600));
+      }
     }
+    if (lastError) throw lastError;
+
+    localStorage.setItem("lastMoodDate", todayKey);
+    setPhase(MoodPhase.TIMELINE);
+    await queryClient.invalidateQueries({ queryKey: ["moods"] });
   };
 
   if (loading) {
