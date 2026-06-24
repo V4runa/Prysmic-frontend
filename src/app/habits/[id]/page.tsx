@@ -206,7 +206,7 @@ export default function HabitDetailPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.3 }}
-                  className="flex-1 flex flex-col gap-4 sm:gap-6"
+                  className="flex-1 flex flex-col gap-4 sm:gap-6 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1"
                 >
                   <input
                     value={form.name || ""}
@@ -231,6 +231,21 @@ export default function HabitDetailPage() {
                     className="w-full px-4 py-3 bg-white/10 text-emerald-300 rounded-md"
                     rows={2}
                   />
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-slate-300 text-sm">Frequency</label>
+                    <select
+                      value={form.frequency || HabitFrequency.DAILY}
+                      onChange={(e) => handleChange("frequency", e.target.value)}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/10 text-slate-200 rounded-md text-sm sm:text-base"
+                    >
+                      {(Object.values(HabitFrequency) as string[]).map((freq) => (
+                        <option key={freq} value={freq}>
+                          {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   <div className="flex flex-col gap-2">
                     <label className="text-slate-300 text-sm">Color</label>
@@ -303,7 +318,7 @@ export default function HabitDetailPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.3 }}
-                  className="flex-1 flex flex-col gap-4 sm:gap-6"
+                  className="flex-1 flex flex-col gap-4 sm:gap-6 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1"
                 >
                   <div className="flex justify-between items-center gap-3">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">

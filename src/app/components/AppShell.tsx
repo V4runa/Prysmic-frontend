@@ -10,6 +10,7 @@ import {
   Flame,
   CheckSquare,
   Smile,
+  CalendarDays,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -40,17 +41,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     href: string;
     icon?: LucideIcon;
     disabled?: boolean;
+    /** Kept off the mobile tab bar (5-icon ceiling) but shown in the header. */
+    desktopOnly?: boolean;
   }[] = [
     { label: "Notes", href: "/notes", icon: StickyNote },
-    { label: "Tags", href: "/tags", icon: TagIcon },
+    { label: "Calendar", href: "/calendar", icon: CalendarDays },
     { label: "Habits", href: "/habits", icon: Flame },
     { label: "Tasks", href: "/tasks", icon: CheckSquare },
     { label: "Moods", href: "/moods", icon: Smile },
+    // Tags is a supporting taxonomy reached from within Notes on mobile.
+    { label: "Tags", href: "/tags", icon: TagIcon, desktopOnly: true },
     { label: "Coming Soon...", href: "#", disabled: true },
   ];
 
-  // Bottom tab bar (mobile) only shows the real destinations.
-  const bottomNavItems = navItems.filter((item) => !item.disabled);
+  // Bottom tab bar (mobile) only shows the real, phone-priority destinations.
+  const bottomNavItems = navItems.filter(
+    (item) => !item.disabled && !item.desktopOnly
+  );
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);

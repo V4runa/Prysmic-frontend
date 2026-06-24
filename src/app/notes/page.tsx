@@ -219,14 +219,25 @@ export default function NotesOverviewPage() {
             <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
               Your Notes
             </h2>
-            <motion.div {...tactile} className="inline-flex">
-              <Link
-                href="/notes/new"
-                className="px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 hover:shadow-[0_0_18px_rgba(103,232,249,0.2)] transition-shadow text-sm"
-              >
-                + New Note
-              </Link>
-            </motion.div>
+            <div className="flex items-center gap-2">
+              <motion.div {...tactile} className="inline-flex">
+                <Link
+                  href="/tags"
+                  className="tap-target flex items-center gap-1.5 px-3 py-2 text-slate-300 rounded-md border border-white/10 hover:bg-white/10 transition-colors text-sm"
+                >
+                  <Tag className="h-4 w-4" />
+                  <span className="hidden sm:inline">Manage tags</span>
+                </Link>
+              </motion.div>
+              <motion.div {...tactile} className="inline-flex">
+                <Link
+                  href="/notes/new"
+                  className="px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 hover:shadow-[0_0_18px_rgba(103,232,249,0.2)] transition-shadow text-sm"
+                >
+                  + New Note
+                </Link>
+              </motion.div>
+            </div>
           </div>
 
           {/* Mobile tag filter bar */}
