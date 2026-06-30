@@ -14,12 +14,12 @@ import {
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { resolveMoodVisual, moodColor } from "../../lib/moodColors";
 import { localToday } from "../../lib/date";
+import DaySummary from "./DaySummary";
 
 const BAR_H = 18;
 const BAR_GAP = 3;
 const DATE_ROW = 22;
 const MAX_LANES = 3;
-const MAX_CHIPS = 3;
 
 interface MonthViewProps {
   anchor: string;
@@ -86,28 +86,7 @@ function DesktopMonth({
                     ? resolveMoodVisual({ moodType: mood.moodType, emoji: mood.emoji, color: mood.color ?? undefined })
                     : null;
 
-                  const chips = [
-                    ...b.tasks.map((t) => ({
-                      kind: "task" as const,
-                      key: `task-${t.id}`,
-                      label: t.title,
-                      complete: t.isComplete,
-                    })),
-                    ...b.habits.map((h) => ({
-                      kind: "habit" as const,
-                      key: h.key,
-                      label: h.title,
-                      checked: h.checked,
-                    })),
-                    ...b.notes.map((n) => ({
-                      kind: "note" as const,
-                      key: `note-${n.id}`,
-                      label: n.title,
-                    })),
-                  ];
-                  const visibleChips = chips.slice(0, MAX_CHIPS);
                   const barOverflow = layout.overflowByCol[week.indexOf(cell)] || 0;
-                  const hidden = chips.length - visibleChips.length + barOverflow;
                   const isToday = cell.key === today;
                   const isSelected = cell.key === selectedDay;
 
@@ -169,37 +148,8 @@ function DesktopMonth({
                       {/* Reserve space for the spanning bars overlay */}
                       <div style={{ height: barsRegion }} />
 
-                      {/* Single-day chips */}
-                      <div className="relative flex flex-col gap-0.5">
-                        {visibleChips.map((chip) => (
-                          <span
-                            key={chip.key}
-                            className={clsx(
-                              "flex items-center gap-1 rounded px-1 py-[1px] text-[10px] leading-tight truncate border",
-                              chip.kind === "task" &&
-                                clsx(SOURCE_ACCENT.task.chip, chip.complete && "opacity-50 line-through"),
-                              chip.kind === "habit" &&
-                                (chip.checked
-                                  ? "bg-amber-500/20 border-amber-400/40 text-amber-100"
-                                  : "bg-amber-500/5 border-amber-400/20 text-amber-200/80"),
-                              chip.kind === "note" && SOURCE_ACCENT.note.chip
-                            )}
-                          >
-                            <span
-                              className={clsx(
-                                "h-1.5 w-1.5 rounded-full shrink-0",
-                                chip.kind === "task" && SOURCE_ACCENT.task.dot,
-                                chip.kind === "habit" && "bg-amber-400",
-                                chip.kind === "note" && SOURCE_ACCENT.note.dot
-                              )}
-                            />
-                            <span className="truncate">{chip.label}</span>
-                          </span>
-                        ))}
-                        {hidden > 0 && (
-                          <span className="text-[10px] text-slate-400 pl-1">+{hidden} more</span>
-                        )}
-                      </div>
+                      {/* Segmented summary of the day's non-event sources */}
+                      <DaySummary buckets={b} eventOverflow={barOverflow} className="relative" />
                     </div>
                   );
                 })}
@@ -279,7 +229,8 @@ function MobileMonth({
               const dots: string[] = [];
               if (b.events.length) dots.push(getEventColor(b.events[0].color).dot);
               if (b.tasks.length) dots.push(SOURCE_ACCENT.task.dot);
-              if (b.habits.length) dots.push("bg-amber-400");
+              // Habits only register once completed, matching the larger views.
+              if (b.habits.some((h) => h.checked)) dots.push("bg-amber-400");
               if (b.notes.length) dots.push(SOURCE_ACCENT.note.dot);
               const isToday = cell.key === today;
               const isSelected = cell.key === selectedDay;

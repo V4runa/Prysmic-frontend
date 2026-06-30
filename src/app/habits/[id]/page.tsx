@@ -206,8 +206,9 @@ export default function HabitDetailPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.3 }}
-                  className="flex-1 flex flex-col gap-4 sm:gap-6 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1"
+                  className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1"
                 >
+                  <div className="flex flex-col gap-4 sm:gap-6">
                   <input
                     value={form.name || ""}
                     onChange={(e) => handleChange("name", e.target.value)}
@@ -293,22 +294,6 @@ export default function HabitDetailPage() {
                       })}
                     </div>
                   </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      onClick={saveEdits}
-                      className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-300/20 rounded-md"
-                    >
-                      <Save className="h-5 w-5 text-cyan-300" />
-                      <span className="sm:hidden text-cyan-300 text-sm font-medium">Save</span>
-                    </button>
-                    <button
-                      onClick={() => setEdit(false)}
-                      className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 border border-white/10 hover:bg-white/10 rounded-md"
-                    >
-                      <X className="h-5 w-5 text-slate-300" />
-                      <span className="sm:hidden text-slate-300 text-sm font-medium">Cancel</span>
-                    </button>
                   </div>
                 </motion.div>
               ) : (
@@ -318,8 +303,9 @@ export default function HabitDetailPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.3 }}
-                  className="flex-1 flex flex-col gap-4 sm:gap-6 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1"
+                  className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1"
                 >
+                  <div className="flex flex-col gap-4 sm:gap-6">
                   <div className="flex justify-between items-center gap-3">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                       {IconComponent && (
@@ -417,28 +403,51 @@ export default function HabitDetailPage() {
                       &ldquo;{habit.affirmation}&rdquo;
                     </p>
                   )}
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      onClick={() => setEdit(true)}
-                      className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 border border-cyan-300/20 hover:bg-cyan-400/10 rounded-md"
-                    >
-                      <PencilIcon className="h-5 w-5 text-cyan-300" />
-                      <span className="sm:hidden text-cyan-300 text-sm font-medium">Edit</span>
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      className="tap-target flex items-center justify-center px-4 py-2 text-red-300 text-sm font-medium border border-red-300/20 hover:bg-red-400/10 rounded-md"
-                    >
-                      Delete
-                    </button>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
 
-          {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
+            {/* Action footer — pinned below the scroll area so Save/Cancel stay
+                reachable on mobile even when the form overflows. */}
+            <div className="shrink-0 flex flex-col gap-3 pt-3">
+              {error && <p className="text-red-400 text-sm">{error}</p>}
+              {edit ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={saveEdits}
+                    className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-300/20 rounded-md"
+                  >
+                    <Save className="h-5 w-5 text-cyan-300" />
+                    <span className="sm:hidden text-cyan-300 text-sm font-medium">Save</span>
+                  </button>
+                  <button
+                    onClick={() => setEdit(false)}
+                    className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 border border-white/10 hover:bg-white/10 rounded-md"
+                  >
+                    <X className="h-5 w-5 text-slate-300" />
+                    <span className="sm:hidden text-slate-300 text-sm font-medium">Cancel</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setEdit(true)}
+                    className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 border border-cyan-300/20 hover:bg-cyan-400/10 rounded-md"
+                  >
+                    <PencilIcon className="h-5 w-5 text-cyan-300" />
+                    <span className="sm:hidden text-cyan-300 text-sm font-medium">Edit</span>
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="tap-target flex items-center justify-center px-4 py-2 text-red-300 text-sm font-medium border border-red-300/20 hover:bg-red-400/10 rounded-md"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </GlassPanel>
       </div>
     </PageTransition>

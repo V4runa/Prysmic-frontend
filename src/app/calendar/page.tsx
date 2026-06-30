@@ -28,6 +28,7 @@ import WeekView from "./components/WeekView";
 import DayAgenda from "./components/DayAgenda";
 import ViewSwitcher from "./components/ViewSwitcher";
 import EventModal from "./components/EventModal";
+import CalendarLegend from "./components/CalendarLegend";
 
 const VIEW_STORAGE_KEY = "prysmic.calendarView";
 
@@ -181,6 +182,11 @@ export default function CalendarPage() {
                 </motion.button>
               </div>
             </div>
+
+            {/* Legend — keeps the grid's iconography self-explanatory */}
+            {(view === "month" || view === "week") && !isLoading && !isError && (
+              <CalendarLegend />
+            )}
 
             {/* Body */}
             <div className="flex-1 min-h-0 flex flex-col">

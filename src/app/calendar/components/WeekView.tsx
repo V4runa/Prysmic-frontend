@@ -109,20 +109,18 @@ export default function WeekView({
                 </div>
               ))}
 
-              {b.habits.map((h) => (
-                <div
-                  key={h.key}
-                  className={clsx(
-                    "flex items-center gap-1 rounded border px-1.5 py-1 text-[11px] truncate",
-                    h.checked
-                      ? "bg-amber-500/20 border-amber-400/40 text-amber-100"
-                      : "bg-amber-500/5 border-amber-400/20 text-amber-200/80"
-                  )}
-                >
-                  <Flame className="h-3 w-3 shrink-0 text-amber-300" />
-                  <span className="truncate">{h.title}</span>
-                </div>
-              ))}
+              {/* Habits only appear once completed for the day. */}
+              {b.habits
+                .filter((h) => h.checked)
+                .map((h) => (
+                  <div
+                    key={h.key}
+                    className="flex items-center gap-1 rounded border border-amber-400/40 bg-amber-500/20 px-1.5 py-1 text-[11px] text-amber-100 truncate"
+                  >
+                    <Flame className="h-3 w-3 shrink-0 text-amber-300" />
+                    <span className="truncate">{h.title}</span>
+                  </div>
+                ))}
 
               {b.moods.map((m) => {
                 const v = resolveMoodVisual({
