@@ -16,6 +16,7 @@ import {
   moodColor,
 } from "../lib/moodColors";
 import { tactile, tactileSubtle } from "../lib/motion";
+import { Field, TextField, FormButton } from "./forms";
 
 interface MoodPickerProps {
   onSelect: (mood: MoodOption) => void;
@@ -273,9 +274,9 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
               </div>
 
               {/* Name */}
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400">Name</span>
-                <input
+              <Field label="Name" htmlFor="mood-name">
+                <TextField
+                  id="mood-name"
                   value={editor.label}
                   maxLength={40}
                   autoFocus
@@ -283,23 +284,24 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
                     setEditor((s) => s && { ...s, label: e.target.value })
                   }
                   placeholder="e.g. Energized"
-                  className="w-full px-3 py-2 bg-white/10 text-slate-200 rounded-md border border-white/10 focus-band text-sm"
                 />
-              </label>
+              </Field>
 
               {/* Emoji */}
-              <div className="flex flex-col gap-2">
-                <span className="text-xs text-slate-400">Emoji</span>
+              <Field label="Emoji" htmlFor="mood-emoji">
                 <div className="flex items-center gap-2">
-                  <input
-                    value={editor.emoji}
-                    maxLength={8}
-                    onChange={(e) =>
-                      setEditor((s) => s && { ...s, emoji: e.target.value })
-                    }
-                    placeholder="🙂"
-                    className="w-16 text-center px-2 py-2 bg-white/10 text-slate-200 rounded-md border border-white/10 focus-band text-2xl"
-                  />
+                  <div className="w-16 shrink-0">
+                    <TextField
+                      id="mood-emoji"
+                      value={editor.emoji}
+                      maxLength={8}
+                      onChange={(e) =>
+                        setEditor((s) => s && { ...s, emoji: e.target.value })
+                      }
+                      placeholder="🙂"
+                      className="text-center text-2xl"
+                    />
+                  </div>
                   <div className="flex flex-wrap gap-1.5 flex-1">
                     {EMOJI_SUGGESTIONS.map((em) => (
                       <button
@@ -308,26 +310,26 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
                         onClick={() =>
                           setEditor((s) => s && { ...s, emoji: em })
                         }
-                        className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-white/10 text-lg"
+                        className="tap-target h-9 w-9 flex items-center justify-center rounded-md hover:bg-white/10 text-lg"
                       >
                         {em}
                       </button>
                     ))}
                   </div>
                 </div>
-              </div>
+              </Field>
 
-              {/* Color */}
-              <div className="flex flex-col gap-2">
-                <span className="text-xs text-slate-400">Color</span>
+              {/* Colour */}
+              <Field label="Colour">
                 <div className="flex flex-wrap gap-2">
                   {MOOD_COLOR_VALUES.map((c) => (
                     <button
                       key={c}
                       type="button"
                       title={MOOD_COLORS[c].name}
+                      aria-label={MOOD_COLORS[c].name}
                       onClick={() => setEditor((s) => s && { ...s, color: c })}
-                      className={`h-8 w-8 rounded-full bg-gradient-to-br ${
+                      className={`tap-target h-9 w-9 rounded-full bg-gradient-to-br ${
                         MOOD_COLORS[c].gradient
                       } border border-white/10 transition-transform ${
                         editor.color === c
@@ -337,30 +339,26 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
                     />
                   ))}
                 </div>
-              </div>
+              </Field>
 
               {formError && (
-                <p className="text-sm text-red-400" role="alert">
+                <p className="text-sm text-rose-400" role="alert">
                   {formError}
                 </p>
               )}
 
               <div className="flex gap-3 mt-1">
-                <motion.button
-                  {...tactile}
+                <FormButton
+                  variant="primary"
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 px-4 py-2 rounded-md font-medium text-white border border-cyan-400/30 bg-cyan-500/10 hover:bg-cyan-400/20 transition-colors disabled:opacity-60"
+                  className="flex-1"
                 >
                   {saving ? "Saving..." : "Save mood"}
-                </motion.button>
-                <motion.button
-                  {...tactile}
-                  onClick={closeEditor}
-                  className="px-4 py-2 rounded-md font-medium text-slate-300 border border-white/10 hover:bg-white/10 transition-colors"
-                >
+                </FormButton>
+                <FormButton variant="secondary" onClick={closeEditor}>
                   Cancel
-                </motion.button>
+                </FormButton>
               </div>
             </motion.div>
           </motion.div>

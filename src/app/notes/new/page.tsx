@@ -7,11 +7,10 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
-import AutoGrowTextarea from "../../components/AutoGrowTextarea";
 import { apiFetch } from "../../hooks/useApi";
 import { useTags } from "../../hooks/useTags";
-import { tactile } from "../../lib/motion";
 import { motion, AnimatePresence } from "framer-motion";
+import { TextField, TextArea, FormButton } from "../../components/forms";
 
 const tagColorClasses: Record<string, string> = {
   cyan: "text-cyan-300 border-cyan-300/30 shadow-cyan-300/10",
@@ -96,22 +95,22 @@ export default function CreateNotePage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="flex-1 flex flex-col gap-4 sm:gap-6 overflow-y-auto pr-1"
+              className="flex-1 flex flex-col gap-4 sm:gap-6 overflow-y-auto app-scroll pr-1"
             >
-              <input
-                type="text"
+              <TextField
+                autoFocus
                 placeholder="Title your thought..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                autoFocus
-                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-lg sm:text-xl border border-transparent focus-band transition"
+                className="text-lg sm:text-xl"
               />
 
-              <AutoGrowTextarea
+              <TextArea
+                autoGrow
                 placeholder="Let it flow onto the pond..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-sm sm:text-base leading-relaxed min-h-[14rem] max-h-[30rem] border border-transparent focus-band transition"
+                className="min-h-[14rem] max-h-[30rem] leading-relaxed"
               />
 
               <div className="flex flex-col gap-3">
@@ -151,13 +150,9 @@ export default function CreateNotePage() {
                   {"  ·  "}⌘/Ctrl + S to save
                 </span>
               </span>
-              <motion.button
-                {...tactile}
-                type="submit"
-                className="px-4 sm:px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 hover:shadow-[0_0_18px_rgba(103,232,249,0.2)] transition-shadow text-sm"
-              >
+              <FormButton type="submit" variant="primary">
                 Save
-              </motion.button>
+              </FormButton>
             </div>
 
             {error && (

@@ -8,24 +8,10 @@ import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
 import { HabitFrequency } from "../../enums/habit-frequency.enum";
 import { motion } from "framer-motion";
-import clsx from "clsx";
 import { Check } from "lucide-react";
-import { tactile, tactileSubtle } from "../../lib/motion";
-import {
-  habitIconMap as iconMap,
-  habitIconChoices as iconChoices,
-} from "../../components/habitIcons";
-
-const colorChoices = ["cyan", "violet", "rose", "amber", "emerald", "blue"];
-
-const colorClassMap: Record<string, string> = {
-  cyan: "bg-cyan-400/50 border-cyan-300 ring-cyan-500",
-  violet: "bg-violet-400/50 border-violet-300 ring-violet-500",
-  rose: "bg-rose-400/50 border-rose-300 ring-rose-500",
-  amber: "bg-amber-400/50 border-amber-300 ring-amber-500",
-  emerald: "bg-emerald-400/50 border-emerald-300 ring-emerald-500",
-  blue: "bg-blue-400/50 border-blue-300 ring-blue-500",
-};
+import { Field, TextField, TextArea, SelectField, FormButton } from "../../components/forms";
+import HabitColorPicker from "../../components/HabitColorPicker";
+import HabitIconPicker from "../../components/HabitIconPicker";
 
 export default function NewHabitPage() {
   const router = useRouter();
@@ -79,55 +65,19 @@ export default function NewHabitPage() {
               transition={{ delay: 0.1 }}
               className="order-2 lg:order-1 flex flex-col gap-4 sm:gap-6 lg:w-1/3"
             >
-              <div className="flex flex-col gap-2">
-                <label className="text-slate-300 text-sm">Color</label>
-                <div className="flex gap-3 flex-wrap">
-                  {colorChoices.map((c, i) => (
-                    <motion.button
-                      key={c}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.05 }}
-                      whileHover={{ scale: 1.18 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => handleChange("color", c)}
-                      className={clsx(
-                        "w-8 h-8 rounded-full transition",
-                        form.color === c
-                          ? `ring-2 ${colorClassMap[c]}`
-                          : "border border-white/10 bg-white/10 hover:bg-white/20"
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
+              <Field label="Colour">
+                <HabitColorPicker
+                  value={form.color}
+                  onChange={(color) => handleChange("color", color)}
+                />
+              </Field>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-slate-300 text-sm">Icon</label>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                  {iconChoices.map((icon, i) => {
-                    const IconComponent = iconMap[icon];
-                    return (
-                      <motion.button
-                        key={icon}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.02 }}
-                        whileHover={{ scale: 1.12 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleChange("icon", icon)}
-                        className={`p-2 rounded-md border transition-colors ${
-                          form.icon === icon
-                            ? "bg-white/10 border-cyan-400 shadow-[0_0_12px_rgba(103,232,249,0.25)]"
-                            : "border-white/10 hover:bg-white/10"
-                        }`}
-                      >
-                        <IconComponent className="h-4 w-4 sm:h-5 sm:w-5 text-slate-100" />
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </div>
+              <Field label="Icon">
+                <HabitIconPicker
+                  value={form.icon}
+                  onChange={(icon) => handleChange("icon", icon)}
+                />
+              </Field>
             </motion.div>
 
             {/* Form fields */}
@@ -135,54 +85,60 @@ export default function NewHabitPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="order-1 lg:order-2 flex flex-col gap-4 sm:gap-6 lg:w-2/3"
+              className="order-1 lg:order-2 flex flex-col gap-4 sm:gap-5 lg:w-2/3"
             >
-              <input
-                type="text"
-                placeholder="Habit Name"
-                value={form.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/10 text-slate-200 rounded-md text-lg sm:text-xl"
-              />
+              <Field label="Name" htmlFor="new-habit-name">
+                <TextField
+                  id="new-habit-name"
+                  placeholder="Name your contract"
+                  value={form.name}
+                  onChange={(e) => handleChange("name", e.target.value)}
+                />
+              </Field>
 
-              <textarea
-                rows={2}
-                placeholder="Description (optional)"
-                value={form.description}
-                onChange={(e) => handleChange("description", e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/10 text-slate-300 rounded-md text-sm sm:text-base"
-              />
+              <Field label="Description" htmlFor="new-habit-description">
+                <TextArea
+                  id="new-habit-description"
+                  rows={2}
+                  placeholder="What does this habit involve? (optional)"
+                  value={form.description}
+                  onChange={(e) => handleChange("description", e.target.value)}
+                />
+              </Field>
 
-              <textarea
-                rows={3}
-                placeholder="Intent — Why does this matter to you?"
-                value={form.intent}
-                onChange={(e) => handleChange("intent", e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/10 text-indigo-200 rounded-md text-sm sm:text-base"
-              />
+              <Field label="Intent" htmlFor="new-habit-intent">
+                <TextArea
+                  id="new-habit-intent"
+                  rows={3}
+                  placeholder="Why does this matter to you?"
+                  value={form.intent}
+                  onChange={(e) => handleChange("intent", e.target.value)}
+                />
+              </Field>
 
-              <textarea
-                rows={3}
-                placeholder="Affirmation — What truth shall you repeat?"
-                value={form.affirmation}
-                onChange={(e) => handleChange("affirmation", e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/10 text-emerald-200 rounded-md text-sm sm:text-base"
-              />
+              <Field label="Affirmation" htmlFor="new-habit-affirmation">
+                <TextArea
+                  id="new-habit-affirmation"
+                  rows={3}
+                  placeholder="What truth shall you repeat?"
+                  value={form.affirmation}
+                  onChange={(e) => handleChange("affirmation", e.target.value)}
+                />
+              </Field>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-slate-300 text-sm">Frequency</label>
-                <select
+              <Field label="Frequency" htmlFor="new-habit-frequency">
+                <SelectField
+                  id="new-habit-frequency"
                   value={form.frequency}
                   onChange={(e) => handleChange("frequency", e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/10 text-slate-200 rounded-md text-sm sm:text-base"
                 >
                   {(Object.values(HabitFrequency) as string[]).map((freq) => (
                     <option key={freq} value={freq}>
                       {freq.charAt(0).toUpperCase() + freq.slice(1)}
                     </option>
                   ))}
-                </select>
-              </div>
+                </SelectField>
+              </Field>
 
             </motion.div>
             </div>
@@ -200,21 +156,21 @@ export default function NewHabitPage() {
               </motion.p>
             )}
             <div className="flex gap-3">
-              <motion.button
-                {...tactileSubtle}
+              <FormButton
+                variant="secondary"
                 onClick={() => router.push("/habits")}
-                className="tap-target flex-1 sm:flex-none flex items-center justify-center px-4 sm:px-5 py-2 sm:py-3 border border-white/10 text-slate-300 rounded-md hover:bg-white/10 transition-colors text-sm sm:text-base"
+                className="flex-1 sm:flex-none"
               >
                 Cancel
-              </motion.button>
-              <motion.button
-                {...tactile}
+              </FormButton>
+              <FormButton
+                variant="primary"
                 onClick={handleSubmit}
-                className="tap-target flex-1 sm:flex-none flex items-center justify-center px-4 sm:px-5 py-2 sm:py-3 bg-cyan-400/10 border border-cyan-300 text-cyan-300 rounded-md hover:bg-cyan-400/20 hover:shadow-[0_0_20px_rgba(103,232,249,0.3)] transition-shadow text-sm sm:text-base"
+                className="flex-1 sm:flex-none"
               >
-                <Check className="inline mr-2 w-4 h-4" />
+                <Check className="w-4 h-4" />
                 Forge Contract
-              </motion.button>
+              </FormButton>
             </div>
           </div>
         </GlassPanel>

@@ -7,7 +7,8 @@ import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
 import { apiFetch } from "../hooks/useApi";
 import { Tag, useTags, useInvalidateTags } from "../hooks/useTags";
-import { tactile, tactileSubtle } from "../lib/motion";
+import { tactileSubtle } from "../lib/motion";
+import { TextField, FormButton } from "../components/forms";
 
 const colorOptions = [
   { name: "Astral", value: "cyan" },
@@ -105,21 +106,17 @@ export default function TagsPage() {
 
         {/* Tag creation */}
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-          <input
-            type="text"
-            placeholder="Tag name..."
-            value={newTagName}
-            onChange={(e) => setNewTagName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            className="flex-grow px-3 sm:px-4 py-2 sm:py-3 bg-white/10 text-slate-200 rounded-md border border-white/10 focus-band min-w-[150px] sm:min-w-[200px] text-sm sm:text-base"
-          />
-          <motion.button
-            {...tactile}
-            onClick={handleCreate}
-            className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-slate-300 hover:text-white border border-white/10 rounded-md hover:bg-white/10 hover:shadow-[0_0_18px_rgba(103,232,249,0.18)] transition-shadow"
-          >
+          <div className="flex-grow min-w-[150px] sm:min-w-[200px]">
+            <TextField
+              placeholder="Tag name..."
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            />
+          </div>
+          <FormButton variant="secondary" onClick={handleCreate}>
             + Create
-          </motion.button>
+          </FormButton>
         </div>
 
         {/* Color options */}
@@ -166,10 +163,9 @@ export default function TagsPage() {
                   >
                     {editingId === tag.id ? (
                       <div className="flex flex-col gap-2 w-full">
-                        <input
+                        <TextField
                           value={editedName}
                           onChange={(e) => setEditedName(e.target.value)}
-                          className="w-full px-2 sm:px-3 py-1 sm:py-2 bg-white/10 text-slate-200 rounded-md border border-white/10 text-xs sm:text-sm"
                         />
                         <div className="flex gap-1 sm:gap-2 flex-wrap">
                           {colorOptions.map((c) => (

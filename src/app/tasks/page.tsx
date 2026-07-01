@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
 import TaskCard from "../components/TaskCard";
 import QuickTaskInput from "../components/QuickTaskInput";
 import Spinner from "../components/Spinner";
+import TaskFilters, {
+  DEFAULT_TASK_FILTERS,
+  hasActiveFilters,
+} from "../components/TaskFilters";
 import { useTasks, useInvalidateTasks } from "../hooks/useTasks";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,13 +27,30 @@ export default function TasksPage() {
   const [activeTab, setActiveTab] = useState<
     "active" | "completed" | "archived"
   >("active");
+  const [filters, setFilters] = useState(DEFAULT_TASK_FILTERS);
 
-  const visibleTasks =
+  const tabTasks =
     activeTab === "active"
       ? tasks // Only incomplete, non-archived tasks
       : activeTab === "completed"
       ? completedTasks // Only completed, non-archived tasks
       : archivedTasks; // Only archived tasks
+
+  // Search (title + description) and priority narrow the current tab's list.
+  const visibleTasks = useMemo(() => {
+    const q = filters.search.trim().toLowerCase();
+    return tabTasks.filter((t) => {
+      const matchesPriority =
+        filters.priority === "all" || t.priority === filters.priority;
+      const matchesSearch =
+        !q ||
+        t.title.toLowerCase().includes(q) ||
+        (t.description?.toLowerCase().includes(q) ?? false);
+      return matchesPriority && matchesSearch;
+    });
+  }, [tabTasks, filters]);
+
+  const filtering = hasActiveFilters(filters);
 
 
   return (
@@ -90,6 +111,14 @@ export default function TasksPage() {
             <QuickTaskInput onTaskCreated={fetchTasks} />
           )}
 
+          <TaskFilters filters={filters} onChange={setFilters} />
+          {filtering && (
+            <p className="-mt-2 text-xs text-white/40">
+              {visibleTasks.length}{" "}
+              {visibleTasks.length === 1 ? "match" : "matches"} in {activeTab}
+            </p>
+          )}
+
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
               <Spinner label="Gathering your tasks..." />
@@ -120,10 +149,13 @@ export default function TasksPage() {
                     {visibleTasks.length === 0 && (
                       <div className="col-span-full flex items-center justify-center py-8">
                         <p className="text-white/40 text-sm">
-                          {activeTab === "active" &&
-                            "No active tasks. Create one above!"}
-                          {activeTab === "completed" && "No completed tasks yet."}
-                          {activeTab === "archived" && "No archived tasks."}
+                          {filtering
+                            ? "No tasks match your filters."
+                            : activeTab === "active"
+                            ? "No active tasks. Create one above!"
+                            : activeTab === "completed"
+                            ? "No completed tasks yet."
+                            : "No archived tasks."}
                         </p>
                       </div>
                     )}

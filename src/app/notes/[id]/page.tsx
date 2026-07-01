@@ -7,11 +7,11 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
-import AutoGrowTextarea from "../../components/AutoGrowTextarea";
 import Spinner from "../../components/Spinner";
 import { apiFetch } from "../../hooks/useApi";
 import { useTags } from "../../hooks/useTags";
 import { tactile } from "../../lib/motion";
+import { TextField, TextArea } from "../../components/forms";
 import { Pencil, Trash2, ArrowLeft, Save, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -191,7 +191,7 @@ export default function ViewNotePage() {
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-4">
+            <div className="flex-1 overflow-y-auto app-scroll pr-2 flex flex-col gap-4">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={editing ? "edit" : "view"}
@@ -203,21 +203,22 @@ export default function ViewNotePage() {
                   className="flex flex-col gap-4"
                 >
                   {editing ? (
-                    <input
+                    <TextField
                       value={editedTitle}
                       onChange={(e) => setEditedTitle(e.target.value)}
                       autoFocus
-                      className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-xl sm:text-2xl font-semibold border border-transparent focus-band transition"
+                      className="text-xl sm:text-2xl font-semibold"
                     />
                   ) : (
                     <h3 className="text-slate-100 text-xl sm:text-2xl font-bold">{note?.title}</h3>
                   )}
                   {editing ? (
                     <>
-                      <AutoGrowTextarea
+                      <TextArea
+                        autoGrow
                         value={editedContent}
                         onChange={(e) => setEditedContent(e.target.value)}
-                        className="w-full px-4 py-3 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md text-sm sm:text-base leading-relaxed min-h-[12rem] max-h-[30rem] border border-transparent focus-band transition"
+                        className="min-h-[12rem] max-h-[30rem] leading-relaxed"
                       />
                       <span className="text-xs text-slate-500 tabular-nums">
                         {wordCount} {wordCount === 1 ? "word" : "words"}

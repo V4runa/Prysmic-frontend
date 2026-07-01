@@ -5,6 +5,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { tactile } from "../lib/motion";
 import { moodColor } from "../lib/moodColors";
+import { TextArea, FormButton } from "./forms";
 
 interface MoodReflectionProps {
   color?: string;
@@ -81,15 +82,13 @@ export default function MoodReflection({
           Just a few words about your day — or skip if you’d prefer silence.
         </p>
 
-        <textarea
+        <TextArea
           maxLength={180}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Write your reflection here..."
-          className="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 placeholder-white/40 
-                     px-4 py-3 sm:px-5 sm:py-4 text-sm sm:text-base focus:outline-none 
-                     focus:ring-2 focus:ring-cyan-400/40 backdrop-blur-md transition"
           rows={3}
+          className="text-left"
         />
 
         <div className="flex gap-4 mt-2">
@@ -97,23 +96,18 @@ export default function MoodReflection({
             {...tactile}
             onClick={handleSubmit}
             disabled={submitting}
-            className={`px-6 py-2 rounded-md font-medium text-white border transition-colors ${tint.btn}`}
+            className={`tap-target px-6 py-2.5 rounded-md font-medium text-sm text-white border transition-colors disabled:opacity-60 ${tint.btn}`}
           >
             {submitting ? "Saving..." : "Submit"}
           </motion.button>
 
-          <motion.button
-            {...tactile}
-            onClick={handleSkip}
-            disabled={submitting}
-            className="px-6 py-2 rounded-md font-medium text-slate-300 border border-white/10 hover:bg-white/10 transition-colors"
-          >
+          <FormButton variant="secondary" onClick={handleSkip} disabled={submitting}>
             Skip
-          </motion.button>
+          </FormButton>
         </div>
 
         {error && (
-          <p className="text-sm text-red-400" role="alert">
+          <p className="text-sm text-rose-400" role="alert">
             {error}
           </p>
         )}

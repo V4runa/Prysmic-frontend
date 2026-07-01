@@ -17,28 +17,16 @@ import {
   Flame,
   Target,
 } from "lucide-react";
-import {
-  habitIconMap as iconMap,
-  habitIconChoices as iconChoices,
-  IconKey,
-} from "../../components/habitIcons";
+import { habitIconMap as iconMap, IconKey } from "../../components/habitIcons";
 import { getHabitColor } from "../../lib/habitColors";
 import { localToday } from "../../lib/date";
 import { tactile, tactileSubtle } from "../../lib/motion";
 import Sparkles from "../../components/Sparkles";
 import Spinner from "../../components/Spinner";
 import { HabitFrequency } from "../../enums/habit-frequency.enum";
-
-const colorChoices = ["cyan", "violet", "rose", "amber", "emerald", "blue"] as const;
-
-const colorClassMap: Record<string, string> = {
-  cyan: "bg-cyan-400/50 border-cyan-300 ring-cyan-500",
-  violet: "bg-violet-400/50 border-violet-300 ring-violet-500",
-  rose: "bg-rose-400/50 border-rose-300 ring-rose-500",
-  amber: "bg-amber-400/50 border-amber-300 ring-amber-500",
-  emerald: "bg-emerald-400/50 border-emerald-300 ring-emerald-500",
-  blue: "bg-blue-400/50 border-blue-300 ring-blue-500",
-};
+import { Field, TextField, TextArea, SelectField, FormButton } from "../../components/forms";
+import HabitColorPicker from "../../components/HabitColorPicker";
+import HabitIconPicker from "../../components/HabitIconPicker";
 
 const bgPanelMap: Record<string, string> = {
   cyan: "bg-cyan-500/5",
@@ -140,12 +128,26 @@ export default function HabitDetailPage() {
   };
 
   const saveEdits = async () => {
+    setError("");
+    // The API rejects unknown fields (forbidNonWhitelisted), so send only the
+    // editable ones — never the computed/read-only fields carried on `form`
+    // (id, checks, streaks, checkedToday, createdAt, userId).
+    const payload = {
+      name: form.name,
+      description: form.description,
+      intent: form.intent,
+      affirmation: form.affirmation,
+      color: form.color,
+      icon: form.icon,
+      frequency: form.frequency,
+    };
     try {
       const updated = await apiFetch<Habit>(`/habits/${id}`, {
         method: "PUT",
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       setHabit(updated);
+      setForm(updated);
       setEdit(false);
       queryClient.invalidateQueries({ queryKey: ["habits"] });
     } catch {
@@ -208,92 +210,67 @@ export default function HabitDetailPage() {
                   transition={{ duration: 0.3 }}
                   className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1"
                 >
-                  <div className="flex flex-col gap-4 sm:gap-6">
-                  <input
-                    value={form.name || ""}
-                    onChange={(e) => handleChange("name", e.target.value)}
-                    className="w-full px-4 py-3 bg-white/10 text-slate-100 rounded-md text-lg sm:text-xl"
-                  />
-                  <textarea
-                    value={form.description || ""}
-                    onChange={(e) => handleChange("description", e.target.value)}
-                    className="w-full px-4 py-3 bg-white/10 text-slate-300 rounded-md"
-                    rows={2}
-                  />
-                  <textarea
-                    value={form.intent || ""}
-                    onChange={(e) => handleChange("intent", e.target.value)}
-                    className="w-full px-4 py-3 bg-white/10 text-indigo-300 rounded-md"
-                    rows={2}
-                  />
-                  <textarea
-                    value={form.affirmation || ""}
-                    onChange={(e) => handleChange("affirmation", e.target.value)}
-                    className="w-full px-4 py-3 bg-white/10 text-emerald-300 rounded-md"
-                    rows={2}
-                  />
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-slate-300 text-sm">Frequency</label>
-                    <select
-                      value={form.frequency || HabitFrequency.DAILY}
-                      onChange={(e) => handleChange("frequency", e.target.value)}
-                      className="w-full px-4 py-3 bg-white/10 border border-white/10 text-slate-200 rounded-md text-sm sm:text-base"
-                    >
-                      {(Object.values(HabitFrequency) as string[]).map((freq) => (
-                        <option key={freq} value={freq}>
-                          {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-slate-300 text-sm">Color</label>
-                    <div className="flex flex-wrap gap-3">
-                      {colorChoices.map((c, i) => (
-                        <motion.button
-                          key={c}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: i * 0.05 }}
-                          onClick={() => handleChange("color", c)}
-                          className={clsx(
-                            "w-8 h-8 rounded-full transition",
-                            form.color === c
-                              ? `ring-2 ${colorClassMap[c]}`
-                              : "border border-white/10 bg-white/10 hover:bg-white/20"
-                          )}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-slate-300 text-sm">Icon</label>
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                      {iconChoices.map((icon, i) => {
-                        const Icon = iconMap[icon as IconKey];
-                        return (
-                          <motion.button
-                            key={icon}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: i * 0.02 }}
-                            onClick={() => handleChange("icon", icon)}
-                            className={clsx(
-                              "p-2 rounded-md border transition",
-                              form.icon === icon
-                                ? "bg-white/10 border-cyan-400"
-                                : "border-white/10 hover:bg-white/10"
-                            )}
-                          >
-                            <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-slate-100" />
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <div className="flex flex-col gap-4 sm:gap-5">
+                    <Field label="Name" htmlFor="habit-name">
+                      <TextField
+                        id="habit-name"
+                        value={form.name || ""}
+                        onChange={(e) => handleChange("name", e.target.value)}
+                        placeholder="Name your contract"
+                      />
+                    </Field>
+                    <Field label="Description" htmlFor="habit-description">
+                      <TextArea
+                        id="habit-description"
+                        rows={2}
+                        value={form.description || ""}
+                        onChange={(e) => handleChange("description", e.target.value)}
+                        placeholder="What does this habit involve?"
+                      />
+                    </Field>
+                    <Field label="Intent" htmlFor="habit-intent">
+                      <TextArea
+                        id="habit-intent"
+                        rows={2}
+                        value={form.intent || ""}
+                        onChange={(e) => handleChange("intent", e.target.value)}
+                        placeholder="Why does this matter to you?"
+                      />
+                    </Field>
+                    <Field label="Affirmation" htmlFor="habit-affirmation">
+                      <TextArea
+                        id="habit-affirmation"
+                        rows={2}
+                        value={form.affirmation || ""}
+                        onChange={(e) => handleChange("affirmation", e.target.value)}
+                        placeholder="A truth to repeat"
+                      />
+                    </Field>
+                    <Field label="Frequency" htmlFor="habit-frequency">
+                      <SelectField
+                        id="habit-frequency"
+                        value={form.frequency || HabitFrequency.DAILY}
+                        onChange={(e) => handleChange("frequency", e.target.value)}
+                      >
+                        {(Object.values(HabitFrequency) as string[]).map((freq) => (
+                          <option key={freq} value={freq}>
+                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                          </option>
+                        ))}
+                      </SelectField>
+                    </Field>
+                    <Field label="Colour">
+                      <HabitColorPicker
+                        value={form.color}
+                        onChange={(color) => handleChange("color", color)}
+                      />
+                    </Field>
+                    <Field label="Icon">
+                      <HabitIconPicker
+                        value={form.icon}
+                        onChange={(icon) => handleChange("icon", icon)}
+                      />
+                    </Field>
                   </div>
                 </motion.div>
               ) : (
@@ -414,36 +391,21 @@ export default function HabitDetailPage() {
               {error && <p className="text-red-400 text-sm">{error}</p>}
               {edit ? (
                 <div className="flex gap-3">
-                  <button
-                    onClick={saveEdits}
-                    className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-300/20 rounded-md"
-                  >
-                    <Save className="h-5 w-5 text-cyan-300" />
-                    <span className="sm:hidden text-cyan-300 text-sm font-medium">Save</span>
-                  </button>
-                  <button
-                    onClick={() => setEdit(false)}
-                    className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 border border-white/10 hover:bg-white/10 rounded-md"
-                  >
-                    <X className="h-5 w-5 text-slate-300" />
-                    <span className="sm:hidden text-slate-300 text-sm font-medium">Cancel</span>
-                  </button>
+                  <FormButton variant="primary" onClick={saveEdits} className="flex-1 sm:flex-none">
+                    <Save className="h-4 w-4" /> Save
+                  </FormButton>
+                  <FormButton variant="secondary" onClick={() => setEdit(false)} className="flex-1 sm:flex-none">
+                    <X className="h-4 w-4" /> Cancel
+                  </FormButton>
                 </div>
               ) : (
                 <div className="flex gap-3">
-                  <button
-                    onClick={() => setEdit(true)}
-                    className="tap-target flex items-center justify-center gap-2 px-4 sm:px-3 py-2 border border-cyan-300/20 hover:bg-cyan-400/10 rounded-md"
-                  >
-                    <PencilIcon className="h-5 w-5 text-cyan-300" />
-                    <span className="sm:hidden text-cyan-300 text-sm font-medium">Edit</span>
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    className="tap-target flex items-center justify-center px-4 py-2 text-red-300 text-sm font-medium border border-red-300/20 hover:bg-red-400/10 rounded-md"
-                  >
+                  <FormButton variant="primary" onClick={() => setEdit(true)} className="flex-1 sm:flex-none">
+                    <PencilIcon className="h-4 w-4" /> Edit
+                  </FormButton>
+                  <FormButton variant="danger" onClick={handleDelete} className="flex-1 sm:flex-none">
                     Delete
-                  </button>
+                  </FormButton>
                 </div>
               )}
             </div>

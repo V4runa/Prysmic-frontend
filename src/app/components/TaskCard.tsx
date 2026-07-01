@@ -532,7 +532,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
                 onClick={() => setShowEdit(false)}
               >
                 <motion.div
-                  className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl p-6 shadow-2xl shadow-black/50"
+                  className="w-full max-w-md max-h-[88dvh] overflow-y-auto app-scroll rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl p-6 shadow-2xl shadow-black/50"
                   initial={{ opacity: 0, scale: 0.96, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.96, y: 8 }}

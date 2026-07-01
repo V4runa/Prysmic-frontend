@@ -1,89 +1,86 @@
 "use client";
 
+import { Search, X } from "lucide-react";
 import { TaskPriority } from "../tasks/types/task";
-import { Search } from "lucide-react";
+import { TextField, SelectField } from "./forms";
 
-interface TaskFiltersProps {
-  filters: {
-    complete?: boolean;
-    priority?: TaskPriority;
-    search: string;
-  };
-  setFilters: (filters: TaskFiltersProps["filters"]) => void;
+export interface TaskFilterState {
+  search: string;
+  // "all" = no priority constraint. Status is intentionally omitted — the
+  // Active/Completed/Archived tabs already own that axis.
+  priority: TaskPriority | "all";
 }
 
-const priorityOptions = [
-  { label: "Low", value: TaskPriority.LOW },
-  { label: "Medium", value: TaskPriority.MEDIUM },
-  { label: "High", value: TaskPriority.HIGH },
+export const DEFAULT_TASK_FILTERS: TaskFilterState = {
+  search: "",
+  priority: "all",
+};
+
+export const hasActiveFilters = (f: TaskFilterState) =>
+  f.search.trim() !== "" || f.priority !== "all";
+
+const priorityOptions: { label: string; value: TaskPriority | "all" }[] = [
+  { label: "All priorities", value: "all" },
+  { label: "High priority", value: TaskPriority.HIGH },
+  { label: "Medium priority", value: TaskPriority.MEDIUM },
+  { label: "Low priority", value: TaskPriority.LOW },
 ];
 
-export default function TaskFilters({ filters, setFilters }: TaskFiltersProps) {
+interface TaskFiltersProps {
+  filters: TaskFilterState;
+  onChange: (filters: TaskFilterState) => void;
+}
+
+export default function TaskFilters({ filters, onChange }: TaskFiltersProps) {
+  const active = hasActiveFilters(filters);
+
   return (
-    <div className="grid sm:grid-cols-3 gap-4 mb-6 w-full">
-      {/* 🔍 Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 h-4 w-4" />
-        <input
-          type="text"
-          placeholder="Search tasks..."
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      {/* Search — grows to fill available width */}
+      <div className="relative flex-1 min-w-0">
+        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+        <TextField
           value={filters.search}
-          onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-          className="w-full pl-9 pr-4 py-2 bg-white/10 border border-white/20 text-white placeholder-white/40 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          onChange={(e) => onChange({ ...filters, search: e.target.value })}
+          placeholder="Search by title or description..."
+          aria-label="Search tasks"
+          className="pl-9"
         />
       </div>
 
-      {/* 🚩 Priority */}
-      <div className="flex flex-col">
-        <label className="text-sm text-white/60 mb-1">Priority</label>
-        <select
-          value={filters.priority ?? ""}
-          onChange={(e) =>
-            setFilters({
-              ...filters,
-              priority:
-                e.target.value === ""
-                  ? undefined
-                  : (Number(e.target.value) as TaskPriority),
-            })
-          }
-          className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        >
-          <option value="">All Priorities</option>
-          {priorityOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="flex items-center gap-3">
+        <div className="w-full sm:w-48">
+          <SelectField
+            value={String(filters.priority)}
+            onChange={(e) =>
+              onChange({
+                ...filters,
+                priority:
+                  e.target.value === "all"
+                    ? "all"
+                    : (Number(e.target.value) as TaskPriority),
+              })
+            }
+            aria-label="Filter by priority"
+          >
+            {priorityOptions.map((o) => (
+              <option key={String(o.value)} value={String(o.value)}>
+                {o.label}
+              </option>
+            ))}
+          </SelectField>
+        </div>
 
-      {/* ✅ Status */}
-      <div className="flex flex-col">
-        <label className="text-sm text-white/60 mb-1">Status</label>
-        <select
-          value={
-            filters.complete === undefined
-              ? ""
-              : filters.complete
-              ? "true"
-              : "false"
-          }
-          onChange={(e) =>
-            setFilters({
-              ...filters,
-              complete:
-                e.target.value === ""
-                  ? undefined
-                  : e.target.value === "true",
-            })
-          }
-          className="w-full bg-white/10 border border-white/20 text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        >
-          <option value="">All Statuses</option>
-          <option value="false">Incomplete</option>
-          <option value="true">Complete</option>
-        </select>
+        {active && (
+          <button
+            type="button"
+            onClick={() => onChange(DEFAULT_TASK_FILTERS)}
+            aria-label="Clear filters"
+            className="tap-target shrink-0 flex items-center gap-1 rounded-md px-2.5 py-2 text-xs text-slate-300 border border-white/10 hover:bg-white/10 transition"
+          >
+            <X className="h-3.5 w-3.5" /> Clear
+          </button>
+        )}
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Task, TaskPriority } from "../tasks/types/task";
 import { apiFetch } from "../hooks/useApi";
-import clsx from "clsx";
+import { Field, TextField, TextArea, SelectField, FormButton } from "./forms";
 
 interface TaskFormProps {
   task?: Task; // if present = edit mode
@@ -63,64 +63,57 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div>
-        <label className="text-white block mb-1 text-sm">Title</label>
-        <input
-          type="text"
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Field label="Title" htmlFor="task-title">
+        <TextField
+          id="task-title"
           value={title}
           required
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-md px-4 py-2 bg-white/10 text-white placeholder-white/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           placeholder="e.g., Fix landing page bug"
         />
-      </div>
+      </Field>
 
-      <div>
-        <label className="text-white block mb-1 text-sm">Description</label>
-        <textarea
+      <Field label="Description" htmlFor="task-description">
+        <TextArea
+          id="task-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={4}
-          className="w-full rounded-md px-4 py-2 bg-white/10 text-white placeholder-white/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           placeholder="Optional notes or extra context..."
         />
-      </div>
+      </Field>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="text-white block mb-1 text-sm">Priority</label>
-          <select
+        <Field label="Priority" htmlFor="task-priority">
+          <SelectField
+            id="task-priority"
             value={priority}
             onChange={(e) => setPriority(Number(e.target.value) as TaskPriority)}
-            className="w-full rounded-md px-4 py-2 bg-white/10 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           >
             <option value={TaskPriority.LOW}>Low</option>
             <option value={TaskPriority.MEDIUM}>Medium</option>
             <option value={TaskPriority.HIGH}>High</option>
-          </select>
-        </div>
+          </SelectField>
+        </Field>
 
-        <div>
-          <label className="text-white block mb-1 text-sm">Due Date</label>
-          <input
+        <Field label="Due Date" htmlFor="task-due">
+          <TextField
+            id="task-due"
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="w-full rounded-md px-4 py-2 bg-white/10 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
-        </div>
+        </Field>
       </div>
 
-      {error && <p className="text-red-400 text-sm">{error}</p>}
+      {error && <p className="text-rose-400 text-sm">{error}</p>}
 
-      <button
+      <FormButton
         type="submit"
+        variant="primary"
         disabled={loading}
-        className={clsx(
-          "mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-6 rounded-md transition duration-200",
-          loading && "opacity-60"
-        )}
+        className="w-full sm:w-auto sm:self-start"
       >
         {loading
           ? task
@@ -129,7 +122,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           : task
           ? "Save Changes"
           : "Create Task"}
-      </button>
+      </FormButton>
     </form>
   );
 }

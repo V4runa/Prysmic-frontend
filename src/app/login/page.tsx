@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import GlassPanel from "../components/GlassPanel";
 import { apiFetch } from "../hooks/useApi";
-import PageTransition from "../components/PageTransition"; // ✅ Add this import
+import PageTransition from "../components/PageTransition";
+import { TextField, FormButton } from "../components/forms";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,30 +46,27 @@ export default function LoginPage() {
           </h2>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <input
+            <TextField
               type="text"
               placeholder="Username or Email"
+              autoComplete="username"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              className="w-full px-4 py-2 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md"
             />
-            <input
+            <TextField
               type="password"
               placeholder="Password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 bg-white/10 text-slate-200 placeholder-slate-400/40 rounded-md"
             />
-            <button
-              type="submit"
-              className="tap-target w-full py-2.5 mt-2 bg-white/5 hover:bg-cyan-200/10 text-slate-100 rounded-md border border-white/10"
-            >
+            <FormButton type="submit" variant="primary" className="w-full mt-2">
               Log In
-            </button>
+            </FormButton>
           </form>
 
           {error && (
-            <p className="text-red-400 text-sm mt-3 text-center">{error}</p>
+            <p className="text-rose-400 text-sm mt-3 text-center">{error}</p>
           )}
 
           <p className="text-slate-400 text-sm mt-4 text-center">

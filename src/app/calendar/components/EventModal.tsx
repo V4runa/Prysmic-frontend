@@ -21,6 +21,7 @@ import {
   getEventColor,
 } from "../../lib/calendarColors";
 import { tactile } from "../../lib/motion";
+import { Field, TextField, TextArea, SelectField, FormButton } from "../../components/forms";
 
 interface EventModalProps {
   open: boolean;
@@ -43,9 +44,6 @@ const RECURRENCE_LABELS: Record<CalendarRecurrence, string> = {
   weekly: "Weekly",
   monthly: "Monthly",
 };
-
-const fieldClass =
-  "w-full rounded-md px-3 py-2 bg-white/10 text-slate-100 placeholder-white/40 border border-white/10 focus-band transition text-sm";
 
 export default function EventModal({
   open,
@@ -250,12 +248,12 @@ export default function EventModal({
               <p className="text-slate-400 text-sm py-8 text-center">Loading…</p>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <input
+                <TextField
                   autoFocus
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Event title"
-                  className={clsx(fieldClass, "text-base")}
+                  className="text-base"
                 />
 
                 {/* All-day toggle */}
@@ -284,60 +282,64 @@ export default function EventModal({
 
                 {/* Dates */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-slate-400 mb-1 block">
-                      {allDay ? "Start" : "Start date"}
-                    </label>
-                    <input
+                  <Field label={allDay ? "Start" : "Start date"} htmlFor="event-start">
+                    <TextField
+                      id="event-start"
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className={clsx(fieldClass, "[color-scheme:dark]")}
                     />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 mb-1 block">
-                      End {allDay ? "" : "date"} <span className="text-slate-500">(optional)</span>
-                    </label>
-                    <input
+                  </Field>
+                  <Field
+                    htmlFor="event-end"
+                    label={
+                      <>
+                        End {allDay ? "" : "date"}{" "}
+                        <span className="text-slate-500">(optional)</span>
+                      </>
+                    }
+                  >
+                    <TextField
+                      id="event-end"
                       type="date"
                       value={endDate}
                       min={startDate || undefined}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className={clsx(fieldClass, "[color-scheme:dark]")}
                     />
-                  </div>
+                  </Field>
                 </div>
 
                 {/* Times */}
                 {!allDay && (
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-slate-400 mb-1 block">Start time</label>
-                      <input
+                    <Field label="Start time" htmlFor="event-start-time">
+                      <TextField
+                        id="event-start-time"
                         type="time"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className={clsx(fieldClass, "[color-scheme:dark]")}
                       />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400 mb-1 block">
-                        End time <span className="text-slate-500">(optional)</span>
-                      </label>
-                      <input
+                    </Field>
+                    <Field
+                      htmlFor="event-end-time"
+                      label={
+                        <>
+                          End time <span className="text-slate-500">(optional)</span>
+                        </>
+                      }
+                    >
+                      <TextField
+                        id="event-end-time"
                         type="time"
                         value={endTime}
                         onChange={(e) => setEndTime(e.target.value)}
-                        className={clsx(fieldClass, "[color-scheme:dark]")}
                       />
-                    </div>
+                    </Field>
                   </div>
                 )}
 
-                {/* Color */}
-                <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block">Color</label>
+                {/* Colour */}
+                <Field label="Colour">
                   <div className="flex flex-wrap gap-2.5">
                     {EVENT_COLOR_TOKENS.map((token) => {
                       const c = getEventColor(token);
@@ -349,7 +351,7 @@ export default function EventModal({
                           onClick={() => setColor(token)}
                           aria-label={token}
                           className={clsx(
-                            "w-7 h-7 rounded-full transition",
+                            "tap-target h-9 w-9 rounded-full transition",
                             c.swatch,
                             color === token
                               ? "ring-2 ring-white/80 ring-offset-2 ring-offset-zinc-900"
@@ -359,18 +361,17 @@ export default function EventModal({
                       );
                     })}
                   </div>
-                </div>
+                </Field>
 
                 {/* Recurrence */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-slate-400 mb-1 block">Repeat</label>
-                    <select
+                  <Field label="Repeat" htmlFor="event-repeat">
+                    <SelectField
+                      id="event-repeat"
                       value={recurrence}
                       onChange={(e) =>
                         setRecurrence(e.target.value as CalendarRecurrence)
                       }
-                      className={fieldClass}
                     >
                       {(Object.keys(RECURRENCE_LABELS) as CalendarRecurrence[]).map(
                         (r) => (
@@ -379,63 +380,67 @@ export default function EventModal({
                           </option>
                         )
                       )}
-                    </select>
-                  </div>
+                    </SelectField>
+                  </Field>
                   {recurrence !== "none" && (
-                    <div>
-                      <label className="text-xs text-slate-400 mb-1 block">
-                        Until <span className="text-slate-500">(optional)</span>
-                      </label>
-                      <input
+                    <Field
+                      htmlFor="event-repeat-until"
+                      label={
+                        <>
+                          Until <span className="text-slate-500">(optional)</span>
+                        </>
+                      }
+                    >
+                      <TextField
+                        id="event-repeat-until"
                         type="date"
                         value={recurrenceEndDate}
                         min={startDate || undefined}
                         onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                        className={clsx(fieldClass, "[color-scheme:dark]")}
                       />
-                    </div>
+                    </Field>
                   )}
                 </div>
 
                 {/* Location */}
-                <input
+                <TextField
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Location (optional)"
-                  className={fieldClass}
                 />
 
                 {/* Link */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-slate-400 mb-1 flex items-center gap-1">
-                      <Link2 className="h-3.5 w-3.5" /> Link to
-                    </label>
-                    <select
+                  <Field
+                    htmlFor="event-link-type"
+                    label={
+                      <span className="flex items-center gap-1">
+                        <Link2 className="h-3.5 w-3.5" /> Link to
+                      </span>
+                    }
+                  >
+                    <SelectField
+                      id="event-link-type"
                       value={linkedType}
                       onChange={(e) => {
                         setLinkedType(e.target.value as CalendarLinkType | "");
                         setLinkedId("");
                       }}
-                      className={fieldClass}
                     >
                       <option value="">Nothing</option>
                       <option value="note">Note</option>
                       <option value="task">Task</option>
                       <option value="habit">Habit</option>
-                    </select>
-                  </div>
+                    </SelectField>
+                  </Field>
                   {linkedType && (
-                    <div>
-                      <label className="text-xs text-slate-400 mb-1 block">
-                        Which {linkedType}
-                      </label>
-                      <select
+                    <Field label={`Which ${linkedType}`} htmlFor="event-link-id">
+                      <SelectField
+                        id="event-link-id"
                         value={linkedId}
                         onChange={(e) =>
                           setLinkedId(e.target.value ? Number(e.target.value) : "")
                         }
-                        className={fieldClass}
                       >
                         <option value="">Select…</option>
                         {linkOptions.map((o) => (
@@ -443,42 +448,40 @@ export default function EventModal({
                             {o.title}
                           </option>
                         ))}
-                      </select>
-                    </div>
+                      </SelectField>
+                    </Field>
                   )}
                 </div>
 
                 {/* Description */}
-                <textarea
+                <TextArea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
                   placeholder="Notes (optional)"
-                  className={fieldClass}
                 />
 
                 {error && <p className="text-rose-400 text-sm">{error}</p>}
 
                 <div className="flex items-center gap-3 pt-1">
-                  <motion.button
-                    {...tactile}
+                  <FormButton
+                    variant="primary"
                     type="submit"
                     disabled={loading}
-                    className="tap-target flex-1 flex items-center justify-center px-4 py-2.5 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-300/30 text-cyan-200 rounded-md font-medium text-sm disabled:opacity-50"
+                    className="flex-1"
                   >
                     {loading ? "Saving…" : isEdit ? "Save changes" : "Create event"}
-                  </motion.button>
+                  </FormButton>
                   {isEdit && (
-                    <motion.button
-                      {...tactile}
+                    <FormButton
+                      variant="danger"
                       type="button"
                       onClick={handleDelete}
                       disabled={loading}
                       aria-label="Delete event"
-                      className="tap-target flex items-center justify-center px-3 py-2.5 border border-rose-400/30 text-rose-300 hover:bg-rose-500/10 rounded-md disabled:opacity-50"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </motion.button>
+                    </FormButton>
                   )}
                 </div>
               </form>

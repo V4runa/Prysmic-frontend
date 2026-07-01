@@ -7,6 +7,7 @@ import { TaskPriority } from "../tasks/types/task";
 import { ChevronDown, ChevronUp, Plus, Check } from "lucide-react";
 import { tactile } from "../lib/motion";
 import clsx from "clsx";
+import { Field, TextField, TextArea, SelectField } from "./forms";
 
 interface QuickTaskInputProps {
   onTaskCreated?: () => void;
@@ -132,14 +133,13 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
     >
       {/* Title row — inline actions on desktop, stacked compose on mobile */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <input
+        <TextField
           ref={titleRef}
-          type="text"
           placeholder="Add a new task..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="w-full sm:flex-1 bg-white/10 border border-white/20 text-white placeholder-white/40 px-4 py-2 rounded-md focus-band transition"
+          className="sm:flex-1"
         />
 
         <div className="hidden sm:flex items-center gap-3">
@@ -158,42 +158,41 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-white/70 mb-1 block">Priority</label>
-                <select
-                  value={priority}
-                  onChange={(e) =>
-                    setPriority(Number(e.target.value) as TaskPriority)
-                  }
-                  className="w-full bg-[#13161a] text-slate-100 border border-white/20 px-4 py-2 rounded-md focus-band transition"
-                >
-                  <option value={TaskPriority.LOW} className="bg-[#13161a] text-slate-100">Low</option>
-                  <option value={TaskPriority.MEDIUM} className="bg-[#13161a] text-slate-100">Medium</option>
-                  <option value={TaskPriority.HIGH} className="bg-[#13161a] text-slate-100">High</option>
-                </select>
+            <div className="flex flex-col gap-4 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Priority" htmlFor="quick-priority">
+                  <SelectField
+                    id="quick-priority"
+                    value={priority}
+                    onChange={(e) =>
+                      setPriority(Number(e.target.value) as TaskPriority)
+                    }
+                  >
+                    <option value={TaskPriority.LOW}>Low</option>
+                    <option value={TaskPriority.MEDIUM}>Medium</option>
+                    <option value={TaskPriority.HIGH}>High</option>
+                  </SelectField>
+                </Field>
+
+                <Field label="Due Date" htmlFor="quick-due">
+                  <TextField
+                    id="quick-due"
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                  />
+                </Field>
               </div>
 
-              <div>
-                <label className="text-sm text-white/70 mb-1 block">Due Date</label>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full bg-white/10 text-white border border-white/20 px-4 py-2 rounded-md focus-band transition [color-scheme:dark]"
+              <Field label="Description" htmlFor="quick-description">
+                <TextArea
+                  id="quick-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Optional task details..."
                 />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="text-sm text-white/70 mb-1 block">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="Optional task details..."
-                className="w-full bg-white/10 text-white border border-white/20 px-4 py-2 rounded-md focus-band transition"
-              />
+              </Field>
             </div>
           </motion.div>
         )}
