@@ -17,8 +17,10 @@ import {
 import AttachmentZone, {
   AttachmentItemView,
 } from "../../components/AttachmentZone";
+import RichTextEditor from "../../components/RichTextEditor";
+import { noteHtmlToText } from "../../lib/noteContent";
 import { motion, AnimatePresence } from "framer-motion";
-import { TextField, TextArea, FormButton } from "../../components/forms";
+import { TextField, FormButton } from "../../components/forms";
 
 interface StagedFile {
   id: string;
@@ -55,7 +57,8 @@ export default function CreateNotePage() {
     []
   );
 
-  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+  const contentText = noteHtmlToText(content);
+  const wordCount = contentText ? contentText.split(/\s+/).length : 0;
 
   const attachmentItems: AttachmentItemView[] = staged.map((s) => ({
     key: s.id,
@@ -170,12 +173,11 @@ export default function CreateNotePage() {
                 className="text-lg sm:text-xl"
               />
 
-              <TextArea
-                autoGrow
+              <RichTextEditor
+                editable
+                content={content}
+                onChange={setContent}
                 placeholder="Let it flow onto the pond..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[14rem] max-h-[30rem] leading-relaxed"
               />
 
               <AttachmentZone

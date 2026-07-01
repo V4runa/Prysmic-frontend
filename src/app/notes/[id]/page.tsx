@@ -18,9 +18,10 @@ import {
 import AttachmentZone, {
   AttachmentItemView,
 } from "../../components/AttachmentZone";
-import MarkdownContent from "../../components/MarkdownContent";
+import RichTextEditor from "../../components/RichTextEditor";
+import { noteHtmlToText } from "../../lib/noteContent";
 import { tactile } from "../../lib/motion";
-import { TextField, TextArea } from "../../components/forms";
+import { TextField } from "../../components/forms";
 import { Pencil, Trash2, ArrowLeft, Save, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -173,9 +174,8 @@ export default function ViewNotePage() {
 
   const attachmentsEditable = editing || attachmentItems.length > 0;
 
-  const wordCount = editedContent.trim()
-    ? editedContent.trim().split(/\s+/).length
-    : 0;
+  const editedText = noteHtmlToText(editedContent);
+  const wordCount = editedText ? editedText.split(/\s+/).length : 0;
 
   const handleEditorKeyDown = (e: React.KeyboardEvent) => {
     if (editing && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
@@ -253,21 +253,22 @@ export default function ViewNotePage() {
                   )}
                   {editing ? (
                     <>
-                      <TextArea
-                        autoGrow
-                        value={editedContent}
-                        onChange={(e) => setEditedContent(e.target.value)}
-                        className="min-h-[12rem] max-h-[30rem] leading-relaxed"
+                      <RichTextEditor
+                        editable
+                        content={editedContent}
+                        onChange={setEditedContent}
+                        autoFocus
+                        placeholder="Let it flow onto the pond..."
                       />
                       <span className="text-xs text-slate-500 tabular-nums">
                         {wordCount} {wordCount === 1 ? "word" : "words"}
                         <span className="hidden sm:inline text-slate-600">
-                          {"  ·  "}Markdown supported{"  ·  "}⌘/Ctrl + S to save
+                          {"  ·  "}⌘/Ctrl + S to save
                         </span>
                       </span>
                     </>
                   ) : (
-                    <MarkdownContent content={note?.content ?? ""} />
+                    <RichTextEditor content={note?.content ?? ""} />
                   )}
                 </motion.div>
               </AnimatePresence>

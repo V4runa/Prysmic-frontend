@@ -13,6 +13,7 @@ import { tactile } from "../lib/motion";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tag, Paperclip } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { noteHtmlToText } from "../lib/noteContent";
 
 interface Note {
   id: number;
@@ -321,7 +322,7 @@ export default function NotesOverviewPage() {
                             {note.title}
                           </h3>
                           <p className="text-slate-400 text-sm leading-relaxed mb-3 sm:mb-5 overflow-hidden line-clamp-4 sm:line-clamp-5">
-                            {note.content.slice(0, 200)}...
+                            {noteHtmlToText(note.content).slice(0, 200)}
                           </p>
                         </div>
                         {note.tags && note.tags.length > 0 && (
