@@ -134,7 +134,7 @@ export default function DayAgenda({
                   {...tactileRow}
                   onClick={() => onOpenEvent(ev.id)}
                   className={clsx(
-                    "text-left flex items-start gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110",
+                    "text-left flex items-start gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110 hover:shadow-lg hover:shadow-black/25",
                     c.chip
                   )}
                 >
@@ -178,7 +178,7 @@ export default function DayAgenda({
                 {...tactileRow}
                 onClick={() => router.push("/tasks")}
                 className={clsx(
-                  "text-left flex items-center gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110",
+                  "text-left flex items-center gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110 hover:shadow-lg hover:shadow-black/25",
                   SOURCE_ACCENT.task.chip,
                   t.isComplete && "opacity-50"
                 )}
@@ -214,7 +214,7 @@ export default function DayAgenda({
                   onClick={() => handleToggleHabit(h)}
                   disabled={pendingHabit === h.id}
                   className={clsx(
-                    "text-left flex items-center gap-2.5 rounded-lg border px-3 py-2 transition disabled:opacity-60",
+                    "text-left flex items-center gap-2.5 rounded-lg border px-3 py-2 transition disabled:opacity-60 hover:shadow-lg hover:shadow-black/25",
                     h.checked
                       ? "bg-amber-500/15 border-amber-400/40"
                       : "bg-white/5 border-white/10 hover:bg-white/10"
@@ -267,7 +267,7 @@ export default function DayAgenda({
                   key={`mood-${m.id}`}
                   {...tactileRow}
                   onClick={() => router.push("/moods")}
-                  className="text-left flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10 transition"
+                  className="text-left flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10 transition hover:shadow-lg hover:shadow-black/25"
                 >
                   <span className="text-lg leading-none">{v.emoji}</span>
                   <span className={clsx("text-sm", v.classes.label)}>{v.label}</span>
@@ -286,7 +286,7 @@ export default function DayAgenda({
                 key={`note-${n.id}`}
                 {...tactileRow}
                 onClick={() => router.push(`/notes/${n.id}`)}
-                className="text-left flex items-center gap-2.5 rounded-lg border border-violet-400/20 bg-violet-500/5 px-3 py-2 hover:bg-violet-500/10 transition"
+                className="text-left flex items-center gap-2.5 rounded-lg border border-violet-400/20 bg-violet-500/5 px-3 py-2 hover:bg-violet-500/10 transition hover:shadow-lg hover:shadow-black/25"
               >
                 <StickyNote className="h-4 w-4 shrink-0 text-violet-300" />
                 <span className="text-sm text-slate-200 truncate">{n.title}</span>

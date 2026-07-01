@@ -18,14 +18,24 @@ interface DayAuraProps {
  */
 export default function DayAura({ moodColorToken, heat = 0, className }: DayAuraProps) {
   if (moodColorToken) {
+    // A logged mood is one of the calendar's richest signals, so we make it
+    // read clearly: the mood colour pools up from the bottom of the cell and
+    // softly fades out, like the day is lit from below in that feeling.
     return (
       <div
-        className={clsx(
-          "pointer-events-none absolute inset-0 opacity-40",
-          moodColor(moodColorToken).glow,
-          className
-        )}
-      />
+        className={clsx("pointer-events-none absolute inset-0 overflow-hidden", className)}
+      >
+        <div
+          className={clsx(
+            "absolute inset-x-0 bottom-0 h-2/3 opacity-70",
+            moodColor(moodColorToken).glow
+          )}
+          style={{
+            maskImage: "linear-gradient(to top, black, transparent)",
+            WebkitMaskImage: "linear-gradient(to top, black, transparent)",
+          }}
+        />
+      </div>
     );
   }
 

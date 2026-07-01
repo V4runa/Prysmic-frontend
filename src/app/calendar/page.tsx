@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { format } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
@@ -13,11 +12,9 @@ import {
   ALL_SOURCES_ON,
   bucketsForDay,
   dayLabel,
-  dayStats,
   indexFeed,
   monthGridRange,
   monthLabel,
-  parseDayKey,
   shiftDay,
   shiftMonth,
   shiftWeek,
@@ -27,7 +24,6 @@ import {
 } from "./lib/calendarLib";
 import { CalendarView } from "./types";
 import { localToday } from "../lib/date";
-import { resolveMoodVisual } from "../lib/moodColors";
 import { tactile } from "../lib/motion";
 import MonthView from "./components/MonthView";
 import WeekView from "./components/WeekView";
@@ -35,9 +31,7 @@ import DayAgenda from "./components/DayAgenda";
 import ViewSwitcher from "./components/ViewSwitcher";
 import EventModal from "./components/EventModal";
 import CalendarFilters from "./components/CalendarFilters";
-import TodayHero from "./components/TodayHero";
 
-const VIEW_STORAGE_KEY = "prysmic.calendarView";
 const SOURCES_STORAGE_KEY = "prysmic.calendarSources";
 
 export default function CalendarPage() {
@@ -74,11 +68,10 @@ export default function CalendarPage() {
     };
   }, []);
 
-  // Initialize the view from the last-used preference, else by screen size.
+  // Month is the home view: it's the centralized overview the calendar exists
+  // for. Phones open to Day since a month grid is too dense to be useful there.
   useEffect(() => {
-    const saved = localStorage.getItem(VIEW_STORAGE_KEY) as CalendarView | null;
-    if (saved === "month" || saved === "week" || saved === "day") setView(saved);
-    else setView(window.matchMedia("(max-width: 639px)").matches ? "day" : "month");
+    if (window.matchMedia("(max-width: 639px)").matches) setView("day");
   }, []);
 
   // Restore the source-filter lens, merged over defaults so new sources default on.
@@ -105,10 +98,7 @@ export default function CalendarPage() {
     ? ["month", "day"]
     : ["month", "week", "day"];
 
-  const changeView = (next: CalendarView) => {
-    setView(next);
-    localStorage.setItem(VIEW_STORAGE_KEY, next);
-  };
+  const changeView = (next: CalendarView) => setView(next);
 
   // Fetch window depends on the active view.
   const range = useMemo(() => {
@@ -119,25 +109,6 @@ export default function CalendarPage() {
 
   const { data, isLoading, isError } = useCalendarFeed(range.from, range.to);
   const index = useMemo(() => indexFeed(data?.items ?? []), [data]);
-
-  // A dedicated single-day feed powers the "today at a glance" hero so it stays
-  // accurate even when the grid is navigated to another month.
-  const today = localToday();
-  const todayFeed = useCalendarFeed(today, today);
-  const todaySnapshot = useMemo(() => {
-    const buckets = bucketsForDay(indexFeed(todayFeed.data?.items ?? []), today);
-    const mood = buckets.moods[0];
-    return {
-      stats: dayStats(buckets),
-      moodEmoji: mood
-        ? resolveMoodVisual({
-            moodType: mood.moodType,
-            emoji: mood.emoji,
-            color: mood.color ?? undefined,
-          }).emoji
-        : null,
-    };
-  }, [todayFeed.data, today]);
 
   const title =
     view === "month" ? monthLabel(anchor) : view === "week" ? weekLabel(anchor) : dayLabel(anchor);
@@ -159,12 +130,6 @@ export default function CalendarPage() {
   const handleSelectDay = (day: string) => {
     setSelectedDay(day);
     if (!isXl) setSheetOpen(true);
-  };
-
-  const openToday = () => {
-    const t = localToday();
-    setAnchor(t);
-    handleSelectDay(t);
   };
 
   const openCreate = (date: string) =>
@@ -231,18 +196,6 @@ export default function CalendarPage() {
                 </motion.button>
               </div>
             </div>
-
-            {/* Today at a glance — a personal hook back into the calendar.
-                Hidden in Day view, where the agenda header already leads with
-                today's date and habit ring (avoids a duplicate summary). */}
-            {!isError && todayFeed.data && view !== "day" && (
-              <TodayHero
-                dateLabel={format(parseDayKey(today), "EEEE, MMM d")}
-                stats={todaySnapshot.stats}
-                moodEmoji={todaySnapshot.moodEmoji}
-                onOpen={openToday}
-              />
-            )}
 
             {/* Interactive legend — explains the icons AND toggles grid layers */}
             {(view === "month" || view === "week") && !isLoading && !isError && (

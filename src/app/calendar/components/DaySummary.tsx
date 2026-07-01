@@ -16,7 +16,7 @@ interface DaySummaryProps {
 // Carrying the meaning in an icon (not a truncated title) keeps dense month
 // cells legible — the day panel holds the full detail on tap.
 const pill =
-  "flex items-center gap-0.5 rounded px-1 py-[1px] text-[10px] leading-none border tabular-nums";
+  "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none border tabular-nums";
 
 export default function DaySummary({
   buckets,
@@ -55,6 +55,6 @@ export default function DaySummary({
   if (!pills.length) return null;
 
   return (
-    <div className={clsx("flex flex-wrap items-center gap-1", className)}>{pills}</div>
+    <div className={clsx("flex flex-wrap items-center gap-1.5", className)}>{pills}</div>
   );
 }

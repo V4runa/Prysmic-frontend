@@ -45,11 +45,14 @@ export const tactileSubtle = {
 } as const;
 
 /**
- * For full-width rows/cards that live inside a clipping scroll container:
- * a hover scale would push past the container edge and shave the borders, so
- * these only press in on tap and rely on a background/colour change for hover.
+ * For full-width rows/cards that live inside a clipping scroll container.
+ * A hover *scale* would grow past the container edge and shave the borders, so
+ * instead these lift toward the viewer on the y-axis (width never changes, so
+ * nothing clips) and press in on tap. Pair with a `hover:` shadow class for a
+ * tangible "picked up" feel.
  */
 export const tactileRow = {
-  whileTap: { scale: 0.995 },
-  transition: springSoft,
+  whileHover: { y: -2 },
+  whileTap: { scale: 0.99, y: 0 },
+  transition: springSnappy,
 } as const;

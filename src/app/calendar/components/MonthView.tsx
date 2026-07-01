@@ -93,7 +93,7 @@ function DesktopMonth({
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
-        className="flex-1 overflow-y-auto app-scroll min-h-0 flex flex-col gap-1"
+        className="flex-1 min-h-0 grid grid-rows-6 gap-1"
       >
         {weeks.map((week, wi) => {
           const layout = sources.event
@@ -102,7 +102,7 @@ function DesktopMonth({
           const barsRegion = layout.laneCount * (BAR_H + BAR_GAP);
 
           return (
-            <div key={wi} className="relative flex-1 min-h-[96px]">
+            <div key={wi} className="relative min-h-0">
               {/* Day cells */}
               <div className="grid grid-cols-7 h-full gap-1">
                 {week.map((cell, ci) => {
@@ -126,7 +126,7 @@ function DesktopMonth({
                       key={cell.key}
                       onClick={() => onSelectDay(cell.key)}
                       className={clsx(
-                        "group relative flex flex-col rounded-lg border px-1.5 pb-1 overflow-hidden cursor-pointer transition-colors",
+                        "group relative flex flex-col rounded-lg border px-1.5 pt-1 pb-1.5 overflow-hidden cursor-pointer transition-colors",
                         cell.inMonth
                           ? "bg-white/[0.03] hover:bg-white/[0.06]"
                           : "bg-transparent text-slate-600",
@@ -168,19 +168,17 @@ function DesktopMonth({
                         </span>
                         <span className="flex items-center gap-1">
                           {moodViz && (
-                            <span className="text-sm leading-none group-hover:opacity-0 transition-opacity">
+                            <span className="text-sm leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">
                               {moodViz.emoji}
                             </span>
                           )}
                           {stats.habitExpected > 0 && (
-                            <span className="group-hover:opacity-0 transition-opacity">
-                              <HabitProgressRing
-                                done={stats.habitDone}
-                                total={stats.habitExpected}
-                                size={16}
-                                strokeWidth={2.5}
-                              />
-                            </span>
+                            <HabitProgressRing
+                              done={stats.habitDone}
+                              total={stats.habitExpected}
+                              size={16}
+                              strokeWidth={2.5}
+                            />
                           )}
                           <button
                             onClick={(e) => {
@@ -188,7 +186,7 @@ function DesktopMonth({
                               onCreateEvent(cell.key);
                             }}
                             aria-label="New event"
-                            className="absolute right-0 opacity-0 group-hover:opacity-100 transition text-slate-400 hover:text-cyan-300"
+                            className="opacity-0 group-hover:opacity-100 transition text-slate-400 hover:text-cyan-300"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
@@ -198,8 +196,14 @@ function DesktopMonth({
                       {/* Reserve space for the spanning bars overlay */}
                       <div style={{ height: barsRegion }} />
 
-                      {/* Segmented summary of the day's non-event sources */}
-                      <DaySummary buckets={b} eventOverflow={barOverflow} className="relative" />
+                      {/* Segmented summary of the day's non-event sources,
+                          settled at the base of the cell so every day reads as
+                          deliberately composed rather than top-heavy. */}
+                      <DaySummary
+                        buckets={b}
+                        eventOverflow={barOverflow}
+                        className="relative mt-auto"
+                      />
                     </div>
                   );
                 })}
