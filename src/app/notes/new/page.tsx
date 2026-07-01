@@ -1,7 +1,7 @@
 // === /notes/new/page.tsx ===
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,8 +9,22 @@ import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
 import { useTags } from "../../hooks/useTags";
+import {
+  uploadAttachment,
+  acceptFiles,
+  CLIENT_MAX_ATTACHMENTS_PER_NOTE,
+} from "../../hooks/useNoteAttachments";
+import AttachmentZone, {
+  AttachmentItemView,
+} from "../../components/AttachmentZone";
 import { motion, AnimatePresence } from "framer-motion";
 import { TextField, TextArea, FormButton } from "../../components/forms";
+
+interface StagedFile {
+  id: string;
+  file: File;
+  url: string;
+}
 
 const tagColorClasses: Record<string, string> = {
   cyan: "text-cyan-300 border-cyan-300/30 shadow-cyan-300/10",
@@ -29,8 +43,48 @@ export default function CreateNotePage() {
   const { data: tags = [] } = useTags();
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [error, setError] = useState("");
+  const [staged, setStaged] = useState<StagedFile[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Revoke any lingering preview URLs when leaving the page.
+  const stagedRef = useRef(staged);
+  stagedRef.current = staged;
+  useEffect(
+    () => () => stagedRef.current.forEach((s) => URL.revokeObjectURL(s.url)),
+    []
+  );
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+
+  const attachmentItems: AttachmentItemView[] = staged.map((s) => ({
+    key: s.id,
+    name: s.file.name,
+    size: s.file.size,
+    mimeType: s.file.type,
+    localUrl: s.url,
+  }));
+
+  const handleAddAttachments = (files: File[]) => {
+    const { accepted, error } = acceptFiles(files, staged.length);
+    setAttachError(error);
+    setStaged((prev) => [
+      ...prev,
+      ...accepted.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        url: URL.createObjectURL(file),
+      })),
+    ]);
+  };
+
+  const handleRemoveAttachment = (item: AttachmentItemView) => {
+    setStaged((prev) => {
+      const target = prev.find((s) => s.id === item.key);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((s) => s.id !== item.key);
+    });
+  };
 
   const toggleTag = (tagId: number) => {
     setSelectedTagIds((prev) =>
@@ -47,10 +101,12 @@ export default function CreateNotePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     setError("");
+    setSaving(true);
 
     try {
-      await apiFetch("/notes", {
+      const created = await apiFetch<{ id: number }>("/notes", {
         method: "POST",
         body: JSON.stringify({
           title,
@@ -59,11 +115,20 @@ export default function CreateNotePage() {
         }),
       });
 
+      // Upload staged files onto the freshly-created note (images compress
+      // client-side inside uploadAttachment). Done sequentially to respect
+      // the per-note cap and keep ordering stable.
+      for (const s of staged) {
+        await uploadAttachment(created.id, s.file);
+      }
+      staged.forEach((s) => URL.revokeObjectURL(s.url));
+
       queryClient.invalidateQueries({ queryKey: ["notes"] });
-      router.push("/notes");
+      router.push(`/notes/${created.id}`);
     } catch (err: Error | unknown) {
       console.error("Note creation failed", err);
       setError("Failed to create note.");
+      setSaving(false);
     }
   };
 
@@ -113,6 +178,16 @@ export default function CreateNotePage() {
                 className="min-h-[14rem] max-h-[30rem] leading-relaxed"
               />
 
+              <AttachmentZone
+                items={attachmentItems}
+                editable
+                onAddFiles={handleAddAttachments}
+                onRemove={handleRemoveAttachment}
+                busy={saving}
+                error={attachError}
+                max={CLIENT_MAX_ATTACHMENTS_PER_NOTE}
+              />
+
               <div className="flex flex-col gap-3">
                 <h4 className="text-slate-300 text-sm uppercase tracking-wider">
                   Attach tags (optional)
@@ -150,8 +225,8 @@ export default function CreateNotePage() {
                   {"  ·  "}⌘/Ctrl + S to save
                 </span>
               </span>
-              <FormButton type="submit" variant="primary">
-                Save
+              <FormButton type="submit" variant="primary" disabled={saving}>
+                {saving ? "Saving…" : "Save"}
               </FormButton>
             </div>
 

@@ -11,7 +11,7 @@ import { getUserFromToken } from "../hooks/useAuth";
 import { useTags } from "../hooks/useTags";
 import { tactile } from "../lib/motion";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tag } from "lucide-react";
+import { Tag, Paperclip } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface Note {
@@ -20,6 +20,7 @@ interface Note {
   content: string;
   tags?: { id: number; name: string; color?: string }[];
   createdAt: string;
+  attachmentCount?: number;
 }
 
 interface TagData {
@@ -337,13 +338,26 @@ export default function NotesOverviewPage() {
                             ))}
                           </div>
                         )}
-                        <div
-                          className="mt-3 sm:mt-4 text-xs text-slate-400"
-                          title={new Date(note.createdAt).toLocaleString()}
-                        >
-                          {formatDistanceToNow(new Date(note.createdAt), {
-                            addSuffix: true,
-                          })}
+                        <div className="mt-3 sm:mt-4 flex items-center justify-between gap-2">
+                          <span
+                            className="text-xs text-slate-400"
+                            title={new Date(note.createdAt).toLocaleString()}
+                          >
+                            {formatDistanceToNow(new Date(note.createdAt), {
+                              addSuffix: true,
+                            })}
+                          </span>
+                          {!!note.attachmentCount && note.attachmentCount > 0 && (
+                            <span
+                              className="flex items-center gap-1 text-xs text-slate-400 tabular-nums"
+                              title={`${note.attachmentCount} attachment${
+                                note.attachmentCount === 1 ? "" : "s"
+                              }`}
+                            >
+                              <Paperclip className="h-3.5 w-3.5" />
+                              {note.attachmentCount}
+                            </span>
+                          )}
                         </div>
                         <Link
                           href={`/notes/${note.id}`}

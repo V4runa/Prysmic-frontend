@@ -10,6 +10,14 @@ import PageTransition from "../../components/PageTransition";
 import Spinner from "../../components/Spinner";
 import { apiFetch } from "../../hooks/useApi";
 import { useTags } from "../../hooks/useTags";
+import {
+  useNoteAttachments,
+  acceptFiles,
+  CLIENT_MAX_ATTACHMENTS_PER_NOTE,
+} from "../../hooks/useNoteAttachments";
+import AttachmentZone, {
+  AttachmentItemView,
+} from "../../components/AttachmentZone";
 import { tactile } from "../../lib/motion";
 import { TextField, TextArea } from "../../components/forms";
 import { Pencil, Trash2, ArrowLeft, Save, X } from "lucide-react";
@@ -48,6 +56,14 @@ export default function ViewNotePage() {
   const [editedContent, setEditedContent] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [actionError, setActionError] = useState("");
+  const [attachError, setAttachError] = useState<string | null>(null);
+
+  const numericNoteId = noteId ? Number(noteId) : null;
+  const {
+    attachments,
+    upload: uploadAttachment,
+    remove: removeAttachment,
+  } = useNoteAttachments(numericNoteId);
 
   const {
     data: note = null,
@@ -133,6 +149,28 @@ export default function ViewNotePage() {
     setSelectedTagIds(note?.tags?.map(tag => tag.id) || []);
     setEditing(false);
   };
+
+  const attachmentItems: AttachmentItemView[] = attachments.map((a) => ({
+    key: `a-${a.id}`,
+    name: a.filename,
+    size: a.size,
+    mimeType: a.mimeType,
+    remote: { noteId: numericNoteId as number, id: a.id },
+  }));
+
+  const handleAddAttachments = (files: File[]) => {
+    const { accepted, error } = acceptFiles(files, attachments.length);
+    setAttachError(error);
+    accepted.forEach((file) => uploadAttachment.mutate(file));
+  };
+
+  const handleRemoveAttachment = (item: AttachmentItemView) => {
+    if (!item.remote) return;
+    if (!confirm("Remove this attachment?")) return;
+    removeAttachment.mutate(item.remote.id);
+  };
+
+  const attachmentsEditable = editing || attachmentItems.length > 0;
 
   const wordCount = editedContent.trim()
     ? editedContent.trim().split(/\s+/).length
@@ -232,6 +270,21 @@ export default function ViewNotePage() {
                   )}
                 </motion.div>
               </AnimatePresence>
+
+              <AttachmentZone
+                items={attachmentItems}
+                editable={attachmentsEditable}
+                onAddFiles={handleAddAttachments}
+                onRemove={handleRemoveAttachment}
+                busy={uploadAttachment.isPending}
+                error={
+                  attachError ||
+                  (uploadAttachment.isError
+                    ? "Upload failed — check the file type and size."
+                    : null)
+                }
+                max={CLIENT_MAX_ATTACHMENTS_PER_NOTE}
+              />
             </div>
             <div className="flex-shrink-0 flex flex-wrap gap-2 sm:gap-3 mt-4">
               {(editing ? availableTags : note?.tags || []).map((tag, i) => {
