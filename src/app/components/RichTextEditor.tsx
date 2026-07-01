@@ -73,7 +73,12 @@ export default function RichTextEditor({
     immediatelyRender: false,
     autofocus: autoFocus ? "end" : false,
     editorProps: {
-      attributes: { class: "focus:outline-none" },
+      attributes: {
+        class: clsx(
+          "focus:outline-none",
+          editable && "min-h-[16rem] sm:min-h-[20rem]"
+        ),
+      },
     },
     onUpdate: ({ editor }) => onChange?.(editor.getHTML()),
   });
@@ -106,17 +111,17 @@ export default function RichTextEditor({
   }
 
   return (
-    <div className={clsx("note-prose flex flex-col gap-3", className)}>
+    <div className={clsx("note-prose flex flex-col", className)}>
       {editable && <Toolbar editor={editor} />}
       {editable && (
         <BubbleMenu
           editor={editor}
-          className="flex items-center gap-1 rounded-lg border border-white/10 bg-[#14171c]/95 p-1 shadow-xl backdrop-blur-md"
+          className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-[#14171c]/95 p-1 shadow-xl backdrop-blur-md"
         >
           <BubbleButtons editor={editor} />
         </BubbleMenu>
       )}
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className={clsx(editable && "pt-3")} />
     </div>
   );
 }
@@ -158,11 +163,11 @@ function TB({ onClick, active, disabled, title, children }: TBProps) {
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={clsx(
-        "tap-target flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
+        "tap-target flex h-8 w-8 items-center justify-center rounded-md transition-colors",
         active
-          ? "border-cyan-300/30 bg-cyan-400/20 text-cyan-200"
-          : "border-white/10 text-slate-300 hover:bg-white/10",
-        disabled && "cursor-not-allowed opacity-40"
+          ? "text-cyan-300 bg-cyan-400/10"
+          : "text-slate-400 hover:text-slate-100 hover:bg-white/5",
+        disabled && "cursor-not-allowed opacity-30 hover:bg-transparent"
       )}
     >
       {children}
@@ -193,7 +198,7 @@ function Toolbar({ editor }: { editor: Editor }) {
   const c = () => editor.chain().focus();
 
   return (
-    <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1.5">
+    <div className="flex flex-wrap items-center gap-0.5 border-b border-white/5 pb-1.5">
       <TB title="Undo" disabled={!s.canUndo} onClick={() => c().undo().run()}>
         <Undo2 className="h-4 w-4" />
       </TB>
@@ -271,5 +276,5 @@ function BubbleButtons({ editor }: { editor: Editor }) {
 }
 
 function Divider() {
-  return <span className="mx-0.5 h-6 w-px shrink-0 bg-white/10" />;
+  return <span className="mx-1 h-4 w-px shrink-0 bg-white/10" />;
 }
