@@ -18,6 +18,7 @@ import {
 import AttachmentZone, {
   AttachmentItemView,
 } from "../../components/AttachmentZone";
+import MarkdownContent from "../../components/MarkdownContent";
 import { tactile } from "../../lib/motion";
 import { TextField, TextArea } from "../../components/forms";
 import { Pencil, Trash2, ArrowLeft, Save, X } from "lucide-react";
@@ -261,12 +262,12 @@ export default function ViewNotePage() {
                       <span className="text-xs text-slate-500 tabular-nums">
                         {wordCount} {wordCount === 1 ? "word" : "words"}
                         <span className="hidden sm:inline text-slate-600">
-                          {"  ·  "}⌘/Ctrl + S to save
+                          {"  ·  "}Markdown supported{"  ·  "}⌘/Ctrl + S to save
                         </span>
                       </span>
                     </>
                   ) : (
-                    <p className="selectable-text text-slate-300 whitespace-pre-wrap text-sm sm:text-base leading-relaxed">{note?.content}</p>
+                    <MarkdownContent content={note?.content ?? ""} />
                   )}
                 </motion.div>
               </AnimatePresence>
