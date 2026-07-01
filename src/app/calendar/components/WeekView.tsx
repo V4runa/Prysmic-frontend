@@ -8,17 +8,26 @@ import { CalendarClock, StickyNote, Flame, CheckSquare } from "lucide-react";
 import {
   bucketsForDay,
   CalendarIndex,
+  dayStats,
+  filterBuckets,
   formatClock,
   parseDayKey,
+  SourceFilter,
   weekDays,
 } from "../lib/calendarLib";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { resolveMoodVisual } from "../../lib/moodColors";
 import { localToday } from "../../lib/date";
+import DayAura from "./DayAura";
+import HabitProgressRing from "./HabitProgressRing";
+
+const perfectGlow =
+  "radial-gradient(circle at 50% 0%, rgba(251,191,36,0.16), transparent 65%)";
 
 interface WeekViewProps {
   anchor: string;
   index: CalendarIndex;
+  sources: SourceFilter;
   selectedDay: string;
   onSelectDay: (day: string) => void;
   onCreateEvent: (date: string) => void;
@@ -28,6 +37,7 @@ interface WeekViewProps {
 export default function WeekView({
   anchor,
   index,
+  sources,
   selectedDay,
   onSelectDay,
   onCreateEvent,
@@ -37,38 +47,78 @@ export default function WeekView({
   const today = localToday();
 
   return (
-    <div className="flex-1 grid grid-cols-7 gap-1 min-h-0">
+    <motion.div
+      key={anchor}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
+      className="flex-1 grid grid-cols-7 gap-1 min-h-0"
+    >
       {days.map((cell) => {
-        const b = bucketsForDay(index, cell.key);
+        const b = filterBuckets(bucketsForDay(index, cell.key), sources);
+        const stats = dayStats(b);
+        const mood = b.moods[0];
+        const moodViz = mood
+          ? resolveMoodVisual({
+              moodType: mood.moodType,
+              emoji: mood.emoji,
+              color: mood.color ?? undefined,
+            })
+          : null;
         const isToday = cell.key === today;
         const isSelected = cell.key === selectedDay;
         return (
           <div
             key={cell.key}
             className={clsx(
-              "flex flex-col min-h-0 rounded-lg border transition-colors",
-              isSelected ? "border-cyan-300/40 bg-cyan-400/5" : "border-white/10 bg-white/[0.03]"
+              "relative flex flex-col min-h-0 rounded-lg border overflow-hidden transition-colors",
+              stats.isPerfect
+                ? "border-amber-300/40"
+                : isSelected
+                ? "border-cyan-300/40 bg-cyan-400/5"
+                : "border-white/10 bg-white/[0.03]"
             )}
           >
+            <DayAura moodColorToken={moodViz?.color} heat={moodViz ? 0 : stats.heat} />
+            {stats.isPerfect && (
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{ background: perfectGlow }}
+              />
+            )}
+
             <button
               onClick={() => onSelectDay(cell.key)}
-              className="shrink-0 flex flex-col items-center py-2 border-b border-white/10"
+              className="relative shrink-0 flex items-center justify-between gap-1 px-2 py-2 border-b border-white/10"
             >
-              <span className="text-[10px] uppercase tracking-wider text-slate-500">
-                {format(parseDayKey(cell.key), "EEE")}
+              <span className="flex flex-col items-start">
+                <span className="text-[10px] uppercase tracking-wider text-slate-500">
+                  {format(parseDayKey(cell.key), "EEE")}
+                </span>
+                <span
+                  className={clsx(
+                    "mt-0.5 text-sm font-semibold h-7 w-7 flex items-center justify-center rounded-full",
+                    isToday ? "bg-cyan-400/20 text-cyan-200 ring-1 ring-cyan-300/60" : "text-slate-200"
+                  )}
+                >
+                  {cell.date.getDate()}
+                </span>
               </span>
-              <span
-                className={clsx(
-                  "mt-0.5 text-sm font-semibold h-7 w-7 flex items-center justify-center rounded-full",
-                  isToday ? "bg-cyan-400/20 text-cyan-200 ring-1 ring-cyan-300/60" : "text-slate-200"
+              <span className="flex items-center gap-1">
+                {moodViz && <span className="text-base leading-none">{moodViz.emoji}</span>}
+                {stats.habitExpected > 0 && (
+                  <HabitProgressRing
+                    done={stats.habitDone}
+                    total={stats.habitExpected}
+                    size={18}
+                    strokeWidth={2.5}
+                  />
                 )}
-              >
-                {cell.date.getDate()}
               </span>
             </button>
 
             <div
-              className="flex-1 overflow-y-auto app-scroll min-h-0 p-1 flex flex-col gap-1"
+              className="relative flex-1 overflow-y-auto app-scroll min-h-0 p-1 flex flex-col gap-1"
               onClick={() => onSelectDay(cell.key)}
               onDoubleClick={() => onCreateEvent(cell.key)}
             >
@@ -152,6 +202,6 @@ export default function WeekView({
           </div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }

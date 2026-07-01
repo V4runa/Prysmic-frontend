@@ -18,6 +18,7 @@ import {
   CalendarItem,
   CalendarMoodItem,
   CalendarNoteItem,
+  CalendarSource,
   CalendarTaskItem,
 } from "../types";
 import { localDateKey } from "../../lib/date";
@@ -172,6 +173,84 @@ export function bucketsForDay(
     .filter((ev) => eventCoversDay(ev, day))
     .sort(sortEvents);
   return { ...base, events };
+}
+
+// ----------------------- Source filtering (grid lens) -----------------------
+
+export type SourceFilter = Record<CalendarSource, boolean>;
+
+export const ALL_SOURCES_ON: SourceFilter = {
+  event: true,
+  task: true,
+  habit: true,
+  mood: true,
+  note: true,
+};
+
+/** Drop the sources the user has toggled off so the grid renders a clean lens. */
+export function filterBuckets(b: DayBuckets, f: SourceFilter): DayBuckets {
+  return {
+    events: f.event ? b.events : [],
+    tasks: f.task ? b.tasks : [],
+    habits: f.habit ? b.habits : [],
+    moods: f.mood ? b.moods : [],
+    notes: f.note ? b.notes : [],
+  };
+}
+
+// ----------------------- Per-day derived metrics -----------------------
+
+export interface DayStats {
+  events: number;
+  tasks: number;
+  tasksDone: number;
+  /** Habits scheduled for this day. */
+  habitExpected: number;
+  /** Expected habits that were checked off. */
+  habitDone: number;
+  notes: number;
+  moods: number;
+  /** Weighted count of "things that happened", drives the ambient heat. */
+  activity: number;
+  /** Bucketed activity level (0 = quiet … 3 = full). */
+  heat: 0 | 1 | 2 | 3;
+  /** 0..1 completion of the day's expected habits. */
+  habitProgress: number;
+  /** Every expected habit checked (and there was at least one). */
+  isPerfect: boolean;
+}
+
+/**
+ * Reduce a day's buckets to the numbers the visuals care about. Habit progress
+ * counts only *expected* habits so a day off never reads as incomplete, and a
+ * "perfect" day is one where every scheduled habit was honoured.
+ */
+export function dayStats(b: DayBuckets): DayStats {
+  const events = b.events.length;
+  const tasks = b.tasks.length;
+  const tasksDone = b.tasks.filter((t) => t.isComplete).length;
+  const habitExpected = b.habits.filter((h) => h.expected).length;
+  const habitDone = b.habits.filter((h) => h.expected && h.checked).length;
+  const notes = b.notes.length;
+  const moods = b.moods.length;
+
+  const activity = events + tasks + notes + habitDone + moods;
+  const heat: DayStats["heat"] =
+    activity === 0 ? 0 : activity <= 2 ? 1 : activity <= 4 ? 2 : 3;
+
+  return {
+    events,
+    tasks,
+    tasksDone,
+    habitExpected,
+    habitDone,
+    notes,
+    moods,
+    activity,
+    heat,
+    habitProgress: habitExpected ? habitDone / habitExpected : 0,
+    isPerfect: habitExpected > 0 && habitDone >= habitExpected,
+  };
 }
 
 /** All-day events first, then timed events by start time. */

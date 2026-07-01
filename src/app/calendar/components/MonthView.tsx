@@ -1,29 +1,46 @@
 "use client";
 
 import { useMemo } from "react";
+import { motion } from "framer-motion";
 import clsx from "clsx";
 import { Plus } from "lucide-react";
 import {
   buildMonthMatrix,
   bucketsForDay,
   CalendarIndex,
+  dayStats,
+  filterBuckets,
   layoutWeekBars,
+  SourceFilter,
   WEEKDAY_LABELS,
+  WeekBarLayout,
   formatClock,
 } from "../lib/calendarLib";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
-import { resolveMoodVisual, moodColor } from "../../lib/moodColors";
+import { resolveMoodVisual } from "../../lib/moodColors";
 import { localToday } from "../../lib/date";
 import DaySummary from "./DaySummary";
+import DayAura from "./DayAura";
+import HabitProgressRing from "./HabitProgressRing";
 
 const BAR_H = 18;
 const BAR_GAP = 3;
 const DATE_ROW = 22;
 const MAX_LANES = 3;
 
+const EMPTY_LAYOUT: WeekBarLayout = {
+  segments: [],
+  laneCount: 0,
+  overflowByCol: new Array(7).fill(0),
+};
+
+const perfectGlow =
+  "radial-gradient(circle at 50% 100%, rgba(251,191,36,0.20), transparent 70%)";
+
 interface MonthViewProps {
   anchor: string;
   index: CalendarIndex;
+  sources: SourceFilter;
   selectedDay: string;
   onSelectDay: (day: string) => void;
   onCreateEvent: (date: string) => void;
@@ -49,6 +66,7 @@ type InnerProps = MonthViewProps & { weeks: ReturnType<typeof buildMonthMatrix> 
 function DesktopMonth({
   weeks,
   index,
+  sources,
   anchor,
   selectedDay,
   onSelectDay,
@@ -70,23 +88,36 @@ function DesktopMonth({
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto app-scroll min-h-0 flex flex-col gap-1">
+      <motion.div
+        key={anchor}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        className="flex-1 overflow-y-auto app-scroll min-h-0 flex flex-col gap-1"
+      >
         {weeks.map((week, wi) => {
-          const layout = layoutWeekBars(week, index.events, MAX_LANES);
+          const layout = sources.event
+            ? layoutWeekBars(week, index.events, MAX_LANES)
+            : EMPTY_LAYOUT;
           const barsRegion = layout.laneCount * (BAR_H + BAR_GAP);
 
           return (
             <div key={wi} className="relative flex-1 min-h-[96px]">
               {/* Day cells */}
               <div className="grid grid-cols-7 h-full gap-1">
-                {week.map((cell) => {
-                  const b = bucketsForDay(index, cell.key);
+                {week.map((cell, ci) => {
+                  const b = filterBuckets(bucketsForDay(index, cell.key), sources);
+                  const stats = dayStats(b);
                   const mood = b.moods[0];
                   const moodViz = mood
-                    ? resolveMoodVisual({ moodType: mood.moodType, emoji: mood.emoji, color: mood.color ?? undefined })
+                    ? resolveMoodVisual({
+                        moodType: mood.moodType,
+                        emoji: mood.emoji,
+                        color: mood.color ?? undefined,
+                      })
                     : null;
 
-                  const barOverflow = layout.overflowByCol[week.indexOf(cell)] || 0;
+                  const barOverflow = layout.overflowByCol[ci] || 0;
                   const isToday = cell.key === today;
                   const isSelected = cell.key === selectedDay;
 
@@ -97,17 +128,24 @@ function DesktopMonth({
                       className={clsx(
                         "group relative flex flex-col rounded-lg border px-1.5 pb-1 overflow-hidden cursor-pointer transition-colors",
                         cell.inMonth
-                          ? "bg-white/[0.03] border-white/10 hover:bg-white/[0.06]"
-                          : "bg-transparent border-white/5 text-slate-600",
+                          ? "bg-white/[0.03] hover:bg-white/[0.06]"
+                          : "bg-transparent text-slate-600",
+                        stats.isPerfect
+                          ? "border-amber-300/40"
+                          : cell.inMonth
+                          ? "border-white/10"
+                          : "border-white/5",
                         isSelected && "ring-1 ring-cyan-300/50 bg-cyan-400/5"
                       )}
                     >
-                      {moodViz && (
+                      <DayAura
+                        moodColorToken={moodViz?.color}
+                        heat={moodViz ? 0 : stats.heat}
+                      />
+                      {stats.isPerfect && (
                         <div
-                          className={clsx(
-                            "pointer-events-none absolute inset-0 opacity-40",
-                            moodColor(moodViz.color).glow
-                          )}
+                          className="pointer-events-none absolute inset-0"
+                          style={{ background: perfectGlow }}
                         />
                       )}
 
@@ -130,7 +168,19 @@ function DesktopMonth({
                         </span>
                         <span className="flex items-center gap-1">
                           {moodViz && (
-                            <span className="text-sm leading-none">{moodViz.emoji}</span>
+                            <span className="text-sm leading-none group-hover:opacity-0 transition-opacity">
+                              {moodViz.emoji}
+                            </span>
+                          )}
+                          {stats.habitExpected > 0 && (
+                            <span className="group-hover:opacity-0 transition-opacity">
+                              <HabitProgressRing
+                                done={stats.habitDone}
+                                total={stats.habitExpected}
+                                size={16}
+                                strokeWidth={2.5}
+                              />
+                            </span>
                           )}
                           <button
                             onClick={(e) => {
@@ -138,7 +188,7 @@ function DesktopMonth({
                               onCreateEvent(cell.key);
                             }}
                             aria-label="New event"
-                            className="opacity-0 group-hover:opacity-100 transition text-slate-400 hover:text-cyan-300"
+                            className="absolute right-0 opacity-0 group-hover:opacity-100 transition text-slate-400 hover:text-cyan-300"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
@@ -196,7 +246,7 @@ function DesktopMonth({
             </div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -204,6 +254,8 @@ function DesktopMonth({
 function MobileMonth({
   weeks,
   index,
+  sources,
+  anchor,
   selectedDay,
   onSelectDay,
 }: InnerProps) {
@@ -217,20 +269,29 @@ function MobileMonth({
           </div>
         ))}
       </div>
-      <div className="flex-1 overflow-y-auto app-scroll min-h-0 grid grid-rows-6 gap-1">
+      <motion.div
+        key={anchor}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        className="flex-1 overflow-y-auto app-scroll min-h-0 grid grid-rows-6 gap-1"
+      >
         {weeks.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 gap-1">
             {week.map((cell) => {
-              const b = bucketsForDay(index, cell.key);
+              const b = filterBuckets(bucketsForDay(index, cell.key), sources);
+              const stats = dayStats(b);
               const mood = b.moods[0];
               const moodViz = mood
-                ? resolveMoodVisual({ moodType: mood.moodType, emoji: mood.emoji, color: mood.color ?? undefined })
+                ? resolveMoodVisual({
+                    moodType: mood.moodType,
+                    emoji: mood.emoji,
+                    color: mood.color ?? undefined,
+                  })
                 : null;
               const dots: string[] = [];
               if (b.events.length) dots.push(getEventColor(b.events[0].color).dot);
               if (b.tasks.length) dots.push(SOURCE_ACCENT.task.dot);
-              // Habits only register once completed, matching the larger views.
-              if (b.habits.some((h) => h.checked)) dots.push("bg-amber-400");
               if (b.notes.length) dots.push(SOURCE_ACCENT.note.dot);
               const isToday = cell.key === today;
               const isSelected = cell.key === selectedDay;
@@ -240,12 +301,23 @@ function MobileMonth({
                   onClick={() => onSelectDay(cell.key)}
                   className={clsx(
                     "relative flex flex-col items-center justify-start gap-1 rounded-lg border py-1.5 overflow-hidden transition-colors",
-                    cell.inMonth ? "border-white/10 bg-white/[0.03]" : "border-white/5",
+                    stats.isPerfect
+                      ? "border-amber-300/40"
+                      : cell.inMonth
+                      ? "border-white/10 bg-white/[0.03]"
+                      : "border-white/5",
                     isSelected && "ring-1 ring-cyan-300/60 bg-cyan-400/10"
                   )}
                 >
-                  {moodViz && (
-                    <div className={clsx("pointer-events-none absolute inset-0 opacity-40", moodColor(moodViz.color).glow)} />
+                  <DayAura
+                    moodColorToken={moodViz?.color}
+                    heat={moodViz ? 0 : stats.heat}
+                  />
+                  {stats.isPerfect && (
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{ background: perfectGlow }}
+                    />
                   )}
                   <span
                     className={clsx(
@@ -259,11 +331,19 @@ function MobileMonth({
                   >
                     {cell.date.getDate()}
                   </span>
-                  <span className="relative flex items-center gap-0.5 h-1.5">
+                  <span className="relative flex items-center gap-0.5 h-3.5">
+                    {stats.habitExpected > 0 && (
+                      <HabitProgressRing
+                        done={stats.habitDone}
+                        total={stats.habitExpected}
+                        size={12}
+                        strokeWidth={2}
+                      />
+                    )}
                     {moodViz ? (
                       <span className="text-[10px] leading-none">{moodViz.emoji}</span>
                     ) : (
-                      dots.slice(0, 4).map((d, i) => (
+                      dots.slice(0, 3).map((d, i) => (
                         <span key={i} className={clsx("h-1 w-1 rounded-full", d)} />
                       ))
                     )}
@@ -273,7 +353,7 @@ function MobileMonth({
             })}
           </div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }

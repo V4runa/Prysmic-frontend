@@ -3,34 +3,42 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { format } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
 import Spinner from "../components/Spinner";
 import { useCalendarFeed, useInvalidateCalendar } from "../hooks/useCalendar";
 import {
+  ALL_SOURCES_ON,
   bucketsForDay,
   dayLabel,
+  dayStats,
   indexFeed,
   monthGridRange,
   monthLabel,
+  parseDayKey,
   shiftDay,
   shiftMonth,
   shiftWeek,
+  SourceFilter,
   weekLabel,
   weekRange,
 } from "./lib/calendarLib";
 import { CalendarView } from "./types";
 import { localToday } from "../lib/date";
+import { resolveMoodVisual } from "../lib/moodColors";
 import { tactile } from "../lib/motion";
 import MonthView from "./components/MonthView";
 import WeekView from "./components/WeekView";
 import DayAgenda from "./components/DayAgenda";
 import ViewSwitcher from "./components/ViewSwitcher";
 import EventModal from "./components/EventModal";
-import CalendarLegend from "./components/CalendarLegend";
+import CalendarFilters from "./components/CalendarFilters";
+import TodayHero from "./components/TodayHero";
 
 const VIEW_STORAGE_KEY = "prysmic.calendarView";
+const SOURCES_STORAGE_KEY = "prysmic.calendarSources";
 
 export default function CalendarPage() {
   const [view, setView] = useState<CalendarView>("month");
@@ -45,6 +53,7 @@ export default function CalendarPage() {
 
   const [isNarrow, setIsNarrow] = useState(false);
   const [isXl, setIsXl] = useState(false);
+  const [sources, setSources] = useState<SourceFilter>(ALL_SOURCES_ON);
 
   const invalidateCalendar = useInvalidateCalendar();
 
@@ -72,6 +81,21 @@ export default function CalendarPage() {
     else setView(window.matchMedia("(max-width: 639px)").matches ? "day" : "month");
   }, []);
 
+  // Restore the source-filter lens, merged over defaults so new sources default on.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SOURCES_STORAGE_KEY);
+      if (raw) setSources({ ...ALL_SOURCES_ON, ...JSON.parse(raw) });
+    } catch {
+      /* ignore malformed prefs */
+    }
+  }, []);
+
+  const changeSources = (next: SourceFilter) => {
+    setSources(next);
+    localStorage.setItem(SOURCES_STORAGE_KEY, JSON.stringify(next));
+  };
+
   // Week view isn't offered on phones; fall back to Day if the screen shrinks.
   useEffect(() => {
     if (isNarrow && view === "week") setView("day");
@@ -96,6 +120,25 @@ export default function CalendarPage() {
   const { data, isLoading, isError } = useCalendarFeed(range.from, range.to);
   const index = useMemo(() => indexFeed(data?.items ?? []), [data]);
 
+  // A dedicated single-day feed powers the "today at a glance" hero so it stays
+  // accurate even when the grid is navigated to another month.
+  const today = localToday();
+  const todayFeed = useCalendarFeed(today, today);
+  const todaySnapshot = useMemo(() => {
+    const buckets = bucketsForDay(indexFeed(todayFeed.data?.items ?? []), today);
+    const mood = buckets.moods[0];
+    return {
+      stats: dayStats(buckets),
+      moodEmoji: mood
+        ? resolveMoodVisual({
+            moodType: mood.moodType,
+            emoji: mood.emoji,
+            color: mood.color ?? undefined,
+          }).emoji
+        : null,
+    };
+  }, [todayFeed.data, today]);
+
   const title =
     view === "month" ? monthLabel(anchor) : view === "week" ? weekLabel(anchor) : dayLabel(anchor);
 
@@ -116,6 +159,12 @@ export default function CalendarPage() {
   const handleSelectDay = (day: string) => {
     setSelectedDay(day);
     if (!isXl) setSheetOpen(true);
+  };
+
+  const openToday = () => {
+    const t = localToday();
+    setAnchor(t);
+    handleSelectDay(t);
   };
 
   const openCreate = (date: string) =>
@@ -183,9 +232,19 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            {/* Legend — keeps the grid's iconography self-explanatory */}
+            {/* Today at a glance — a personal hook back into the calendar */}
+            {!isError && todayFeed.data && (
+              <TodayHero
+                dateLabel={format(parseDayKey(today), "EEEE, MMM d")}
+                stats={todaySnapshot.stats}
+                moodEmoji={todaySnapshot.moodEmoji}
+                onOpen={openToday}
+              />
+            )}
+
+            {/* Interactive legend — explains the icons AND toggles grid layers */}
             {(view === "month" || view === "week") && !isLoading && !isError && (
-              <CalendarLegend />
+              <CalendarFilters value={sources} onChange={changeSources} />
             )}
 
             {/* Body */}
@@ -202,6 +261,7 @@ export default function CalendarPage() {
                 <MonthView
                   anchor={anchor}
                   index={index}
+                  sources={sources}
                   selectedDay={selectedDay}
                   onSelectDay={handleSelectDay}
                   onCreateEvent={openCreate}
@@ -211,6 +271,7 @@ export default function CalendarPage() {
                 <WeekView
                   anchor={anchor}
                   index={index}
+                  sources={sources}
                   selectedDay={selectedDay}
                   onSelectDay={handleSelectDay}
                   onCreateEvent={openCreate}

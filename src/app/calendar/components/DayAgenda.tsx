@@ -14,14 +14,17 @@ import {
   MapPin,
   Link2,
   CalendarPlus,
+  Sparkles,
 } from "lucide-react";
-import { DayBuckets, dayLabel, formatClock } from "../lib/calendarLib";
+import { DayBuckets, dayLabel, dayStats, formatClock } from "../lib/calendarLib";
 import { CalendarHabitItem } from "../types";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { resolveMoodVisual } from "../../lib/moodColors";
 import { habitIconMap, IconKey } from "../../components/habitIcons";
 import { calendarQueryKey, quickAddTask, toggleHabitCheck } from "../../hooks/useCalendar";
 import { tactile, tactileSubtle } from "../../lib/motion";
+import { TextField } from "../../components/forms";
+import HabitProgressRing from "./HabitProgressRing";
 
 interface DayAgendaProps {
   day: string;
@@ -45,6 +48,7 @@ export default function DayAgenda({
   const [pendingHabit, setPendingHabit] = useState<number | null>(null);
 
   const { events, tasks, habits, moods, notes } = buckets;
+  const stats = dayStats(buckets);
   const isEmpty =
     !events.length && !tasks.length && !habits.length && !moods.length && !notes.length;
 
@@ -81,15 +85,34 @@ export default function DayAgenda({
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-start justify-between gap-2 mb-3">
-        <h3 className="text-slate-100 font-semibold leading-tight">{dayLabel(day)}</h3>
-        <motion.button
-          {...tactileSubtle}
-          onClick={() => onCreateEvent(day)}
-          aria-label="New event on this day"
-          className="tap-target shrink-0 flex items-center justify-center p-1.5 rounded-md border border-cyan-300/20 text-cyan-300 hover:bg-cyan-400/10"
-        >
-          <CalendarPlus className="h-4 w-4" />
-        </motion.button>
+        <div className="min-w-0">
+          <h3 className="text-slate-100 font-semibold leading-tight">{dayLabel(day)}</h3>
+          {stats.isPerfect && (
+            <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-200">
+              <Sparkles className="h-3.5 w-3.5" />
+              Perfect day — every habit honoured
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {stats.habitExpected > 0 && (
+            <HabitProgressRing
+              done={stats.habitDone}
+              total={stats.habitExpected}
+              size={34}
+              strokeWidth={3}
+              showLabel
+            />
+          )}
+          <motion.button
+            {...tactileSubtle}
+            onClick={() => onCreateEvent(day)}
+            aria-label="New event on this day"
+            className="tap-target flex items-center justify-center p-1.5 rounded-md border border-cyan-300/20 text-cyan-300 hover:bg-cyan-400/10"
+          >
+            <CalendarPlus className="h-4 w-4" />
+          </motion.button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1 flex flex-col gap-4">
@@ -275,15 +298,16 @@ export default function DayAgenda({
 
       {/* Quick-add task */}
       <div className="pt-3 mt-3 border-t border-white/10 flex items-center gap-2">
-        <input
-          value={taskTitle}
-          onChange={(e) => setTaskTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleAddTask();
-          }}
-          placeholder="Quick-add a task for this day…"
-          className="flex-1 min-w-0 rounded-md px-3 py-2 bg-white/10 text-slate-100 placeholder-white/40 border border-white/10 focus-band transition text-sm"
-        />
+        <div className="flex-1 min-w-0">
+          <TextField
+            value={taskTitle}
+            onChange={(e) => setTaskTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAddTask();
+            }}
+            placeholder="Quick-add a task for this day…"
+          />
+        </div>
         <motion.button
           {...tactileSubtle}
           onClick={handleAddTask}

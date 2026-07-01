@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import clsx from "clsx";
-import { CalendarClock, CheckSquare, Flame, StickyNote } from "lucide-react";
+import { CalendarClock, CheckSquare, StickyNote } from "lucide-react";
 import { DayBuckets } from "../lib/calendarLib";
 
 interface DaySummaryProps {
@@ -24,8 +24,6 @@ export default function DaySummary({
   className,
 }: DaySummaryProps) {
   const taskCount = buckets.tasks.length;
-  // Habits only surface in the grid once they're completed for the day.
-  const habitDone = buckets.habits.filter((h) => h.checked).length;
   const noteCount = buckets.notes.length;
 
   const pills: ReactNode[] = [];
@@ -42,14 +40,6 @@ export default function DaySummary({
       <span key="task" className={clsx(pill, "bg-sky-500/10 border-sky-400/30 text-sky-200")}>
         <CheckSquare className="h-3 w-3 shrink-0" />
         {taskCount}
-      </span>
-    );
-  }
-  if (habitDone > 0) {
-    pills.push(
-      <span key="habit" className={clsx(pill, "bg-amber-500/15 border-amber-400/40 text-amber-100")}>
-        <Flame className="h-3 w-3 shrink-0" />
-        {habitDone}
       </span>
     );
   }
