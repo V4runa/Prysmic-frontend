@@ -232,8 +232,10 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            {/* Today at a glance — a personal hook back into the calendar */}
-            {!isError && todayFeed.data && (
+            {/* Today at a glance — a personal hook back into the calendar.
+                Hidden in Day view, where the agenda header already leads with
+                today's date and habit ring (avoids a duplicate summary). */}
+            {!isError && todayFeed.data && view !== "day" && (
               <TodayHero
                 dateLabel={format(parseDayKey(today), "EEEE, MMM d")}
                 stats={todaySnapshot.stats}

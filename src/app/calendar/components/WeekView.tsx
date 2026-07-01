@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import clsx from "clsx";
 import { format } from "date-fns";
-import { CalendarClock, StickyNote, Flame, CheckSquare } from "lucide-react";
+import { CalendarClock, StickyNote, CheckSquare } from "lucide-react";
 import {
   bucketsForDay,
   CalendarIndex,
@@ -159,18 +159,9 @@ export default function WeekView({
                 </div>
               ))}
 
-              {/* Habits only appear once completed for the day. */}
-              {b.habits
-                .filter((h) => h.checked)
-                .map((h) => (
-                  <div
-                    key={h.key}
-                    className="flex items-center gap-1 rounded border border-amber-400/40 bg-amber-500/20 px-1.5 py-1 text-[11px] text-amber-100 truncate"
-                  >
-                    <Flame className="h-3 w-3 shrink-0 text-amber-300" />
-                    <span className="truncate">{h.title}</span>
-                  </div>
-                ))}
+              {/* Habits are intentionally not listed here — the header ring
+                  conveys completion, and the day agenda holds the full list.
+                  This keeps habits from crowding the week grid. */}
 
               {b.moods.map((m) => {
                 const v = resolveMoodVisual({

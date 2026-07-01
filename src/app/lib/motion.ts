@@ -28,17 +28,28 @@ export const springBouncy: Transition = {
 
 /**
  * Spread onto a `motion` element to give it a consistent tactile feel:
- * lifts slightly on hover, presses in on tap.
+ * lifts slightly on hover, presses in on tap. Kept gentle so hovers settle
+ * rather than snap.
  */
 export const tactile = {
-  whileHover: { scale: 1.05 },
-  whileTap: { scale: 0.93 },
-  transition: springSnappy,
+  whileHover: { scale: 1.03 },
+  whileTap: { scale: 0.97 },
+  transition: springSoft,
 } as const;
 
 /** Subtler variant for small icon buttons where a big scale looks jumpy. */
 export const tactileSubtle = {
-  whileHover: { scale: 1.12 },
-  whileTap: { scale: 0.9 },
-  transition: springSnappy,
+  whileHover: { scale: 1.08 },
+  whileTap: { scale: 0.92 },
+  transition: springSoft,
+} as const;
+
+/**
+ * For full-width rows/cards that live inside a clipping scroll container:
+ * a hover scale would push past the container edge and shave the borders, so
+ * these only press in on tap and rely on a background/colour change for hover.
+ */
+export const tactileRow = {
+  whileTap: { scale: 0.995 },
+  transition: springSoft,
 } as const;

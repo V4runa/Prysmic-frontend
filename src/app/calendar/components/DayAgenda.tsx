@@ -22,7 +22,7 @@ import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { resolveMoodVisual } from "../../lib/moodColors";
 import { habitIconMap, IconKey } from "../../components/habitIcons";
 import { calendarQueryKey, quickAddTask, toggleHabitCheck } from "../../hooks/useCalendar";
-import { tactile, tactileSubtle } from "../../lib/motion";
+import { tactileRow, tactileSubtle } from "../../lib/motion";
 import { TextField } from "../../components/forms";
 import HabitProgressRing from "./HabitProgressRing";
 
@@ -131,10 +131,10 @@ export default function DayAgenda({
               return (
                 <motion.button
                   key={ev.key}
-                  {...tactile}
+                  {...tactileRow}
                   onClick={() => onOpenEvent(ev.id)}
                   className={clsx(
-                    "text-left flex items-start gap-2.5 rounded-lg border px-3 py-2 transition",
+                    "text-left flex items-start gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110",
                     c.chip
                   )}
                 >
@@ -175,10 +175,10 @@ export default function DayAgenda({
             {tasks.map((t) => (
               <motion.button
                 key={`task-${t.id}`}
-                {...tactile}
+                {...tactileRow}
                 onClick={() => router.push("/tasks")}
                 className={clsx(
-                  "text-left flex items-center gap-2.5 rounded-lg border px-3 py-2 transition",
+                  "text-left flex items-center gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110",
                   SOURCE_ACCENT.task.chip,
                   t.isComplete && "opacity-50"
                 )}
@@ -210,7 +210,7 @@ export default function DayAgenda({
               return (
                 <motion.button
                   key={h.key}
-                  {...tactile}
+                  {...tactileRow}
                   onClick={() => handleToggleHabit(h)}
                   disabled={pendingHabit === h.id}
                   className={clsx(
@@ -265,7 +265,7 @@ export default function DayAgenda({
               return (
                 <motion.button
                   key={`mood-${m.id}`}
-                  {...tactile}
+                  {...tactileRow}
                   onClick={() => router.push("/moods")}
                   className="text-left flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10 transition"
                 >
@@ -284,7 +284,7 @@ export default function DayAgenda({
             {notes.map((n) => (
               <motion.button
                 key={`note-${n.id}`}
-                {...tactile}
+                {...tactileRow}
                 onClick={() => router.push(`/notes/${n.id}`)}
                 className="text-left flex items-center gap-2.5 rounded-lg border border-violet-400/20 bg-violet-500/5 px-3 py-2 hover:bg-violet-500/10 transition"
               >

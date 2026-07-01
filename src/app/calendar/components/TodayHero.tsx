@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { DayStats } from "../lib/calendarLib";
 import HabitProgressRing from "./HabitProgressRing";
-import { tactile } from "../../lib/motion";
+import { tactileRow } from "../../lib/motion";
 
 interface TodayHeroProps {
   dateLabel: string;
@@ -57,7 +57,7 @@ export default function TodayHero({
 
   return (
     <motion.button
-      {...tactile}
+      {...tactileRow}
       onClick={onOpen}
       className={clsx(
         "group shrink-0 w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
