@@ -13,10 +13,17 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  // The backend can be cold on the first hit after idle; surface that so a
+  // multi-second wait never reads as a frozen/unresponsive button.
+  const [slow, setSlow] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError("");
+    setLoading(true);
+    const slowTimer = setTimeout(() => setSlow(true), 3500);
 
     try {
       const res = await apiFetch<{ access_token: string }>("/auth/login", {
@@ -28,10 +35,14 @@ export default function LoginPage() {
       });
 
       localStorage.setItem("token", res.access_token);
+      clearTimeout(slowTimer);
       router.push("/notes");
     } catch (err: Error | unknown) {
       console.error("Login failed", err);
+      clearTimeout(slowTimer);
       setError("Invalid login credentials.");
+      setLoading(false);
+      setSlow(false);
     }
   };
 
@@ -60,13 +71,24 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            <FormButton type="submit" variant="primary" className="w-full mt-2">
-              Log In
+            <FormButton
+              type="submit"
+              variant="primary"
+              className="w-full mt-2 disabled:opacity-70"
+              disabled={loading}
+            >
+              {loading ? "Signing in…" : "Log In"}
             </FormButton>
           </form>
 
           {error && (
             <p className="text-rose-400 text-sm mt-3 text-center">{error}</p>
+          )}
+
+          {slow && !error && (
+            <p className="text-slate-400 text-xs mt-3 text-center">
+              Waking the server — the first attempt can take a few seconds.
+            </p>
           )}
 
           <p className="text-slate-400 text-sm mt-4 text-center">

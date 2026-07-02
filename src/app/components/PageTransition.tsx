@@ -14,11 +14,10 @@ export default function PageTransition({
     <AnimatePresence initial={false}>
       <motion.div
         key={pathname}
-        initial={{ opacity: 0, y: 36, scale: 0.965 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0.9, y: 0, scale: 1 }}
-        transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-        style={{ transformOrigin: "center" }}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         {children}
       </motion.div>
