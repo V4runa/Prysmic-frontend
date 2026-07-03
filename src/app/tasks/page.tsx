@@ -141,7 +141,7 @@ export default function TasksPage() {
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.02, duration: 0.22 }}
-                        className="h-full"
+                        className="h-full min-w-0"
                       >
                         <TaskCard task={task} onUpdate={fetchTasks} />
                       </motion.div>

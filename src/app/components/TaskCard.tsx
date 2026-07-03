@@ -367,7 +367,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
             <div className="flex justify-between items-start gap-2">
               <motion.h3
                 className={clsx(
-                  "text-white font-medium text-base truncate cursor-pointer relative",
+                  "min-w-0 flex-1 text-white font-medium text-base truncate cursor-pointer relative",
                   task.isComplete && "text-green-300/60"
                 )}
                 onClick={() => setEditing(true)}
