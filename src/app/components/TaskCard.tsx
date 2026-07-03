@@ -52,10 +52,31 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
   const [isUncompleting, setIsUncompleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
+
+  // Dismiss the options menu on any outside tap/click or Escape — otherwise on
+  // touch it lingers open with no obvious way to close it.
+  useEffect(() => {
+    if (!showMenu) return;
+    const onDown = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowMenu(false);
+    };
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [showMenu]);
 
   useEffect(() => {
     if (!showEdit) return;
@@ -139,8 +160,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
   return (
     <motion.div
       className={clsx(
-        "relative group flex flex-col h-full min-h-[150px] p-4 rounded-xl border backdrop-blur-lg shadow-md transition-shadow",
-        "bg-white/5 border-white/10 hover:shadow-lg hover:shadow-black/30 hover:border-white/20",
+        "glass-card card-lift relative group flex flex-col h-full min-h-[150px] p-4 rounded-xl",
         updating && "opacity-50 pointer-events-none",
         task.isComplete && "bg-green-500/5 border-green-400/20",
       )}
@@ -332,12 +352,16 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
                     setEditing(false);
                   }
                 }}
-                className="w-full bg-white/10 border border-cyan-400/20 text-white px-3 py-1.5 rounded-md text-sm outline-none"
+                className="w-full bg-white/10 border border-cyan-400/20 text-white pl-3 pr-10 py-1.5 rounded-md text-sm outline-none"
               />
-              <Save
-                className="absolute right-2 top-1.5 h-4 w-4 text-cyan-300 cursor-pointer"
+              <button
+                type="button"
                 onClick={saveTitle}
-              />
+                aria-label="Save title"
+                className="tap-target absolute right-0.5 top-1/2 -translate-y-1/2 flex items-center justify-center p-1.5 text-cyan-300 hover:text-cyan-200"
+              >
+                <Save className="h-4 w-4" />
+              </button>
             </div>
           ) : (
             <div className="flex justify-between items-start gap-2">
@@ -405,7 +429,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
                 )}
               </motion.h3>
               <Pencil
-                className="h-4 w-4 text-cyan-300 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                className="h-4 w-4 shrink-0 text-cyan-300 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition cursor-pointer"
                 onClick={() => setShowEdit(true)}
                 aria-label="Edit task"
               />
@@ -436,7 +460,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
         </div>
 
         {/* Menu (top-right) */}
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button
             type="button"
             aria-label="Task options"
@@ -446,29 +470,29 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
             <MoreVertical className="h-5 w-5" />
           </button>
           {showMenu && (
-            <div className="absolute right-0 mt-2 w-32 bg-zinc-800 border border-white/10 shadow-xl rounded-md z-30 overflow-hidden">
+            <div className="absolute right-0 mt-2 w-40 bg-zinc-800 border border-white/10 shadow-xl rounded-md z-30 overflow-hidden">
               <button
-                className="w-full flex items-center gap-2 text-sm px-3 py-2 text-white/80 hover:bg-zinc-700"
+                className="tap-target w-full flex items-center gap-2 text-sm px-3.5 py-3 text-white/80 hover:bg-zinc-700"
                 onClick={() => {
                   setShowMenu(false);
                   setShowEdit(true);
                 }}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4 shrink-0" />
                 Edit
               </button>
               <button
-                className="w-full flex items-center gap-2 text-sm px-3 py-2 text-white/80 hover:bg-zinc-700"
+                className="tap-target w-full flex items-center gap-2 text-sm px-3.5 py-3 text-white/80 hover:bg-zinc-700"
                 onClick={archive}
               >
-                <Archive className="h-4 w-4" />
+                <Archive className="h-4 w-4 shrink-0" />
                 Archive
               </button>
               <button
-                className="w-full flex items-center gap-2 text-sm px-3 py-2 text-red-400 hover:bg-zinc-700"
+                className="tap-target w-full flex items-center gap-2 text-sm px-3.5 py-3 text-red-400 hover:bg-zinc-700"
                 onClick={del}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4 shrink-0" />
                 Delete
               </button>
             </div>

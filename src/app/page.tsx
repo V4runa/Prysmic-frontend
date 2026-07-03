@@ -6,8 +6,8 @@ import PageTransition from "./components/PageTransition"; // ✅
 
 export default function HomePage() {
   return (
-    <div className="relative min-h-[100dvh] flex items-center justify-center px-4 py-8">
-      <div className="relative w-full flex items-center justify-center">
+    <div className="relative h-[100dvh] overflow-y-auto app-scroll">
+      <div className="relative min-h-full w-full flex items-center justify-center px-4 py-8">
         <PageTransition>
           <GlassPanel className="w-full max-w-2xl text-center">
           <h1 className="text-3xl sm:text-4xl text-slate-100 font-semibold mb-4 tracking-wide">

@@ -186,7 +186,9 @@ export default function MoodPage() {
           </AnimatePresence>
 
           {error && (
-            <p className="absolute bottom-4 text-sm text-red-400">{error}</p>
+            <p className="absolute left-1/2 -translate-x-1/2 bottom-4 text-sm text-red-400">
+              {error}
+            </p>
           )}
         </GlassPanel>
       </div>

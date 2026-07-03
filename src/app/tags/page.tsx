@@ -140,7 +140,7 @@ export default function TagsPage() {
 
         {/* Tags Grid */}
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto p-1">
+          <div className="flex-1 overflow-y-auto app-scroll p-1">
             {isLoading && tags.length === 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
                 {Array.from({ length: 12 }).map((_, i) => (
@@ -215,10 +215,10 @@ export default function TagsPage() {
                       </div>
                     ) : (
                       <>
-                        <span className="text-xs sm:text-sm font-medium truncate max-w-[100px] sm:max-w-[150px]">
+                        <span className="flex-1 min-w-0 text-xs sm:text-sm font-medium truncate">
                           {tag.name}
                         </span>
-                        <div className="flex gap-1 sm:gap-2">
+                        <div className="flex gap-1 sm:gap-2 shrink-0">
                           <motion.button
                             {...tactileSubtle}
                             onClick={() => {

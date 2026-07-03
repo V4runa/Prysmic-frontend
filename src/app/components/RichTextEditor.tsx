@@ -163,7 +163,7 @@ function TB({ onClick, active, disabled, title, children }: TBProps) {
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={clsx(
-        "tap-target flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+        "tap-target flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors",
         active
           ? "text-cyan-300 bg-cyan-400/10"
           : "text-slate-400 hover:text-slate-100 hover:bg-white/5",
@@ -198,7 +198,7 @@ function Toolbar({ editor }: { editor: Editor }) {
   const c = () => editor.chain().focus();
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 border-b border-white/5 pb-1.5">
+    <div className="flex flex-nowrap sm:flex-wrap overflow-x-auto sm:overflow-visible overscroll-x-contain scrollbar-hidden items-center gap-0.5 border-b border-white/5 pb-1.5">
       <TB title="Undo" disabled={!s.canUndo} onClick={() => c().undo().run()}>
         <Undo2 className="h-4 w-4" />
       </TB>

@@ -281,7 +281,7 @@ export default function EventModal({
                 </label>
 
                 {/* Dates */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label={allDay ? "Start" : "Start date"} htmlFor="event-start">
                     <TextField
                       id="event-start"
@@ -311,7 +311,7 @@ export default function EventModal({
 
                 {/* Times */}
                 {!allDay && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Field label="Start time" htmlFor="event-start-time">
                       <TextField
                         id="event-start-time"
@@ -364,7 +364,7 @@ export default function EventModal({
                 </Field>
 
                 {/* Recurrence */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Repeat" htmlFor="event-repeat">
                     <SelectField
                       id="event-repeat"
@@ -410,7 +410,7 @@ export default function EventModal({
                 />
 
                 {/* Link */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field
                     htmlFor="event-link-type"
                     label={

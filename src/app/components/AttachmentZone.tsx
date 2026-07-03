@@ -190,7 +190,7 @@ export default function AttachmentZone({
                 type="button"
                 onClick={() => onRemove(item)}
                 aria-label={`Remove ${item.name}`}
-                className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 opacity-0 transition group-hover:opacity-100 hover:bg-black/80"
+                className="touch-visible absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/80 opacity-0 transition group-hover:opacity-100 hover:bg-black/80"
               >
                 <X className="h-3 w-3" />
               </button>

@@ -47,7 +47,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 bg-transparent">
+    <div className="h-[100dvh] overflow-y-auto app-scroll bg-transparent">
+      <div className="min-h-full flex items-center justify-center px-4 py-8">
       <PageTransition>
         {" "}
         {/* ✅ */}
@@ -99,6 +100,7 @@ export default function LoginPage() {
           </p>
         </GlassPanel>
       </PageTransition>
+      </div>
     </div>
   );
 }

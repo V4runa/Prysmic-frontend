@@ -129,11 +129,11 @@ export default function OnboardingModal() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={springSoft}
-            className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 sm:p-8 shadow-2xl shadow-black/50"
+            className="relative w-full max-w-lg max-h-[88dvh] overflow-y-auto app-scroll rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 sm:p-8 shadow-2xl shadow-black/50"
           >
             <button
               onClick={finish}
-              className="absolute top-4 right-5 text-xs uppercase tracking-wide text-slate-500 hover:text-slate-300 transition"
+              className="tap-target absolute top-1.5 right-1.5 flex items-center justify-center rounded-md px-2 text-xs uppercase tracking-wide text-slate-500 hover:text-slate-300 transition"
             >
               Skip
             </button>

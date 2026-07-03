@@ -130,7 +130,7 @@ export default function HabitsPage() {
         </div>
 
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto p-1">
+          <div className="flex-1 overflow-y-auto app-scroll p-1">
             {isLoading && habits.length === 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -166,7 +166,7 @@ export default function HabitsPage() {
                     whileTap={{ scale: 0.99 }}
                     transition={{ type: "spring", stiffness: 300, damping: 24 }}
                     onClick={() => router.push(`/habits/${habit.id}`)}
-                    className={`card-lift group relative flex flex-col gap-3 rounded-2xl p-4 sm:p-5 cursor-pointer overflow-hidden backdrop-blur-md border ${
+                    className={`glass-sheen card-lift group relative flex flex-col gap-3 rounded-2xl p-4 sm:p-5 cursor-pointer overflow-hidden backdrop-blur-md border ${
                       isTodayChecked ? c.cardChecked : c.cardIdle
                     }`}
                   >
@@ -257,7 +257,7 @@ export default function HabitsPage() {
                       </div>
                     ) : (
                       <div
-                        className="absolute top-2 right-2 z-20"
+                        className="tap-target absolute top-1 right-1 z-20 flex items-center justify-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleComplete(habit.id);
@@ -266,9 +266,9 @@ export default function HabitsPage() {
                         <motion.button
                           {...tactileSubtle}
                           title="Mark as complete"
-                          className={`h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center rounded-full border ${c.checkBorder} bg-white/10 ${c.checkHover}`}
+                          className={`h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded-full border ${c.checkBorder} bg-white/10 ${c.checkHover}`}
                         >
-                          <CheckCircle2 className={`h-3 w-3 sm:h-4 sm:w-4 ${c.icon}`} />
+                          <CheckCircle2 className={`h-4 w-4 ${c.icon}`} />
                         </motion.button>
                       </div>
                     )}

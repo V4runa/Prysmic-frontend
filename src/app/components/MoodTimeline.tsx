@@ -39,7 +39,7 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
   }
 
   return (
-    <div className="app-scroll relative w-full h-full min-h-0 flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-16 sm:pt-32 pb-24 sm:pb-20 px-2 sm:px-0">
+    <div className="app-scroll relative w-full h-full min-h-0 flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 sm:pt-32 pb-24 sm:pb-20 px-2 sm:px-0">
       {/* 🔥 Streak header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

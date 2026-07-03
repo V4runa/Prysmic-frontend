@@ -265,14 +265,14 @@ export default function CalendarPage() {
           <AnimatePresence>
             {sheetOpen && showSidePanel && (
               <motion.div
-                className="xl:hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+                className="xl:hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSheetOpen(false)}
               >
                 <motion.div
-                  className="w-full sm:max-w-md h-[80dvh] sm:h-[70dvh] flex flex-col rounded-t-2xl sm:rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl p-5 shadow-2xl shadow-black/50"
+                  className="w-full sm:max-w-md h-[80dvh] sm:h-[70dvh] flex flex-col rounded-t-2xl sm:rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl p-5 pb-[calc(1.25rem+var(--safe-bottom))] sm:pb-5 shadow-2xl shadow-black/50"
                   initial={{ y: "100%", opacity: 0.6 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: "100%", opacity: 0.6 }}

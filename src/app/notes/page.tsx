@@ -131,7 +131,7 @@ export default function NotesOverviewPage() {
       {/* Sidebar (desktop only) */}
       {allTags.length > 0 && (
         <aside className="hidden xl:block w-[260px] shrink-0">
-          <GlassPanel className="flex flex-col max-h-[calc(100vh-8rem)] overflow-y-auto p-4 gap-4 shadow-xl rounded-2xl backdrop-blur-md bg-white/5 border border-white/10">
+          <GlassPanel className="flex flex-col max-h-[calc(100vh-8rem)] overflow-y-auto p-4 gap-4 rounded-2xl">
             <div className="flex items-center gap-2 text-slate-200 uppercase text-xs font-semibold tracking-widest">
               <Tag size={20} /> Tags
             </div>
@@ -185,7 +185,7 @@ export default function NotesOverviewPage() {
               <div className="flex justify-center pt-4">
                 <button
                   onClick={() => setActiveTags([])}
-                  className="text-xs text-cyan-300 underline hover:text-cyan-200 transition"
+                  className="tap-target inline-flex items-center justify-center px-3 text-xs text-cyan-300 underline hover:text-cyan-200 transition"
                 >
                   Clear all tags
                 </button>
@@ -234,7 +234,7 @@ export default function NotesOverviewPage() {
               <motion.div {...tactile} className="inline-flex">
                 <Link
                   href="/notes/new"
-                  className="px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 hover:shadow-[0_0_18px_rgba(103,232,249,0.2)] transition-shadow text-sm"
+                  className="tap-target inline-flex items-center justify-center px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 hover:shadow-[0_0_18px_rgba(103,232,249,0.2)] transition-shadow text-sm"
                 >
                   + New Note
                 </Link>
@@ -244,7 +244,7 @@ export default function NotesOverviewPage() {
 
           {/* Mobile tag filter bar */}
           {allTags.length > 0 && (
-            <div className="xl:hidden overflow-x-auto flex gap-2 py-3 px-1 -mx-1">
+            <div className="xl:hidden overflow-x-auto overscroll-x-contain scrollbar-hidden flex gap-2 py-3 px-1 -mx-1">
               {allTags.map((tag, i) => {
                 const isActive = activeTags.includes(tag.name);
                 const color = tag.color || "slate";
@@ -298,7 +298,7 @@ export default function NotesOverviewPage() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 overflow-y-auto p-1">
+              <div className="flex-1 overflow-y-auto app-scroll p-1">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentPage + activeTags.join(",")}
@@ -315,7 +315,7 @@ export default function NotesOverviewPage() {
                         variants={cardVariants}
                         initial="hidden"
                         animate="visible"
-                        className="card-lift relative rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 hover:border-white/20 p-4 sm:p-6 shadow-lg hover:shadow-2xl hover:bg-white/10 overflow-hidden flex flex-col justify-between h-full"
+                        className="glass-card card-lift relative rounded-2xl hover:bg-white/[0.06] p-4 sm:p-6 overflow-hidden flex flex-col justify-between h-full"
                       >
                         <div>
                           <h3 className="text-slate-100 text-lg sm:text-xl font-semibold mb-2 sm:mb-3 truncate">
@@ -376,7 +376,7 @@ export default function NotesOverviewPage() {
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-xs rounded-md border bg-white/10 text-white border-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="tap-target inline-flex items-center justify-center px-3 py-1.5 text-xs rounded-md border bg-white/10 text-white border-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     ← Prev
                   </button>
@@ -385,7 +385,7 @@ export default function NotesOverviewPage() {
                       key={i}
                       onClick={() => setCurrentPage(i + 1)}
                       disabled={currentPage === i + 1}
-                      className={`px-3 py-1 text-xs rounded-md backdrop-blur-md border transition ${
+                      className={`tap-target inline-flex items-center justify-center min-w-[2.25rem] px-3 py-1.5 text-xs rounded-md backdrop-blur-md border transition ${
                         currentPage === i + 1
                           ? "bg-white/20 text-cyan-300 border-cyan-300/30"
                           : "bg-white/10 text-white border-white/10 hover:bg-white/15"
@@ -399,7 +399,7 @@ export default function NotesOverviewPage() {
                       setCurrentPage((p) => Math.min(totalPages, p + 1))
                     }
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-xs rounded-md border bg-white/10 text-white border-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="tap-target inline-flex items-center justify-center px-3 py-1.5 text-xs rounded-md border bg-white/10 text-white border-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     Next →
                   </button>

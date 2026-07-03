@@ -303,7 +303,7 @@ export default function HabitDetailPage() {
                           <IconComponent className={`h-6 w-6 ${c.icon}`} />
                         </span>
                       )}
-                      <h3 className="text-lg sm:text-xl font-semibold text-slate-100 truncate">
+                      <h3 className="min-w-0 text-lg sm:text-xl font-semibold text-slate-100 truncate">
                         {habit.name}
                       </h3>
                       {habit.frequency && (
