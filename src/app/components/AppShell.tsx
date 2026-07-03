@@ -68,8 +68,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           ClientShellWrapper). Darkens and vignettes the living prism so it
           recedes into ambience behind dense content while still breathing. */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute inset-0 bg-[#06070a]/72" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,7,10,0)_30%,rgba(6,7,10,0.82)_100%)]" />
+        <div className="absolute inset-0 bg-[#06070a]/55" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,7,10,0)_35%,rgba(6,7,10,0.72)_100%)]" />
       </div>
 
       {/* Top Navigation Bar */}
