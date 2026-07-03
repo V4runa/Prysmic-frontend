@@ -64,24 +64,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] text-slate-100 font-sans relative overflow-hidden">
-      {/* Background Layer */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 2, ease: "easeOut" }}
-        className="fixed inset-0 -z-10"
-      >
-        <motion.div
-          initial={{ backgroundPosition: "0% 50%" }}
-          animate={{ backgroundPosition: "100% 50%" }}
-          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 bg-gradient-to-br from-[#0a0f2c] via-[#111827] to-[#000000] bg-[length:400%_400%] pointer-events-none"
-          style={{ zIndex: -10 }}
-        />
-
-        <div className="absolute inset-0 bg-black/70 pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0)_40%,rgba(0,0,0,0.7)_100%)] pointer-events-none" />
-      </motion.div>
+      {/* Scrim over the app-wide prism backdrop (rendered once in
+          ClientShellWrapper). Darkens and vignettes the living prism so it
+          recedes into ambience behind dense content while still breathing. */}
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        <div className="absolute inset-0 bg-[#06070a]/72" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,7,10,0)_30%,rgba(6,7,10,0.82)_100%)]" />
+      </div>
 
       {/* Top Navigation Bar */}
       <div className="app-header fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/5 border-b border-white/10 px-4 flex justify-between items-center shadow-sm select-none">

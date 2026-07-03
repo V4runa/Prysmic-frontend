@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useMemo } from "react";
 
 /**
@@ -33,6 +33,7 @@ const PARTICLE_COLORS = [
 ];
 
 export default function PrismBackdrop() {
+  const reduce = useReducedMotion();
   const particles = useMemo(
     () =>
       Array.from({ length: PARTICLE_COUNT }, (_, i) => {
@@ -74,9 +75,17 @@ export default function PrismBackdrop() {
           background:
             "radial-gradient(60% 55% at 50% 44%, rgba(103,232,249,0.16), rgba(103,232,249,0.05) 45%, transparent 70%)",
         }}
-        initial={{ opacity: 0.35, scale: 1 }}
-        animate={{ opacity: [0.28, 0.85, 0.28], scale: [1, 1.09, 1] }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        initial={{ opacity: 0.4, scale: 1 }}
+        animate={
+          reduce
+            ? { opacity: 0.45 }
+            : { opacity: [0.28, 0.85, 0.28], scale: [1, 1.09, 1] }
+        }
+        transition={
+          reduce
+            ? undefined
+            : { duration: 15, repeat: Infinity, ease: "easeInOut" }
+        }
       />
 
       {/* The prism — faded far back but present, breathing (fade + saturation +
@@ -85,20 +94,28 @@ export default function PrismBackdrop() {
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: "url('/prism-hero.png')" }}
         initial={{
-          opacity: 0.28,
+          opacity: 0.3,
           scale: 1,
-          filter: "saturate(0.65) brightness(0.8) hue-rotate(0deg)",
+          filter: "saturate(0.9) brightness(0.85) hue-rotate(0deg)",
         }}
-        animate={{
-          opacity: [0.22, 0.42, 0.22],
-          scale: [1, 1.06, 1],
-          filter: [
-            "saturate(0.6) brightness(0.75) hue-rotate(-10deg)",
-            "saturate(1.45) brightness(1.12) hue-rotate(10deg)",
-            "saturate(0.6) brightness(0.75) hue-rotate(-10deg)",
-          ],
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        animate={
+          reduce
+            ? { opacity: 0.3 }
+            : {
+                opacity: [0.22, 0.42, 0.22],
+                scale: [1, 1.06, 1],
+                filter: [
+                  "saturate(0.6) brightness(0.75) hue-rotate(-10deg)",
+                  "saturate(1.45) brightness(1.12) hue-rotate(10deg)",
+                  "saturate(0.6) brightness(0.75) hue-rotate(-10deg)",
+                ],
+              }
+        }
+        transition={
+          reduce
+            ? undefined
+            : { duration: 15, repeat: Infinity, ease: "easeInOut" }
+        }
       />
 
       {/* Vignette — sinks the edges into the abyss while leaving the center dim
@@ -125,14 +142,22 @@ export default function PrismBackdrop() {
             backgroundColor: p.color,
             boxShadow: `0 0 ${(p.size * 3).toFixed(1)}px ${p.color}`,
           }}
-          initial={{ opacity: 0, x: 0, y: 0 }}
-          animate={{ opacity: [0, p.peak, 0], x: [0, p.sway, 0], y: -p.drift }}
-          transition={{
-            duration: p.duration,
-            delay: p.delay,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
+          initial={{ opacity: reduce ? p.peak * 0.5 : 0, x: 0, y: 0 }}
+          animate={
+            reduce
+              ? { opacity: p.peak * 0.5 }
+              : { opacity: [0, p.peak, 0], x: [0, p.sway, 0], y: -p.drift }
+          }
+          transition={
+            reduce
+              ? undefined
+              : {
+                  duration: p.duration,
+                  delay: p.delay,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }
+          }
         />
       ))}
     </div>

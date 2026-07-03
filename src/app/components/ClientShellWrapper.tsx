@@ -58,23 +58,23 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, isPublic, triggerToast]);
 
-  // Render the prism backdrop once here (not inside each page) so it stays
-  // mounted across landing/login/signup navigations and its animation keeps
-  // running instead of restarting on every route change.
-  if (isPublic) {
-    return (
-      <>
-        <PrismBackdrop />
-        {children}
-      </>
-    );
-  }
-
+  // Render the prism backdrop once, above the public/app branch, so it stays
+  // mounted across every navigation — landing, login, signup AND into the
+  // authenticated app — and its animation runs continuously instead of
+  // restarting. Authenticated routes lay a darker scrim over it (see AppShell)
+  // so it recedes behind dense content.
   return (
-    <AppShell>
-      {children}
-      <OnboardingModal />
-    </AppShell>
+    <>
+      <PrismBackdrop />
+      {isPublic ? (
+        children
+      ) : (
+        <AppShell>
+          {children}
+          <OnboardingModal />
+        </AppShell>
+      )}
+    </>
   );
 }
 
