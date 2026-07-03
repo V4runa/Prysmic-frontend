@@ -3,12 +3,15 @@
 import Link from "next/link";
 import GlassPanel from "./components/GlassPanel";
 import PageTransition from "./components/PageTransition"; // ✅
+import PrismBackdrop from "./components/PrismBackdrop";
 
 export default function HomePage() {
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 bg-gradient-to-br from-[#0b0c0f] via-[#101215] to-[#13161a]">
-      <PageTransition>
-        <GlassPanel className="w-full max-w-2xl text-center">
+    <div className="relative min-h-[100dvh] flex items-center justify-center px-4 py-8">
+      <PrismBackdrop />
+      <div className="relative w-full flex items-center justify-center">
+        <PageTransition>
+          <GlassPanel className="w-full max-w-2xl text-center">
           <h1 className="text-3xl sm:text-4xl text-slate-100 font-semibold mb-4 tracking-wide">
             Welcome to <span className="text-cyan-300">Prysmic</span>
           </h1>
@@ -34,8 +37,9 @@ export default function HomePage() {
           <p className="text-xs text-slate-500 mt-8 tracking-wide uppercase">
             Created by a wanderer of code and thought
           </p>
-        </GlassPanel>
-      </PageTransition>
+          </GlassPanel>
+        </PageTransition>
+      </div>
     </div>
   );
 }

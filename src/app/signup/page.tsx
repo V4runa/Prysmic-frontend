@@ -6,6 +6,7 @@ import Link from "next/link";
 import GlassPanel from "../components/GlassPanel";
 import { apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
+import PrismBackdrop from "../components/PrismBackdrop";
 import { markOnboardingPending } from "../components/OnboardingModal";
 import { TextField, FormButton } from "../components/forms";
 
@@ -46,6 +47,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 bg-transparent">
+      <PrismBackdrop />
       <PageTransition>
         {" "}
         {/* ✅ */}
