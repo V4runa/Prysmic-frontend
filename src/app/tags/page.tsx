@@ -40,7 +40,7 @@ const selectedColorClasses: Record<string, string> = {
 };
 
 export default function TagsPage() {
-  const { data: tags = [], isError } = useTags();
+  const { data: tags = [], isError, isLoading } = useTags();
   const invalidateTags = useInvalidateTags();
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("cyan");
@@ -141,6 +141,16 @@ export default function TagsPage() {
         {/* Tags Grid */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-1">
+            {isLoading && tags.length === 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-12 rounded-xl bg-white/5 border border-white/10 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : (
             <AnimatePresence mode="wait">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -237,6 +247,7 @@ export default function TagsPage() {
               })}
               </motion.div>
             </AnimatePresence>
+            )}
           </div>
         </div>
 

@@ -10,7 +10,7 @@ import MoodPicker from "../components/MoodPicker";
 import MoodReflection from "../components/MoodReflection";
 import MoodTimeline from "../components/MoodTimeline";
 import { localToday, localDateKey } from "../lib/date";
-import { MoodOption } from "../hooks/useMoodOptions";
+import { MoodOption, useMoodOptions } from "../hooks/useMoodOptions";
 
 enum MoodPhase {
   PICK = "pick",
@@ -51,6 +51,11 @@ export default function MoodPage() {
     queryKey: ["moods"],
     queryFn: () => apiFetch<MoodEntry[]>("/moods"),
   });
+
+  // Warm the mood palette in parallel with /moods. MoodPicker reads the same
+  // cache key, so by the time the picker mounts the options are already here
+  // instead of kicking off a second, sequential request.
+  useMoodOptions();
 
   const timeline = useMemo(() => normalizeMoods(moodsRaw), [moodsRaw]);
   const error = isError ? "Failed to load moods." : "";

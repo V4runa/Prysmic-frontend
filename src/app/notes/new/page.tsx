@@ -17,8 +17,20 @@ import {
 import AttachmentZone, {
   AttachmentItemView,
 } from "../../components/AttachmentZone";
-import RichTextEditor from "../../components/RichTextEditor";
+import dynamic from "next/dynamic";
 import { noteHtmlToText } from "../../lib/noteContent";
+
+// TipTap is heavy; load it only when the editor actually renders so it stays
+// out of the initial route bundle.
+const RichTextEditor = dynamic(
+  () => import("../../components/RichTextEditor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[200px] rounded-md bg-white/5 border border-white/10 animate-pulse" />
+    ),
+  }
+);
 import { motion, AnimatePresence } from "framer-motion";
 import { TextField, FormButton } from "../../components/forms";
 

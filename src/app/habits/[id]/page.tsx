@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
@@ -63,20 +63,30 @@ export default function HabitDetailPage() {
   const [form, setForm] = useState<Partial<Habit>>({});
   const [error, setError] = useState("");
 
+  const { data: fetchedHabit, isError: loadError } = useQuery({
+    queryKey: ["habit", id],
+    queryFn: () => apiFetch<Habit>(`/habits/${id}?today=${localToday()}`),
+    enabled: !!id,
+    // Paint instantly from the habits-list cache (name, streaks, checked
+    // state) while the full record — intent, affirmation, frequency — loads.
+    placeholderData: () =>
+      queryClient
+        .getQueryData<Habit[]>(["habits"])
+        ?.find((h) => String(h.id) === String(id)),
+  });
+
+  // Mirror server/cache data into local state, which also drives the optimistic
+  // check-in toggle and the edit form. Don't clobber the form while editing.
   useEffect(() => {
-    const fetchHabit = async () => {
-      try {
-        const habitData = await apiFetch<Habit>(
-          `/habits/${id}?today=${localToday()}`
-        );
-        setHabit(habitData);
-        setForm(habitData);
-      } catch {
-        setError("Could not load habit");
-      }
-    };
-    fetchHabit();
-  }, [id]);
+    if (fetchedHabit) {
+      setHabit(fetchedHabit);
+      if (!edit) setForm(fetchedHabit);
+    }
+  }, [fetchedHabit, edit]);
+
+  useEffect(() => {
+    if (loadError && !habit) setError("Could not load habit");
+  }, [loadError, habit]);
 
   const isCheckedToday = habit?.checkedToday ?? false;
   const color = form.color || habit?.color || "cyan";
@@ -119,6 +129,7 @@ export default function HabitDetailPage() {
       });
       setHabit(habitData);
       setForm(habitData);
+      queryClient.setQueryData(["habit", id], habitData);
       queryClient.invalidateQueries({ queryKey: ["habits"] });
     } catch {
       // Revert on error
@@ -149,6 +160,7 @@ export default function HabitDetailPage() {
       setHabit(updated);
       setForm(updated);
       setEdit(false);
+      queryClient.setQueryData(["habit", id], updated);
       queryClient.invalidateQueries({ queryKey: ["habits"] });
     } catch {
       setError("Failed to save changes");
@@ -159,6 +171,7 @@ export default function HabitDetailPage() {
     if (!confirm("Are you sure you want to delete this contract?")) return;
     try {
       await apiFetch(`/habits/${id}`, { method: "DELETE" });
+      queryClient.removeQueries({ queryKey: ["habit", id] });
       queryClient.invalidateQueries({ queryKey: ["habits"] });
       router.push("/habits");
     } catch {

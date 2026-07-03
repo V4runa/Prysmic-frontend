@@ -34,7 +34,11 @@ const habitsQueryKey = ["habits"] as const;
 export default function HabitsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: habits = [], isError } = useQuery({
+  const {
+    data: habits = [],
+    isError,
+    isLoading,
+  } = useQuery({
     queryKey: habitsQueryKey,
     queryFn: () => apiFetch<Habit[]>(`/habits?today=${localToday()}`),
   });
@@ -127,6 +131,16 @@ export default function HabitsPage() {
 
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-1">
+            {isLoading && habits.length === 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-32 rounded-2xl bg-white/5 border border-white/10 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : (
             <AnimatePresence mode="wait">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -263,6 +277,7 @@ export default function HabitsPage() {
               })}
               </motion.div>
             </AnimatePresence>
+            )}
           </div>
         </div>
 

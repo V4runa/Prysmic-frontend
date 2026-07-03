@@ -16,12 +16,18 @@ export default function QueryProvider({
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Cached data is considered fresh for 30s, so navigating between
-            // pages reuses it instead of refetching on every mount.
-            staleTime: 30_000,
-            gcTime: 5 * 60_000,
+            // Cached data stays fresh for 5 minutes so revisiting a page (or
+            // bouncing between notes/tasks/calendar) serves instantly from
+            // cache instead of refetching on every mount. Personal data rarely
+            // changes from another device, and mutations invalidate explicitly.
+            staleTime: 5 * 60_000,
+            // Keep unused data around for 30 minutes before garbage collection
+            // so returning to a page later still hydrates from cache.
+            gcTime: 30 * 60_000,
             refetchOnWindowFocus: false,
-            retry: 1,
+            // Don't auto-retry: a failed/slow request would otherwise fire a
+            // second time, doubling the wait on an already-slow response.
+            retry: 0,
           },
         },
       }),
