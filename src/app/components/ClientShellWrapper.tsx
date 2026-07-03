@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import AppShell from "./AppShell";
 import OnboardingModal from "./OnboardingModal";
+import PrismBackdrop from "./PrismBackdrop";
 import { SessionToastProvider, useSessionToast } from "./SessionToastContext";
 import QueryProvider from "../providers/QueryProvider";
 
@@ -57,7 +58,17 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, isPublic, triggerToast]);
 
-  if (isPublic) return <>{children}</>;
+  // Render the prism backdrop once here (not inside each page) so it stays
+  // mounted across landing/login/signup navigations and its animation keeps
+  // running instead of restarting on every route change.
+  if (isPublic) {
+    return (
+      <>
+        <PrismBackdrop />
+        {children}
+      </>
+    );
+  }
 
   return (
     <AppShell>

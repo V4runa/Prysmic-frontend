@@ -3,12 +3,10 @@
 import Link from "next/link";
 import GlassPanel from "./components/GlassPanel";
 import PageTransition from "./components/PageTransition"; // ✅
-import PrismBackdrop from "./components/PrismBackdrop";
 
 export default function HomePage() {
   return (
     <div className="relative min-h-[100dvh] flex items-center justify-center px-4 py-8">
-      <PrismBackdrop />
       <div className="relative w-full flex items-center justify-center">
         <PageTransition>
           <GlassPanel className="w-full max-w-2xl text-center">
