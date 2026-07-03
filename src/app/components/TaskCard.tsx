@@ -160,7 +160,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
   return (
     <motion.div
       className={clsx(
-        "glass-card card-lift relative group flex flex-col h-full min-h-[150px] w-full min-w-0 overflow-hidden p-4 rounded-xl",
+        "glass-card card-lift relative group flex flex-col h-full min-h-[150px] p-4 rounded-xl",
         updating && "opacity-50 pointer-events-none",
         task.isComplete && "bg-green-500/5 border-green-400/20",
       )}
@@ -335,48 +335,9 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
         </motion.div>
       )}
 
-      {/* Options menu — pinned top-right so it never steals width from the title/footer rows */}
-      <div className="absolute top-3 right-3 z-30" ref={menuRef}>
-        <button
-          type="button"
-          aria-label="Task options"
-          className="tap-target flex items-center justify-center p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/10"
-          onClick={() => setShowMenu((prev) => !prev)}
-        >
-          <MoreVertical className="h-5 w-5" />
-        </button>
-        {showMenu && (
-          <div className="absolute right-0 mt-2 w-40 bg-zinc-800 border border-white/10 shadow-xl rounded-md z-30 overflow-hidden">
-            <button
-              className="tap-target w-full flex items-center gap-2 text-sm px-3.5 py-3 text-white/80 hover:bg-zinc-700"
-              onClick={() => {
-                setShowMenu(false);
-                setShowEdit(true);
-              }}
-            >
-              <Pencil className="h-4 w-4 shrink-0" />
-              Edit
-            </button>
-            <button
-              className="tap-target w-full flex items-center gap-2 text-sm px-3.5 py-3 text-white/80 hover:bg-zinc-700"
-              onClick={archive}
-            >
-              <Archive className="h-4 w-4 shrink-0" />
-              Archive
-            </button>
-            <button
-              className="tap-target w-full flex items-center gap-2 text-sm px-3.5 py-3 text-red-400 hover:bg-zinc-700"
-              onClick={del}
-            >
-              <Trash2 className="h-4 w-4 shrink-0" />
-              Delete
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Main content — pr-11 keeps text clear of the menu button */}
-      <div className="flex-1 min-w-0 pr-11 mb-4">
+      {/* Top row */}
+      <div className="flex justify-between items-start gap-3 mb-4">
+        <div className="flex-1 min-w-0">
           {editing ? (
             <div className="relative">
               <input
@@ -391,7 +352,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
                     setEditing(false);
                   }
                 }}
-                className="w-full min-w-0 bg-white/10 border border-cyan-400/20 text-white pl-3 pr-10 py-1.5 rounded-md text-sm outline-none"
+                className="w-full bg-white/10 border border-cyan-400/20 text-white pl-3 pr-10 py-1.5 rounded-md text-sm outline-none"
               />
               <button
                 type="button"
@@ -403,10 +364,10 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
               </button>
             </div>
           ) : (
-            <div className="flex items-start gap-2 min-w-0">
+            <div className="flex justify-between items-start gap-2">
               <motion.h3
                 className={clsx(
-                  "flex-1 min-w-0 text-white font-medium text-base truncate cursor-pointer relative",
+                  "min-w-0 flex-1 text-white font-medium text-base truncate cursor-pointer relative",
                   task.isComplete && "text-green-300/60"
                 )}
                 onClick={() => setEditing(true)}
@@ -468,7 +429,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
                 )}
               </motion.h3>
               <Pencil
-                className="hidden sm:block h-4 w-4 shrink-0 text-cyan-300 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                className="h-4 w-4 shrink-0 text-cyan-300 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition cursor-pointer"
                 onClick={() => setShowEdit(true)}
                 aria-label="Edit task"
               />
@@ -478,7 +439,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
           {task.description && (
             <p
               className={clsx(
-                "text-sm mt-1 line-clamp-3 break-words",
+                "text-sm mt-1 line-clamp-3",
                 task.isComplete ? "text-green-300/50" : "text-white/60"
               )}
             >
@@ -489,43 +450,78 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
           {task.dueDate && (
             <p
               className={clsx(
-                "text-xs mt-1 truncate",
+                "text-xs mt-1",
                 task.isComplete ? "text-green-300/40" : "text-white/40"
               )}
             >
               Due: {format(new Date(task.dueDate), "PPP")}
             </p>
           )}
+        </div>
+
+        {/* Menu (top-right) */}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            aria-label="Task options"
+            className="tap-target flex items-center justify-center -mr-1.5 -mt-1.5 p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/10"
+            onClick={() => setShowMenu((prev) => !prev)}
+          >
+            <MoreVertical className="h-5 w-5" />
+          </button>
+          {showMenu && (
+            <div className="absolute right-0 mt-2 w-40 bg-zinc-800 border border-white/10 shadow-xl rounded-md z-30 overflow-hidden">
+              <button
+                className="tap-target w-full flex items-center gap-2 text-sm px-3.5 py-3 text-white/80 hover:bg-zinc-700"
+                onClick={() => {
+                  setShowMenu(false);
+                  setShowEdit(true);
+                }}
+              >
+                <Pencil className="h-4 w-4 shrink-0" />
+                Edit
+              </button>
+              <button
+                className="tap-target w-full flex items-center gap-2 text-sm px-3.5 py-3 text-white/80 hover:bg-zinc-700"
+                onClick={archive}
+              >
+                <Archive className="h-4 w-4 shrink-0" />
+                Archive
+              </button>
+              <button
+                className="tap-target w-full flex items-center gap-2 text-sm px-3.5 py-3 text-red-400 hover:bg-zinc-700"
+                onClick={del}
+              >
+                <Trash2 className="h-4 w-4 shrink-0" />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom section with priority and completion status */}
-      <div className="mt-auto pt-3 flex items-center gap-2 min-w-0">
+      <div className="mt-auto pt-3 flex justify-between items-center">
         <div
           className={clsx(
-            "min-w-0 flex-1 truncate px-2 py-0.5 text-xs rounded-full border font-medium",
+            "inline-block px-2 py-0.5 text-xs rounded-full border font-medium",
             task.isComplete
               ? "border-green-400/30 bg-green-400/10 text-green-300"
               : priorityMap[task.priority].class
           )}
         >
-          {task.isComplete ? (
-            "Completed"
-          ) : (
-            <>
-              {priorityMap[task.priority].label}
-              <span className="hidden sm:inline"> Priority</span>
-            </>
-          )}
+          {task.isComplete
+            ? "Completed"
+            : `${priorityMap[task.priority].label} Priority`}
         </div>
 
-        {/* ✅ Completion button — shrink-0 keeps it always visible without horizontal scroll */}
+        {/* ✅ Completion button */}
         <motion.button
           onClick={toggleComplete}
           {...tactileSubtle}
           title="Toggle complete"
-          aria-label={task.isComplete ? "Mark incomplete" : "Mark complete"}
           className={clsx(
-            "tap-target shrink-0 flex items-center justify-center relative z-20 rounded-full border p-2 transition-colors",
+            "tap-target flex items-center justify-center relative z-20 rounded-full border p-2 transition-colors",
             task.isComplete
               ? "border-green-400/30 bg-green-400/10 hover:bg-green-400/20"
               : "border-white/20 hover:bg-white/10 hover:border-white/40"

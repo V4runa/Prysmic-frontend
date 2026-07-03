@@ -132,7 +132,7 @@ export default function TasksPage() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex-1 overflow-y-auto overflow-x-hidden app-scroll p-1"
+                  className="flex-1 overflow-y-auto app-scroll p-1"
                 >
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleTasks.map((task, i) => (
