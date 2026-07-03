@@ -18,7 +18,19 @@ const seededRandom = (n: number) => {
   return x - Math.floor(x);
 };
 
-const PARTICLE_COUNT = 30;
+const PARTICLE_COUNT = 34;
+
+// The Prysmic spectrum — the same hues that surface across the app (cyan, ice,
+// violet, rose, amber, mint). Weighted cool so warm colors are just accents.
+const PARTICLE_COLORS = [
+  "#67e8f9", // cyan
+  "#a5f3fc", // ice
+  "#67e8f9", // cyan (again — keep cool dominant)
+  "#a78bfa", // violet
+  "#f9a8d4", // rose
+  "#fcd34d", // amber
+  "#6ee7b7", // mint
+];
 
 export default function PrismBackdrop() {
   const particles = useMemo(
@@ -28,13 +40,16 @@ export default function PrismBackdrop() {
         const ry = seededRandom(i + 101);
         const rs = seededRandom(i + 201);
         const rd = seededRandom(i + 301);
+        const rc = seededRandom(i + 401);
+        const size = 1.2 + rs * 2.6;
         return {
           left: `${(rx * 100).toFixed(2)}%`,
           top: `${(ry * 100).toFixed(2)}%`,
-          size: 1 + rs * 2.4,
+          size,
           duration: 7 + rd * 11,
           delay: rx * 8,
           drift: 16 + ry * 30,
+          color: PARTICLE_COLORS[Math.floor(rc * PARTICLE_COLORS.length)],
         };
       }),
     []
@@ -51,17 +66,17 @@ export default function PrismBackdrop() {
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: "url('/prism-hero.png')" }}
         initial={{
-          opacity: 0.12,
+          opacity: 0.2,
           scale: 1,
-          filter: "saturate(0.5) brightness(0.65)",
+          filter: "saturate(0.6) brightness(0.75)",
         }}
         animate={{
-          opacity: [0.09, 0.19, 0.09],
+          opacity: [0.16, 0.32, 0.16],
           scale: [1, 1.05, 1],
           filter: [
-            "saturate(0.45) brightness(0.6)",
-            "saturate(1.3) brightness(0.95)",
-            "saturate(0.45) brightness(0.6)",
+            "saturate(0.55) brightness(0.72)",
+            "saturate(1.35) brightness(1.05)",
+            "saturate(0.55) brightness(0.72)",
           ],
         }}
         transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
@@ -73,18 +88,26 @@ export default function PrismBackdrop() {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at center, rgba(6,7,10,0.55) 0%, rgba(6,7,10,0.82) 55%, rgba(6,7,10,0.97) 100%)",
+            "radial-gradient(ellipse at center, rgba(6,7,10,0.42) 0%, rgba(6,7,10,0.74) 55%, rgba(6,7,10,0.95) 100%)",
         }}
       />
 
-      {/* Drifting motes of light rising through the dark. */}
+      {/* Drifting motes of light rising through the dark, tinted with the
+          Prysmic spectrum and given a soft glow so the color reads. */}
       {particles.map((p, i) => (
         <motion.span
           key={i}
-          className="absolute rounded-full bg-cyan-200/50 blur-[0.5px]"
-          style={{ left: p.left, top: p.top, width: p.size, height: p.size }}
+          className="absolute rounded-full blur-[0.5px]"
+          style={{
+            left: p.left,
+            top: p.top,
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            boxShadow: `0 0 ${(p.size * 2.5).toFixed(1)}px ${p.color}`,
+          }}
           initial={{ opacity: 0, y: 0 }}
-          animate={{ opacity: [0, 0.55, 0], y: -p.drift }}
+          animate={{ opacity: [0, 0.7, 0], y: -p.drift }}
           transition={{
             duration: p.duration,
             delay: p.delay,
