@@ -8,7 +8,8 @@ import PageTransition from "../components/PageTransition";
 import { apiFetch } from "../hooks/useApi";
 import { habitIconMap, IconKey } from "../components/habitIcons";
 import { getHabitColor } from "../lib/habitColors";
-import { localToday } from "../lib/date";
+import { logicalToday } from "../lib/date";
+import { calendarQueryKey } from "../hooks/useCalendar";
 import { tactile, tactileSubtle } from "../lib/motion";
 import Sparkles from "../components/Sparkles";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,20 +41,20 @@ export default function HabitsPage() {
     isLoading,
   } = useQuery({
     queryKey: habitsQueryKey,
-    queryFn: () => apiFetch<Habit[]>(`/habits?today=${localToday()}`),
+    queryFn: () => apiFetch<Habit[]>(`/habits?today=${logicalToday()}`),
   });
   const [error, setError] = useState("");
   const [animatingId, setAnimatingId] = useState<number | null>(null);
-  const lastCheckDate = useRef<string>(localToday());
+  const lastCheckDate = useRef<string>(logicalToday());
 
   useEffect(() => {
     if (isError) setError("Failed to load habits");
   }, [isError]);
 
-  // Auto-refresh when the calendar day changes (local-day reset)
+  // Auto-refresh when the logical day changes (6am reset boundary)
   useEffect(() => {
     const interval = setInterval(() => {
-      const today = localToday();
+      const today = logicalToday();
       if (lastCheckDate.current !== today) {
         lastCheckDate.current = today;
         queryClient.invalidateQueries({ queryKey: habitsQueryKey });
@@ -87,11 +88,14 @@ export default function HabitsPage() {
       // streaks), so no follow-up GET is needed.
       const updatedHabit = await apiFetch<Habit>(`/habits/${habitId}/check`, {
         method: "POST",
-        body: JSON.stringify({ date: localToday() }),
+        body: JSON.stringify({ date: logicalToday() }),
       });
       queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
         (prev ?? []).map((h) => (h.id === habitId ? updatedHabit : h))
       );
+      // Keep the calendar in sync: it reads a separate cached feed, so without
+      // this the completion wouldn't appear on the grid until the cache expired.
+      queryClient.invalidateQueries({ queryKey: calendarQueryKey });
     } catch {
       // Revert on error
       queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>

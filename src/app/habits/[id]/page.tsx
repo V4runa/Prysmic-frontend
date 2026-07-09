@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import { habitIconMap as iconMap, IconKey } from "../../components/habitIcons";
 import { getHabitColor } from "../../lib/habitColors";
-import { localToday } from "../../lib/date";
+import { logicalToday } from "../../lib/date";
+import { calendarQueryKey } from "../../hooks/useCalendar";
 import { tactile, tactileSubtle } from "../../lib/motion";
 import Sparkles from "../../components/Sparkles";
 import Spinner from "../../components/Spinner";
@@ -65,7 +66,7 @@ export default function HabitDetailPage() {
 
   const { data: fetchedHabit, isError: loadError } = useQuery({
     queryKey: ["habit", id],
-    queryFn: () => apiFetch<Habit>(`/habits/${id}?today=${localToday()}`),
+    queryFn: () => apiFetch<Habit>(`/habits/${id}?today=${logicalToday()}`),
     enabled: !!id,
     // Paint instantly from the habits-list cache (name, streaks, checked
     // state) while the full record — intent, affirmation, frequency — loads.
@@ -125,12 +126,15 @@ export default function HabitDetailPage() {
       // GET is needed.
       const habitData = await apiFetch<Habit>(`/habits/${id}/check`, {
         method: "POST",
-        body: JSON.stringify({ date: localToday() }),
+        body: JSON.stringify({ date: logicalToday() }),
       });
       setHabit(habitData);
       setForm(habitData);
       queryClient.setQueryData(["habit", id], habitData);
       queryClient.invalidateQueries({ queryKey: ["habits"] });
+      // The calendar feed is cached separately; refresh it so the check-in
+      // shows on the grid immediately rather than after the cache goes stale.
+      queryClient.invalidateQueries({ queryKey: calendarQueryKey });
     } catch {
       // Revert on error
       setHabit(previousState);

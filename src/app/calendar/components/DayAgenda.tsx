@@ -19,12 +19,12 @@ import {
 import { DayBuckets, dayLabel, dayStats, formatClock } from "../lib/calendarLib";
 import { CalendarHabitItem } from "../types";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
-import { resolveMoodVisual } from "../../lib/moodColors";
 import { habitIconMap, IconKey } from "../../components/habitIcons";
 import { calendarQueryKey, quickAddTask, toggleHabitCheck } from "../../hooks/useCalendar";
 import { tactileRow, tactileSubtle } from "../../lib/motion";
 import { TextField } from "../../components/forms";
 import HabitProgressRing from "./HabitProgressRing";
+import DayMoodEditor from "./DayMoodEditor";
 
 interface DayAgendaProps {
   day: string;
@@ -252,30 +252,8 @@ export default function DayAgenda({
           </section>
         )}
 
-        {/* Mood */}
-        {moods.length > 0 && (
-          <section className="flex flex-col gap-1.5">
-            <span className={sectionTitle}>Mood</span>
-            {moods.map((m) => {
-              const v = resolveMoodVisual({
-                moodType: m.moodType,
-                emoji: m.emoji,
-                color: m.color ?? undefined,
-              });
-              return (
-                <motion.button
-                  key={`mood-${m.id}`}
-                  {...tactileRow}
-                  onClick={() => router.push("/moods")}
-                  className="text-left flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10 transition hover:shadow-lg hover:shadow-black/25"
-                >
-                  <span className="text-lg leading-none">{v.emoji}</span>
-                  <span className={clsx("text-sm", v.classes.label)}>{v.label}</span>
-                </motion.button>
-              );
-            })}
-          </section>
-        )}
+        {/* Mood — inline editor so moods can be logged/updated retroactively */}
+        <DayMoodEditor day={day} mood={moods[0]} />
 
         {/* Notes */}
         {notes.length > 0 && (

@@ -25,6 +25,7 @@ import {
 import { CalendarView } from "./types";
 import { localToday } from "../lib/date";
 import { tactile } from "../lib/motion";
+import { useSwipe } from "../hooks/useSwipe";
 import MonthView from "./components/MonthView";
 import WeekView from "./components/WeekView";
 import DayAgenda from "./components/DayAgenda";
@@ -68,11 +69,9 @@ export default function CalendarPage() {
     };
   }, []);
 
-  // Month is the home view: it's the centralized overview the calendar exists
-  // for. Phones open to Day since a month grid is too dense to be useful there.
-  useEffect(() => {
-    if (window.matchMedia("(max-width: 639px)").matches) setView("day");
-  }, []);
+  // Month is the home view on every device — it's the centralized overview the
+  // calendar exists for. Phones navigate months by swiping, so the density is
+  // manageable. (Previously phones opened to Day.)
 
   // Restore the source-filter lens, merged over defaults so new sources default on.
   useEffect(() => {
@@ -126,6 +125,10 @@ export default function CalendarPage() {
     setAnchor(t);
     setSelectedDay(t);
   };
+
+  // Swipe left → next period, swipe right → previous, view-aware (month/week/
+  // day). Primarily for touch/mobile; mouse users still have the arrow buttons.
+  const swipe = useSwipe({ onSwipeLeft: goNext, onSwipeRight: goPrev });
 
   const handleSelectDay = (day: string) => {
     setSelectedDay(day);
@@ -203,7 +206,11 @@ export default function CalendarPage() {
             )}
 
             {/* Body */}
-            <div className="flex-1 min-h-0 flex flex-col">
+            <div
+              className="flex-1 min-h-0 flex flex-col touch-pan-y"
+              onTouchStart={swipe.onTouchStart}
+              onTouchEnd={swipe.onTouchEnd}
+            >
               {isLoading ? (
                 <div className="flex-1 flex items-center justify-center">
                   <Spinner label="Gathering your days..." />

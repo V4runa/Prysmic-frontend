@@ -9,7 +9,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import MoodPicker from "../components/MoodPicker";
 import MoodReflection from "../components/MoodReflection";
 import MoodTimeline from "../components/MoodTimeline";
-import { localToday, localDateKey } from "../lib/date";
+import { logicalToday, localDateKey } from "../lib/date";
+import { calendarQueryKey } from "../hooks/useCalendar";
 import { MoodOption, useMoodOptions } from "../hooks/useMoodOptions";
 
 enum MoodPhase {
@@ -26,14 +27,27 @@ export interface MoodEntry {
   emoji?: string;
   color?: string;
   createdAt?: string;
+  // Set when the mood was added retroactively via the calendar; excluded from
+  // streak counts on the timeline.
+  backfilled?: boolean;
 }
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+// Anchor each entry to its stored logical day (YYYY-MM-DD) rather than its
+// createdAt timestamp, so a mood always sits on the day it represents — this is
+// what lets retroactively-added (backfilled) moods land on their past date
+// instead of the day they were entered. The date is expanded to a local-midnight
+// string so downstream `new Date(date)` parses in local time (a bare
+// "YYYY-MM-DD" would be read as UTC and drift a day in western timezones).
 const normalizeMoods = (moods: MoodEntry[]): MoodEntry[] =>
   moods
-    .map((m) => ({
-      ...m,
-      date: m.createdAt || m.date || new Date().toISOString(),
-    }))
+    .map((m) => {
+      const dayOnly = DATE_ONLY.test(m.date)
+        ? m.date
+        : localDateKey(m.date || m.createdAt || new Date().toISOString());
+      return { ...m, date: `${dayOnly}T00:00:00` };
+    })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 export default function MoodPage() {
@@ -41,7 +55,7 @@ export default function MoodPage() {
   const [phase, setPhase] = useState<MoodPhase>(MoodPhase.PICK);
   const [selectedMood, setSelectedMood] = useState<MoodOption | null>(null);
 
-  const todayKey = localToday();
+  const todayKey = logicalToday();
 
   const {
     data: moodsRaw = [],
@@ -98,6 +112,8 @@ export default function MoodPage() {
       color: selectedMood.color,
       note,
       date: todayKey,
+      // Logged for the live logical day, so it counts toward the streak.
+      backfilled: false,
     });
 
     let lastError: unknown;
@@ -116,6 +132,8 @@ export default function MoodPage() {
     localStorage.setItem("lastMoodDate", todayKey);
     setPhase(MoodPhase.TIMELINE);
     await queryClient.invalidateQueries({ queryKey: ["moods"] });
+    // The calendar shows moods from its own cached feed; refresh it too.
+    queryClient.invalidateQueries({ queryKey: calendarQueryKey });
   };
 
   if (loading) {

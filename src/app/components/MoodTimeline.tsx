@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
-import { localDateKey, localToday } from "../lib/date";
+import { localDateKey, logicalToday, prevDayKey } from "../lib/date";
 import { resolveMoodVisual } from "../lib/moodColors";
 
 interface MoodEntry {
@@ -12,6 +12,8 @@ interface MoodEntry {
   date: string;
   emoji?: string;
   color?: string;
+  // Moods added retroactively through the calendar don't count toward streaks.
+  backfilled?: boolean;
 }
 
 interface MoodTimelineProps {
@@ -20,21 +22,25 @@ interface MoodTimelineProps {
 
 export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
   // 🔥 streak logic
-  // Count consecutive local days that have at least one mood entry, walking
-  // backwards from today. Using a Set of local-day keys makes this robust to
-  // multiple entries on the same day and to timezone offsets. A one-day grace
-  // applies: if today isn't logged yet, the streak earned through yesterday
-  // still counts (it only breaks once a full day is missed).
-  const loggedDays = new Set(timeline.map((m) => localDateKey(m.date)));
+  // Count consecutive logical days that have at least one *organically logged*
+  // mood entry, walking backwards from the current logical day (6am boundary).
+  // Backfilled entries — moods added retroactively through the calendar — are
+  // excluded so filling in the past can't manufacture a streak. Using a Set of
+  // local-day keys keeps this robust to multiple entries on the same day. A
+  // one-day grace applies: if today isn't logged yet, the streak earned through
+  // yesterday still counts (it only breaks once a full day is missed).
+  const loggedDays = new Set(
+    timeline.filter((m) => !m.backfilled).map((m) => localDateKey(m.date))
+  );
   let streak = 0;
   if (loggedDays.size > 0) {
-    const cursor = new Date();
-    if (!loggedDays.has(localToday())) {
-      cursor.setDate(cursor.getDate() - 1);
+    let cursor = logicalToday();
+    if (!loggedDays.has(cursor)) {
+      cursor = prevDayKey(cursor);
     }
-    while (loggedDays.has(localDateKey(cursor))) {
+    while (loggedDays.has(cursor)) {
       streak += 1;
-      cursor.setDate(cursor.getDate() - 1);
+      cursor = prevDayKey(cursor);
     }
   }
 
