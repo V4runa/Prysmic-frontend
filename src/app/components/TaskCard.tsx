@@ -15,8 +15,8 @@ import {
   X,
 } from "lucide-react";
 import clsx from "clsx";
-import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatTaskDueDate } from "../tasks/taskDueDate";
 import Sparkles from "./Sparkles";
 import TaskForm from "./TaskForm";
 import { tactileSubtle } from "../lib/motion";
@@ -454,7 +454,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
                 task.isComplete ? "text-green-300/40" : "text-white/40"
               )}
             >
-              Due: {format(new Date(task.dueDate), "PPP")}
+              Due: {formatTaskDueDate(task.dueDate)}
             </p>
           )}
         </div>

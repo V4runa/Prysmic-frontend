@@ -21,7 +21,7 @@ import {
   CalendarSource,
   CalendarTaskItem,
 } from "../types";
-import { localDateKey } from "../../lib/date";
+import { localDateKey, taskDueDayKey } from "../../lib/date";
 
 // Monday-start weeks (locked product decision).
 const WEEK_OPTS = { weekStartsOn: 1 as const };
@@ -91,7 +91,9 @@ export function weekDays(anchor: string): MonthCell[] {
 export function itemDay(item: CalendarItem): string {
   switch (item.source) {
     case "task":
-      return localDateKey(item.dueDate);
+      // Date-only due dates are calendar days (UTC midnight on the wire),
+      // not instants. Notes keep localDateKey below.
+      return taskDueDayKey(item.dueDate);
     case "note":
       return localDateKey(item.createdAt);
     case "habit":

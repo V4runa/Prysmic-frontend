@@ -37,7 +37,7 @@ export interface CalendarTaskItem {
   title: string;
   priority: number;
   isComplete: boolean;
-  dueDate: string; // ISO timestamp
+  dueDate: string; // ISO timestamp; a date-only due date is UTC midnight of that day
 }
 
 export interface CalendarHabitItem {

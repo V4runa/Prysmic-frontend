@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Task, TaskPriority } from "../tasks/types/task";
+import { taskDueInputValue } from "../tasks/taskDueDate";
 import { apiFetch } from "../hooks/useApi";
 import { Field, TextField, TextArea, SelectField, FormButton } from "./forms";
 
@@ -16,9 +17,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   const [priority, setPriority] = useState<TaskPriority>(
     task?.priority ?? TaskPriority.MEDIUM
   );
-  const [dueDate, setDueDate] = useState<string>(
-    task?.dueDate ? task.dueDate.slice(0, 10) : ""
-  );
+  const [dueDate, setDueDate] = useState<string>(taskDueInputValue(task?.dueDate));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -27,7 +26,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       setTitle(task.title);
       setDescription(task.description || "");
       setPriority(task.priority ?? TaskPriority.MEDIUM);
-      setDueDate(task.dueDate ? task.dueDate.slice(0, 10) : "");
+      setDueDate(taskDueInputValue(task.dueDate));
     }
   }, [task]);
 
