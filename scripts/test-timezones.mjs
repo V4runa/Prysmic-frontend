@@ -34,4 +34,11 @@ const notes = spawnSync(
 );
 if (notes.status !== 0) failed += 1;
 
+console.log("\n=== note body restore (mounted) ===\n");
+const restore = spawnSync(process.execPath, ["scripts/note-body-restore.mjs"], {
+  stdio: "inherit",
+  env: process.env,
+});
+if (restore.status !== 0) failed += 1;
+
 process.exit(failed === 0 ? 0 : 1);

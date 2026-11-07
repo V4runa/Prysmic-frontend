@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   useEditor,
   EditorContent,
@@ -66,6 +66,14 @@ export default function RichTextEditor({
     [placeholder]
   );
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  // The editor is created from the first render's content. A restored draft
+  // arrives on a later render, and TipTap's default setEditable emits `update`
+  // for the still-empty document. That emission must not become onChange or
+  // it replaces the restored body (the title is outside this editor).
+  const acceptUpdates = useRef(false);
+
   const editor = useEditor({
     editable,
     content: normalizeNoteHtml(content),
@@ -80,21 +88,26 @@ export default function RichTextEditor({
         ),
       },
     },
-    onUpdate: ({ editor }) => onChange?.(editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      if (!acceptUpdates.current) return;
+      onChangeRef.current?.(editor.getHTML());
+    },
   });
 
   useEffect(() => {
-    if (editor) editor.setEditable(editable);
+    if (editor) editor.setEditable(editable, false);
   }, [editable, editor]);
 
-  // Sync external content changes (note loaded, edit cancelled) without
-  // clobbering the caret while the user is typing.
+  // Sync external content changes (note loaded, draft restored, edit
+  // cancelled) without echoing them back through onChange.
   useEffect(() => {
     if (!editor) return;
+    acceptUpdates.current = false;
     const incoming = normalizeNoteHtml(content);
     if (incoming !== editor.getHTML()) {
       editor.commands.setContent(incoming, { emitUpdate: false });
     }
+    acceptUpdates.current = true;
   }, [content, editor]);
 
   if (!editor) {
