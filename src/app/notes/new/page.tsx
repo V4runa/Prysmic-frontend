@@ -47,6 +47,7 @@ import {
   currentSessionEpoch,
   saveAudience,
 } from "../../lib/sessionBoundary";
+import { bindNewNoteCreate, uploadWithCreatedId } from "../bindNewNoteCreate";
 import { useWritingGuard } from "../useWritingGuard";
 
 // TipTap is heavy; load it only when the editor actually renders so it stays
@@ -291,11 +292,7 @@ export default function CreateNotePage() {
           : undefined,
         files: pending.map((file) => ({
           key: file.id,
-          upload: async () => {
-            const id = createdIdRef.current;
-            if (id == null) throw new Error("API Error: 500 missing note id");
-            await uploadAttachment(id, file.file);
-          },
+          upload: () => uploadWithCreatedId(createdIdRef, (id) => uploadAttachment(id, file.file)),
         })),
         create: () =>
           apiFetch<{ id: number; updatedAt?: string | null }>("/notes", {
@@ -307,23 +304,18 @@ export default function CreateNotePage() {
             method: "PUT",
             body: JSON.stringify(snapshot),
           }),
-        onCreated: (created) => {
-          if (!clientEffectsForSave(audienceNow()).writeDraft || !owner || !storage) return;
-          createdIdRef.current = created.id;
-          setCreatedId(created.id);
-          setServerCopy(snapshot);
-          setBaseUpdatedAt(created.updatedAt);
-          writeDraft(storage, {
-            v: 1,
-            userId: owner,
-            noteKey: "new",
-            ...snapshot,
-            createdId: created.id,
-            baseUpdatedAt: created.updatedAt,
-            serverCopy: snapshot,
-            savedAt: Date.now(),
-          });
-        },
+        onCreated: bindNewNoteCreate({
+          createdIdRef,
+          storage,
+          owner,
+          snapshot,
+          writeDraftAllowed: clientEffectsForSave(audienceNow()).writeDraft,
+          rememberInMemory: (created) => {
+            setCreatedId(created.id);
+            setServerCopy(snapshot);
+            setBaseUpdatedAt(created.updatedAt);
+          },
+        }),
         onTextSynced: (synced) => {
           if (audienceNow() === "abandoned") return;
           setServerCopy(snapshot);
