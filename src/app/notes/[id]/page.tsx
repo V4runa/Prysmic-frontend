@@ -22,20 +22,27 @@ import AttachmentZone, {
 import dynamic from "next/dynamic";
 import { noteHtmlToText } from "../../lib/noteContent";
 import {
-  clearDraft,
+  clearDraftIfMatches,
   clearDraftIfOtherUser,
   copiesMatch,
   decideRestore,
   draftHasWriting,
+  noteDraftStorage,
   noteOwnerId,
+  ownerForDraftWrite,
   readDraft,
   writeDraft,
   type NoteDraft,
+  type NoteDraftCopy,
 } from "../noteDraft";
 import {
   CONFLICT_MESSAGE,
+  KEPT_NEWER_MESSAGE,
+  claimSaveLock,
+  releaseSaveLock,
   runExistingNoteSave,
   saveErrorMessage,
+  settleSavedRevision,
   shouldShowNoteEditor,
 } from "../noteSave";
 import { useWritingGuard } from "../useWritingGuard";
@@ -100,6 +107,16 @@ export default function ViewNotePage() {
   const [persisted, setPersisted] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const hydratedRef = useRef(false);
+  const savingRef = useRef(false);
+  const sessionOwnerRef = useRef<number | null>(null);
+  const latestRef = useRef<NoteDraftCopy>({ title: "", content: "", tagIds: [] });
+  latestRef.current = { title: editedTitle, content: editedContent, tagIds: selectedTagIds };
+
+  const draftOwner = () => {
+    const tokenOwner = noteOwnerId(getUserFromToken()?.userId);
+    if (tokenOwner && sessionOwnerRef.current == null) sessionOwnerRef.current = tokenOwner;
+    return ownerForDraftWrite(sessionOwnerRef.current, tokenOwner);
+  };
 
   const numericNoteId = noteId ? Number(noteId) : null;
   const {
@@ -130,9 +147,11 @@ export default function ViewNotePage() {
     const serverUpdatedAt = note.updatedAt ?? null;
     if (!hydratedRef.current) {
       hydratedRef.current = true;
-      const owner = noteOwnerId(getUserFromToken()?.userId);
-      if (owner) clearDraftIfOtherUser(sessionStorage, owner);
-      const draft = readDraft(sessionStorage);
+      const storage = noteDraftStorage();
+      const owner = draftOwner();
+      if (!storage) setPersisted(false);
+      if (storage && owner) clearDraftIfOtherUser(storage, owner);
+      const draft = storage ? readDraft(storage) : null;
       const decision = decideRestore({
         draft,
         userId: owner,
@@ -144,7 +163,13 @@ export default function ViewNotePage() {
         copiesMatch(draft, draft.serverCopy) &&
         (decision === "apply" || decision === "hold")
       ) {
-        clearDraft(sessionStorage);
+        if (storage) {
+          clearDraftIfMatches(storage, {
+            userId: owner ?? draft.userId,
+            noteKey: String(noteId),
+            createdId: draft.createdId,
+          });
+        }
       } else if (decision === "apply" && draft && draftHasWriting(draft)) {
         setEditedTitle(draft.title);
         setEditedContent(draft.content);
@@ -179,9 +204,13 @@ export default function ViewNotePage() {
       setPersisted(false);
       return;
     }
-    const owner = noteOwnerId(getUserFromToken()?.userId);
-    if (!owner) return;
-    const result = writeDraft(sessionStorage, {
+    const owner = draftOwner();
+    const storage = noteDraftStorage();
+    if (!owner || !storage) {
+      setPersisted(false);
+      return;
+    }
+    const result = writeDraft(storage, {
       v: 1,
       userId: owner,
       noteKey: String(noteId),
@@ -206,6 +235,34 @@ export default function ViewNotePage() {
     heldDraft,
   ]);
 
+  useEffect(() => {
+    const flush = () => {
+      if (!editing || !noteId) return;
+      const owner = draftOwner();
+      const storage = noteDraftStorage();
+      const latest = latestRef.current;
+      if (!owner || !storage || !draftHasWriting(latest)) {
+        setPersisted(false);
+        return;
+      }
+      const result = writeDraft(storage, {
+        v: 1,
+        userId: owner,
+        noteKey: String(noteId),
+        title: latest.title,
+        content: latest.content,
+        tagIds: latest.tagIds,
+        createdId: null,
+        baseUpdatedAt,
+        serverCopy: null,
+        savedAt: Date.now(),
+      });
+      setPersisted(result.ok);
+    };
+    window.addEventListener("token-expired", flush);
+    return () => window.removeEventListener("token-expired", flush);
+  }, [editing, noteId, baseUpdatedAt]);
+
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this note?")) return;
 
@@ -223,24 +280,30 @@ export default function ViewNotePage() {
   };
 
   const handleSaveUpdate = async () => {
-    if (saving || !noteId) return;
+    if (!noteId || !claimSaveLock(savingRef)) return;
+    const snapshot: NoteDraftCopy = {
+      title: editedTitle,
+      content: editedContent,
+      tagIds: [...selectedTagIds],
+    };
     setActionError("");
     setSaving(true);
-    const result = await runExistingNoteSave({
+    let result: Awaited<ReturnType<typeof runExistingNoteSave>>;
+    try {
+      result = await runExistingNoteSave({
       baseUpdatedAt,
       force: pendingOverwrite,
       loadLatest: () => apiFetch<Note>(`/notes/${noteId}`),
       update: () =>
         apiFetch<Note>(`/notes/${noteId}`, {
           method: "PUT",
-          body: JSON.stringify({
-            title: editedTitle,
-            content: editedContent,
-            tagIds: selectedTagIds,
-          }),
+          body: JSON.stringify(snapshot),
         }),
     });
-    setSaving(false);
+    } finally {
+      releaseSaveLock(savingRef);
+      setSaving(false);
+    }
 
     if (result.status === "conflict") {
       setPendingOverwrite(true);
@@ -257,26 +320,35 @@ export default function ViewNotePage() {
       old
         ? {
             ...old,
-            title: editedTitle,
-            content: editedContent,
+            title: snapshot.title,
+            content: snapshot.content,
             updatedAt: result.updatedAt ?? old.updatedAt,
-            tags: availableTags.filter((tag) => selectedTagIds.includes(tag.id)),
+            tags: availableTags.filter((tag) => snapshot.tagIds.includes(tag.id)),
           }
         : old
     );
     queryClient.invalidateQueries({ queryKey: ["notes"] });
-    const existing = readDraft(sessionStorage);
-    if (
-      existing &&
-      (existing.noteKey === String(noteId) || String(existing.createdId) === String(noteId))
-    ) {
-      clearDraft(sessionStorage);
+    setBaseUpdatedAt(result.updatedAt);
+    setPendingOverwrite(false);
+
+    if (settleSavedRevision(snapshot, latestRef.current) === "keep-latest") {
+      setDirty(true);
+      setActionError(KEPT_NEWER_MESSAGE);
+      return;
+    }
+
+    const owner = draftOwner();
+    const storage = noteDraftStorage();
+    if (owner && storage) {
+      clearDraftIfMatches(storage, {
+        userId: owner,
+        noteKey: String(noteId),
+        createdId: null,
+      });
     }
     setDirty(false);
-    setPendingOverwrite(false);
     setHeldDraft(null);
     setRestored(false);
-    setBaseUpdatedAt(result.updatedAt);
     setEditing(false);
   };
 
@@ -288,16 +360,18 @@ export default function ViewNotePage() {
   };
 
   const clearThisDraft = () => {
-    const existing = readDraft(sessionStorage);
-    if (
-      existing &&
-      (existing.noteKey === String(noteId) || String(existing.createdId) === String(noteId))
-    ) {
-      clearDraft(sessionStorage);
-    }
+    const owner = draftOwner();
+    const storage = noteDraftStorage();
+    if (!owner || !storage || !noteId) return;
+    clearDraftIfMatches(storage, {
+      userId: owner,
+      noteKey: String(noteId),
+      createdId: null,
+    });
   };
 
   const handleCancelEdit = () => {
+    if (savingRef.current) return;
     clearThisDraft();
     setEditedTitle(note?.title || "");
     setEditedContent(note?.content || "");
@@ -390,7 +464,14 @@ export default function ViewNotePage() {
                 >
                   <Save className="h-5 w-5 text-cyan-300" />
                 </motion.button>
-                <motion.button {...tactile} className="tap-target flex items-center justify-center p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10" onClick={handleCancelEdit} title="Cancel">
+                <motion.button
+                  {...tactile}
+                  className="tap-target flex items-center justify-center p-2 bg-white/10 hover:bg-white/20 rounded-md border border-white/10 disabled:opacity-50"
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  title={saving ? "Saving" : "Cancel"}
+                  aria-label={saving ? "Saving" : "Cancel"}
+                >
                   <X className="h-5 w-5 text-slate-300" />
                 </motion.button>
               </>
@@ -445,6 +526,7 @@ export default function ViewNotePage() {
                   {editing ? (
                     <TextField
                       value={editedTitle}
+                      disabled={saving}
                       onChange={(e) => {
                         setEditedTitle(e.target.value);
                         setDirty(true);
@@ -458,9 +540,10 @@ export default function ViewNotePage() {
                   {editing ? (
                     <>
                       <RichTextEditor
-                        editable
+                        editable={!saving}
                         content={editedContent}
                         onChange={(html) => {
+                          if (saving) return;
                           setEditedContent(html);
                           if (html !== editedContent) setDirty(true);
                         }}
@@ -473,6 +556,9 @@ export default function ViewNotePage() {
                           {"  ·  "}⌘/Ctrl + S to save
                         </span>
                       </span>
+                      {saving && (
+                        <p className="text-xs text-slate-400">Saving… editing is paused so this copy stays intact.</p>
+                      )}
                       {restored && (
                         <p className="text-xs text-slate-400">Restored unsaved writing from this tab.</p>
                       )}
@@ -521,7 +607,8 @@ export default function ViewNotePage() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
                     whileTap={editing ? { scale: 0.93 } : undefined}
-                    onClick={() => editing && toggleTag(tag.id)}
+                    disabled={saving}
+                    onClick={() => editing && !saving && toggleTag(tag.id)}
                     className={`${editing ? "interactive-chip" : ""} px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition-colors ${
                       active
                         ? `${base} ring-1 ring-white/20`

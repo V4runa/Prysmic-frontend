@@ -11,6 +11,7 @@ import { getUserFromToken } from "../hooks/useAuth";
 import {
   clearDraftIfOtherUser,
   draftVisibleToUser,
+  noteDraftStorage,
   noteOwnerId,
   readDraft,
   recoveryHref,
@@ -83,9 +84,10 @@ export default function NotesOverviewPage() {
   }, [activeTags]);
 
   useEffect(() => {
+    const storage = noteDraftStorage();
     const owner = noteOwnerId(getUserFromToken()?.userId);
-    if (owner) clearDraftIfOtherUser(sessionStorage, owner);
-    const draft = draftVisibleToUser(readDraft(sessionStorage), owner);
+    if (storage && owner) clearDraftIfOtherUser(storage, owner);
+    const draft = draftVisibleToUser(storage ? readDraft(storage) : null, owner);
     setUnsavedHref(draft ? recoveryHref(draft) : null);
   }, []);
 

@@ -135,7 +135,10 @@ export function readDraft(
   }
 }
 
-function sameSlot(a: NoteDraft, b: NoteDraft): boolean {
+export function draftsShareSlot(
+  a: Pick<NoteDraft, "userId" | "noteKey" | "createdId">,
+  b: Pick<NoteDraft, "userId" | "noteKey" | "createdId">
+): boolean {
   if (a.userId !== b.userId) return false;
   if (a.noteKey === b.noteKey) return true;
   if (a.createdId != null && String(a.createdId) === b.noteKey) return true;
@@ -143,9 +146,45 @@ function sameSlot(a: NoteDraft, b: NoteDraft): boolean {
   return false;
 }
 
+/**
+ * Who a new keystroke may be stored under. A cleared token keeps the owner
+ * this editing session already verified. A different account must not inherit
+ * the draft.
+ */
+export function ownerForDraftWrite(
+  rememberedOwner: number | null,
+  tokenOwner: number | null
+): number | null {
+  if (tokenOwner == null) return rememberedOwner;
+  if (rememberedOwner == null) return tokenOwner;
+  if (tokenOwner !== rememberedOwner) return null;
+  return tokenOwner;
+}
+
+/**
+ * Reading `sessionStorage` itself can throw (locked-down or partitioned
+ * storage) before any method runs. Callers treat null as "not kept".
+ */
+export function noteDraftStorage(
+  source: { readonly sessionStorage: DraftStorage } | undefined = typeof window ===
+  "undefined"
+    ? undefined
+    : window
+): DraftStorage | null {
+  try {
+    if (!source) return null;
+    const storage = source.sessionStorage;
+    if (!storage) return null;
+    storage.getItem(NOTE_DRAFT_KEY);
+    return storage;
+  } catch {
+    return null;
+  }
+}
+
 export function writeDraft(storage: DraftStorage, draft: NoteDraft): WriteDraftResult {
   const existing = readDraft(storage, draft.savedAt);
-  if (existing && !sameSlot(existing, draft)) {
+  if (existing && !draftsShareSlot(existing, draft)) {
     return { ok: false, reason: "occupied" };
   }
   try {
@@ -162,6 +201,17 @@ export function clearDraft(storage: DraftStorage): void {
   } catch {
     /* leaving the page must not throw if storage is blocked */
   }
+}
+
+/** Remove the slot only when it is this owner's copy of this note. */
+export function clearDraftIfMatches(
+  storage: DraftStorage,
+  match: { userId: number; noteKey: string; createdId: number | null }
+): boolean {
+  const existing = readDraft(storage);
+  if (!existing || !draftsShareSlot(existing, match)) return false;
+  clearDraft(storage);
+  return true;
 }
 
 /** Drop a draft that belongs to someone else once a different account is in this tab. */

@@ -4,9 +4,12 @@ import {
   NOTE_DRAFT_KEY,
   NOTE_DRAFT_TTL_MS,
   clearDraft,
+  clearDraftIfMatches,
   clearDraftIfOtherUser,
   decideRestore,
   draftVisibleToUser,
+  noteDraftStorage,
+  ownerForDraftWrite,
   readDraft,
   recoveryHref,
   writeDraft,
@@ -148,6 +151,47 @@ test("storage failures and corrupt payloads do not throw or pretend success", ()
   storage.setItem(NOTE_DRAFT_KEY, "{not json");
   assert.equal(readDraft(storage), null);
   assert.equal(storage.dump(), null);
+});
+
+test("saving one note does not clear a different note occupying the slot", () => {
+  const storage = memoryStorage();
+  writeDraft(storage, draft({ noteKey: "5", title: "Keep me" }));
+  const cleared = clearDraftIfMatches(storage, {
+    userId: 7,
+    noteKey: "new",
+    createdId: 41,
+  });
+  assert.equal(cleared, false);
+  assert.equal(readDraft(storage)?.title, "Keep me");
+  assert.equal(
+    clearDraftIfMatches(storage, { userId: 7, noteKey: "5", createdId: null }),
+    true
+  );
+  assert.equal(readDraft(storage), null);
+});
+
+test("a cleared token still flushes under the original owner and never another user", () => {
+  const storage = memoryStorage();
+  const remembered = 7;
+  assert.equal(ownerForDraftWrite(remembered, 7), 7);
+  writeDraft(storage, draft({ userId: 7, title: "before", savedAt: Date.now() }));
+  assert.equal(ownerForDraftWrite(remembered, null), 7);
+  writeDraft(storage, draft({ userId: 7, title: "after the token was cleared", savedAt: Date.now() }));
+  assert.equal(readDraft(storage)?.title, "after the token was cleared");
+  assert.equal(readDraft(storage)?.userId, 7);
+  assert.equal(ownerForDraftWrite(remembered, 8), null);
+  assert.equal(readDraft(storage)?.userId, 7);
+});
+
+test("a throwing sessionStorage getter is treated as unavailable", () => {
+  const source = {} as { sessionStorage: DraftStorage };
+  Object.defineProperty(source, "sessionStorage", {
+    get() {
+      throw new Error("SecurityError");
+    },
+  });
+  assert.equal(noteDraftStorage(source), null);
+  assert.equal(noteDraftStorage(undefined), null);
 });
 
 test("logout clears the draft that was kept for reauth", () => {

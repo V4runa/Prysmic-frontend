@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { syncPersonalCache } from "../lib/personalCache";
 import {
   clearDraft,
   clearDraftIfOtherUser,
   draftHasWriting,
+  noteDraftStorage,
   noteOwnerId,
   readDraft,
 } from "../notes/noteDraft";
@@ -25,23 +28,30 @@ import {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      syncPersonalCache(queryClient, null);
+      return;
+    }
     try {
       const decoded = JSON.parse(atob(token.split(".")[1]));
       setUsername(decoded.username || null);
       const owner = noteOwnerId(decoded.sub);
-      if (owner) clearDraftIfOtherUser(sessionStorage, owner);
+      syncPersonalCache(queryClient, owner);
+      const storage = noteDraftStorage();
+      if (storage && owner) clearDraftIfOtherUser(storage, owner);
     } catch {
       setUsername(null);
     }
-  }, []);
+  }, [queryClient]);
 
   const handleLogout = () => {
-    const draft = readDraft(sessionStorage);
+    const storage = noteDraftStorage();
+    const draft = storage ? readDraft(storage) : null;
     if (
       draft &&
       draftHasWriting(draft) &&
@@ -49,7 +59,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     ) {
       return;
     }
-    clearDraft(sessionStorage);
+    if (storage) clearDraft(storage);
+    syncPersonalCache(queryClient, null);
     localStorage.removeItem("token");
     router.push("/login");
   };

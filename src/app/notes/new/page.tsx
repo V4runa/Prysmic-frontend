@@ -21,17 +21,26 @@ import AttachmentZone, {
 import dynamic from "next/dynamic";
 import { noteHtmlToText } from "../../lib/noteContent";
 import {
-  clearDraft,
+  clearDraftIfMatches,
   clearDraftIfOtherUser,
   copiesMatch,
   draftHasWriting,
+  noteDraftStorage,
   noteOwnerId,
+  ownerForDraftWrite,
   readDraft,
   writeDraft,
   type NoteDraft,
   type NoteDraftCopy,
 } from "../noteDraft";
-import { saveErrorMessage, saveNewNote } from "../noteSave";
+import {
+  KEPT_NEWER_MESSAGE,
+  claimSaveLock,
+  releaseSaveLock,
+  saveErrorMessage,
+  saveNewNote,
+  settleSavedRevision,
+} from "../noteSave";
 import { useWritingGuard } from "../useWritingGuard";
 
 // TipTap is heavy; load it only when the editor actually renders so it stays
@@ -83,6 +92,16 @@ export default function CreateNotePage() {
   const [restored, setRestored] = useState(false);
   const createdIdRef = useRef<number | null>(null);
   const suppressPersist = useRef(false);
+  const savingRef = useRef(false);
+  const sessionOwnerRef = useRef<number | null>(null);
+  const latestRef = useRef({ title: "", content: "", tagIds: [] as number[] });
+  latestRef.current = { title, content, tagIds: selectedTagIds };
+
+  const draftOwner = () => {
+    const tokenOwner = noteOwnerId(getUserFromToken()?.userId);
+    if (tokenOwner && sessionOwnerRef.current == null) sessionOwnerRef.current = tokenOwner;
+    return ownerForDraftWrite(sessionOwnerRef.current, tokenOwner);
+  };
 
   // Revoke any lingering preview URLs when leaving the page.
   const stagedRef = useRef(staged);
@@ -98,13 +117,19 @@ export default function CreateNotePage() {
   useWritingGuard(hydrated && dirty, persisted);
 
   useEffect(() => {
-    const owner = noteOwnerId(getUserFromToken()?.userId);
-    if (owner) clearDraftIfOtherUser(sessionStorage, owner);
-    const draft = readDraft(sessionStorage);
+    const storage = noteDraftStorage();
+    const owner = draftOwner();
+    if (!storage) setPersisted(false);
+    if (storage && owner) clearDraftIfOtherUser(storage, owner);
+    const draft = storage ? readDraft(storage) : null;
     if (draft && owner && draft.userId === owner && draft.noteKey === "new") {
       const copy = { title: draft.title, content: draft.content, tagIds: draft.tagIds };
       if (draft.createdId && draft.serverCopy && copiesMatch(copy, draft.serverCopy)) {
-        clearDraft(sessionStorage);
+        clearDraftIfMatches(storage!, {
+          userId: owner,
+          noteKey: "new",
+          createdId: draft.createdId,
+        });
         router.replace(`/notes/${draft.createdId}`);
         return;
       }
@@ -126,8 +151,13 @@ export default function CreateNotePage() {
 
   useEffect(() => {
     if (!hydrated || suppressPersist.current) return;
-    const owner = noteOwnerId(getUserFromToken()?.userId);
-    if (!owner) return;
+    const owner = draftOwner();
+    const storage = noteDraftStorage();
+    const writing = draftHasWriting({ title, content, tagIds: selectedTagIds }) || createdId != null;
+    if (!owner || !storage) {
+      if (writing) setPersisted(false);
+      return;
+    }
     const next: NoteDraft = {
       v: 1,
       userId: owner,
@@ -141,13 +171,41 @@ export default function CreateNotePage() {
       savedAt: Date.now(),
     };
     if (!draftHasWriting(next) && createdId == null) {
-      const existing = readDraft(sessionStorage);
-      if (existing?.userId === owner && existing.noteKey === "new") clearDraft(sessionStorage);
+      clearDraftIfMatches(storage, { userId: owner, noteKey: "new", createdId: null });
       setPersisted(true);
       return;
     }
-    setPersisted(writeDraft(sessionStorage, next).ok);
+    setPersisted(writeDraft(storage, next).ok);
   }, [hydrated, title, content, selectedTagIds, createdId, baseUpdatedAt, serverCopy]);
+
+  useEffect(() => {
+    const flush = () => {
+      if (suppressPersist.current) return;
+      const owner = draftOwner();
+      const storage = noteDraftStorage();
+      const latest = latestRef.current;
+      if (!owner || !storage) {
+        setPersisted(false);
+        return;
+      }
+      if (!draftHasWriting(latest) && createdIdRef.current == null) return;
+      const result = writeDraft(storage, {
+        v: 1,
+        userId: owner,
+        noteKey: "new",
+        title: latest.title,
+        content: latest.content,
+        tagIds: latest.tagIds,
+        createdId: createdIdRef.current,
+        baseUpdatedAt,
+        serverCopy,
+        savedAt: Date.now(),
+      });
+      setPersisted(result.ok);
+    };
+    window.addEventListener("token-expired", flush);
+    return () => window.removeEventListener("token-expired", flush);
+  }, [baseUpdatedAt, serverCopy]);
 
   const attachmentItems: AttachmentItemView[] = staged.map((s) => ({
     key: s.id,
@@ -193,20 +251,21 @@ export default function CreateNotePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (saving) return;
+    if (!claimSaveLock(savingRef)) return;
     setError("");
     setSaving(true);
 
-    const owner = noteOwnerId(getUserFromToken()?.userId);
+    const snapshot: NoteDraftCopy = { title, content, tagIds: [...selectedTagIds] };
+    const owner = draftOwner();
+    const storage = noteDraftStorage();
     const pending = staged.filter((file) => !uploadedKeys.includes(file.id));
 
     try {
       const result = await saveNewNote({
-        title,
-        content,
-        tagIds: selectedTagIds,
+        ...snapshot,
         createdId,
         updatedAt: baseUpdatedAt,
+        serverCopy,
         files: pending.map((file) => ({
           key: file.id,
           upload: async () => {
@@ -218,27 +277,33 @@ export default function CreateNotePage() {
         create: () =>
           apiFetch<{ id: number; updatedAt?: string | null }>("/notes", {
             method: "POST",
-            body: JSON.stringify({ title, content, tagIds: selectedTagIds }),
+            body: JSON.stringify(snapshot),
+          }),
+        update: (id) =>
+          apiFetch<{ updatedAt?: string | null }>(`/notes/${id}`, {
+            method: "PUT",
+            body: JSON.stringify(snapshot),
           }),
         onCreated: (created) => {
           createdIdRef.current = created.id;
           setCreatedId(created.id);
-          const copy = { title, content, tagIds: selectedTagIds };
-          setServerCopy(copy);
+          setServerCopy(snapshot);
           setBaseUpdatedAt(created.updatedAt);
-          if (!owner) return;
-          writeDraft(sessionStorage, {
+          if (!owner || !storage) return;
+          writeDraft(storage, {
             v: 1,
             userId: owner,
             noteKey: "new",
-            title,
-            content,
-            tagIds: selectedTagIds,
+            ...snapshot,
             createdId: created.id,
             baseUpdatedAt: created.updatedAt,
-            serverCopy: copy,
+            serverCopy: snapshot,
             savedAt: Date.now(),
           });
+        },
+        onTextSynced: (synced) => {
+          setServerCopy(snapshot);
+          setBaseUpdatedAt(synced.updatedAt);
         },
       });
 
@@ -250,8 +315,24 @@ export default function CreateNotePage() {
         return;
       }
 
+      if (settleSavedRevision(snapshot, latestRef.current) === "keep-latest") {
+        createdIdRef.current = result.createdId;
+        setCreatedId(result.createdId);
+        setServerCopy(snapshot);
+        setBaseUpdatedAt(result.updatedAt);
+        setError(KEPT_NEWER_MESSAGE);
+        setSaving(false);
+        return;
+      }
+
       suppressPersist.current = true;
-      clearDraft(sessionStorage);
+      if (owner && storage) {
+        clearDraftIfMatches(storage, {
+          userId: owner,
+          noteKey: "new",
+          createdId: result.createdId,
+        });
+      }
       staged.forEach((file) => URL.revokeObjectURL(file.url));
       queryClient.invalidateQueries({ queryKey: ["notes"] });
       router.push(`/notes/${result.createdId}`);
@@ -259,6 +340,8 @@ export default function CreateNotePage() {
       console.error("Note save failed");
       setError(saveErrorMessage("server", "create"));
       setSaving(false);
+    } finally {
+      releaseSaveLock(savingRef);
     }
   };
 
@@ -296,12 +379,13 @@ export default function CreateNotePage() {
                 autoFocus
                 placeholder="Title your thought..."
                 value={title}
+                disabled={saving}
                 onChange={(e) => setTitle(e.target.value)}
                 className="text-lg sm:text-xl"
               />
 
               <RichTextEditor
-                editable
+                editable={!saving}
                 content={content}
                 onChange={setContent}
                 placeholder="Let it flow onto the pond..."
@@ -332,7 +416,10 @@ export default function CreateNotePage() {
                         exit={{ opacity: 0, scale: 0.8 }}
                         transition={{ delay: i * 0.05 }}
                         whileTap={{ scale: 0.93 }}
-                        onClick={() => toggleTag(tag.id)}
+                        disabled={saving}
+                        onClick={() => {
+                          if (!saving) toggleTag(tag.id);
+                        }}
                         className={`interactive-chip px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition-colors ${
                           selectedTagIds.includes(tag.id)
                             ? `${tagColorClasses[tag.color ?? "cyan"]} ring-1 ring-inset ring-white/20`
@@ -361,6 +448,9 @@ export default function CreateNotePage() {
               </div>
               {restored && !error && (
                 <p className="text-xs text-slate-400">Restored unsaved writing from this tab.</p>
+              )}
+              {saving && (
+                <p className="text-xs text-slate-400">Saving… editing is paused so this copy stays intact.</p>
               )}
               {dirty && !saving && !error && (
                 <p className="text-xs text-slate-500">
