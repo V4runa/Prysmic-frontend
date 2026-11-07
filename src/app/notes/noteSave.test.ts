@@ -195,6 +195,100 @@ test("changed text after a created note is PUT, not posted again", async () => {
   assert.equal(saved.updatedAt, "2026-11-07T04:00:00.000Z");
 });
 
+test("a delayed create does not upload or rewrite the draft after logout", async () => {
+  let resolveCreate: (value: { id: number; updatedAt: string | null }) => void = () => {};
+  let wrote = false;
+  let uploads = 0;
+  let audience: "same" | "recoverable" | "abandoned" = "same";
+  const pending = saveNewNote({
+    title: "Private line",
+    content: "<p>secret</p>",
+    tagIds: [],
+    createdId: null,
+    updatedAt: null,
+    serverCopy: null,
+    audience: () => audience,
+    files: [{ key: "a", upload: async () => { uploads += 1; } }],
+    create: () =>
+      new Promise((resolve) => {
+        resolveCreate = resolve;
+      }),
+    onCreated: () => {
+      wrote = true;
+    },
+  });
+  audience = "abandoned";
+  resolveCreate({ id: 41, updatedAt: "2026-11-07T03:00:00.000Z" });
+  const result = await pending;
+  assert.equal(result.status, "detached");
+  assert.equal(wrote, false);
+  assert.equal(uploads, 0);
+});
+
+test("a recovered note is not silently overwritten when the server copy moved", async () => {
+  let puts = 0;
+  const blocked = await saveNewNote({
+    title: "Revised",
+    content: "<p>Path</p>",
+    tagIds: [2],
+    createdId: 41,
+    updatedAt: "2026-11-07T03:00:00.000Z",
+    serverCopy: { title: "Garden", content: "<p>Path</p>", tagIds: [2] },
+    files: [],
+    loadLatest: async () => ({ updatedAt: "2026-11-07T05:00:00.000Z" }),
+    create: async () => {
+      throw new Error("should not create");
+    },
+    update: async () => {
+      puts += 1;
+      return { updatedAt: "2026-11-07T06:00:00.000Z" };
+    },
+  });
+  assert.equal(blocked.status, "conflict");
+  assert.equal(puts, 0);
+
+  const forced = await saveNewNote({
+    title: "Revised",
+    content: "<p>Path</p>",
+    tagIds: [2],
+    createdId: 41,
+    updatedAt: "2026-11-07T03:00:00.000Z",
+    serverCopy: { title: "Garden", content: "<p>Path</p>", tagIds: [2] },
+    force: true,
+    files: [],
+    loadLatest: async () => ({ updatedAt: "2026-11-07T05:00:00.000Z" }),
+    create: async () => {
+      throw new Error("should not create");
+    },
+    update: async () => {
+      puts += 1;
+      return { updatedAt: "2026-11-07T06:00:00.000Z" };
+    },
+  });
+  assert.equal(forced.status, "saved");
+  assert.equal(puts, 1);
+});
+
+test("an edit PUT is not sent once the save has been abandoned", async () => {
+  let puts = 0;
+  let allow = true;
+  const result = await runExistingNoteSave({
+    baseUpdatedAt: "2026-11-07T03:00:00.000Z",
+    force: false,
+    allowUpdate: () => allow,
+    loadLatest: async () => {
+      allow = false;
+      return { updatedAt: "2026-11-07T03:00:00.000Z" };
+    },
+    update: async () => {
+      puts += 1;
+      return { updatedAt: "2026-11-07T04:00:00.000Z" };
+    },
+  });
+  assert.equal(result.status, "detached");
+  assert.equal(puts, 0);
+});
+
 test("a save lock blocks cancel and a second save until the request finishes", () => {
   const lock = { current: false };
   assert.equal(claimSaveLock(lock), true);

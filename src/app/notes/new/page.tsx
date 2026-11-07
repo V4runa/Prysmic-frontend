@@ -34,6 +34,7 @@ import {
   type NoteDraftCopy,
 } from "../noteDraft";
 import {
+  CONFLICT_MESSAGE,
   KEPT_NEWER_MESSAGE,
   claimSaveLock,
   releaseSaveLock,
@@ -41,6 +42,11 @@ import {
   saveNewNote,
   settleSavedRevision,
 } from "../noteSave";
+import {
+  clientEffectsForSave,
+  currentSessionEpoch,
+  saveAudience,
+} from "../../lib/sessionBoundary";
 import { useWritingGuard } from "../useWritingGuard";
 
 // TipTap is heavy; load it only when the editor actually renders so it stays
@@ -90,10 +96,12 @@ export default function CreateNotePage() {
   const [hydrated, setHydrated] = useState(false);
   const [persisted, setPersisted] = useState(true);
   const [restored, setRestored] = useState(false);
+  const [pendingOverwrite, setPendingOverwrite] = useState(false);
   const createdIdRef = useRef<number | null>(null);
   const suppressPersist = useRef(false);
   const savingRef = useRef(false);
   const sessionOwnerRef = useRef<number | null>(null);
+  const sessionEpochAtEdit = useRef(currentSessionEpoch());
   const latestRef = useRef({ title: "", content: "", tagIds: [] as number[] });
   latestRef.current = { title, content, tagIds: selectedTagIds };
 
@@ -154,6 +162,10 @@ export default function CreateNotePage() {
     const owner = draftOwner();
     const storage = noteDraftStorage();
     const writing = draftHasWriting({ title, content, tagIds: selectedTagIds }) || createdId != null;
+    const effects = clientEffectsForSave(
+      saveAudience(sessionEpochAtEdit.current, owner, noteOwnerId(getUserFromToken()?.userId))
+    );
+    if (!effects.writeDraft) return;
     if (!owner || !storage) {
       if (writing) setPersisted(false);
       return;
@@ -184,7 +196,10 @@ export default function CreateNotePage() {
       const owner = draftOwner();
       const storage = noteDraftStorage();
       const latest = latestRef.current;
-      if (!owner || !storage) {
+      const effects = clientEffectsForSave(
+        saveAudience(sessionEpochAtEdit.current, owner, noteOwnerId(getUserFromToken()?.userId))
+      );
+      if (!effects.writeDraft || !owner || !storage) {
         setPersisted(false);
         return;
       }
@@ -258,6 +273,9 @@ export default function CreateNotePage() {
     const snapshot: NoteDraftCopy = { title, content, tagIds: [...selectedTagIds] };
     const owner = draftOwner();
     const storage = noteDraftStorage();
+    const startedEpoch = currentSessionEpoch();
+    const audienceNow = () =>
+      saveAudience(startedEpoch, owner, noteOwnerId(getUserFromToken()?.userId));
     const pending = staged.filter((file) => !uploadedKeys.includes(file.id));
 
     try {
@@ -266,6 +284,11 @@ export default function CreateNotePage() {
         createdId,
         updatedAt: baseUpdatedAt,
         serverCopy,
+        force: pendingOverwrite,
+        audience: audienceNow,
+        loadLatest: createdId
+          ? () => apiFetch<{ updatedAt?: string | null }>(`/notes/${createdId}`)
+          : undefined,
         files: pending.map((file) => ({
           key: file.id,
           upload: async () => {
@@ -285,11 +308,11 @@ export default function CreateNotePage() {
             body: JSON.stringify(snapshot),
           }),
         onCreated: (created) => {
+          if (!clientEffectsForSave(audienceNow()).writeDraft || !owner || !storage) return;
           createdIdRef.current = created.id;
           setCreatedId(created.id);
           setServerCopy(snapshot);
           setBaseUpdatedAt(created.updatedAt);
-          if (!owner || !storage) return;
           writeDraft(storage, {
             v: 1,
             userId: owner,
@@ -302,15 +325,33 @@ export default function CreateNotePage() {
           });
         },
         onTextSynced: (synced) => {
+          if (audienceNow() === "abandoned") return;
           setServerCopy(snapshot);
           setBaseUpdatedAt(synced.updatedAt);
         },
       });
 
+      if (audienceNow() === "abandoned" || result.status === "detached") {
+        setSaving(false);
+        return;
+      }
+
+      if (result.status === "conflict") {
+        setPendingOverwrite(true);
+        setError(CONFLICT_MESSAGE);
+        setSaving(false);
+        return;
+      }
+
       if (result.status === "error") {
         setUploadedKeys((prev) => [...new Set([...prev, ...result.uploadedKeys])]);
         if (result.createdId != null) setCreatedId(result.createdId);
         setError(saveErrorMessage(result.kind, result.phase));
+        setSaving(false);
+        return;
+      }
+
+      if (audienceNow() !== "same") {
         setSaving(false);
         return;
       }
@@ -325,7 +366,13 @@ export default function CreateNotePage() {
         return;
       }
 
+      if (!clientEffectsForSave(audienceNow()).navigate) {
+        setSaving(false);
+        return;
+      }
+
       suppressPersist.current = true;
+      setPendingOverwrite(false);
       if (owner && storage) {
         clearDraftIfMatches(storage, {
           userId: owner,
@@ -443,7 +490,7 @@ export default function CreateNotePage() {
                   </span>
                 </span>
                 <FormButton type="submit" variant="primary" disabled={saving}>
-                  {saving ? "Saving…" : "Save"}
+                  {saving ? "Saving…" : pendingOverwrite ? "Overwrite" : "Save"}
                 </FormButton>
               </div>
               {restored && !error && (

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { syncPersonalCache } from "../lib/personalCache";
+import { bumpSessionEpoch } from "../lib/sessionBoundary";
 import {
   clearDraft,
   clearDraftIfOtherUser,
@@ -59,6 +60,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     ) {
       return;
     }
+    bumpSessionEpoch();
     if (storage) clearDraft(storage);
     syncPersonalCache(queryClient, null);
     localStorage.removeItem("token");

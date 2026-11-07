@@ -1,3 +1,5 @@
+import { accountChangeBumpsEpoch, bumpSessionEpoch } from "./sessionBoundary";
+
 export type CacheOwner = number | null | undefined;
 
 /**
@@ -19,8 +21,10 @@ export function syncPersonalCache(
   queryClient: { clear: () => void; cancelQueries?: () => Promise<unknown> },
   owner: number | null
 ): boolean {
-  const step = nextCacheOwner(cacheOwner, owner);
+  const previous = cacheOwner;
+  const step = nextCacheOwner(previous, owner);
   cacheOwner = step.owner;
+  if (accountChangeBumpsEpoch(previous, owner)) bumpSessionEpoch();
   if (step.clear) {
     void queryClient.cancelQueries?.();
     queryClient.clear();

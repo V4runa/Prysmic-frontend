@@ -1,4 +1,5 @@
 import { copiesMatch, type NoteDraftCopy } from "./noteDraft";
+import { type SaveAudience } from "../lib/sessionBoundary";
 
 export type SaveFailureKind = "unauthorized" | "network" | "server";
 
@@ -67,6 +68,8 @@ export interface PendingUpload {
 
 export type NewNoteSaveResult =
   | { status: "saved"; createdId: number; updatedAt: string | null }
+  | { status: "detached"; createdId: number | null; updatedAt: string | null }
+  | { status: "conflict"; createdId: number; updatedAt: string | null }
   | {
       status: "error";
       createdId: number | null;
@@ -88,6 +91,11 @@ export async function saveNewNote(opts: {
   createdId: number | null;
   updatedAt: string | null;
   serverCopy: NoteDraftCopy | null;
+  /** When set, a retry PUT is skipped if the server note moved. Not atomic with the PUT. */
+  force?: boolean;
+  loadLatest?: () => Promise<{ updatedAt?: string | null }>;
+  /** Read after each await. Abandoned means logout or another account. */
+  audience?: () => SaveAudience;
   files: PendingUpload[];
   create: () => Promise<{ id: number; updatedAt?: string | null }>;
   update?: (id: number) => Promise<{ updatedAt?: string | null }>;
@@ -101,13 +109,19 @@ export async function saveNewNote(opts: {
     content: opts.content,
     tagIds: opts.tagIds,
   };
+  const audience = () => opts.audience?.() ?? "same";
+  const detached = (): NewNoteSaveResult => ({
+    status: "detached",
+    createdId,
+    updatedAt,
+  });
 
   if (createdId == null) {
     try {
       const created = await opts.create();
       createdId = created.id;
       updatedAt = created.updatedAt ?? null;
-      opts.onCreated?.({ id: createdId, updatedAt });
+      if (audience() !== "abandoned") opts.onCreated?.({ id: createdId, updatedAt });
     } catch (err) {
       return {
         status: "error",
@@ -119,6 +133,26 @@ export async function saveNewNote(opts: {
       };
     }
   } else if (!opts.serverCopy || !copiesMatch(snapshot, opts.serverCopy)) {
+    if (audience() !== "same") return detached();
+    if (!opts.force && opts.loadLatest) {
+      try {
+        const fresh = await opts.loadLatest();
+        if (audience() !== "same") return detached();
+        const latestUpdatedAt = fresh.updatedAt ?? null;
+        if (decideExistingSave(updatedAt, latestUpdatedAt, false) === "conflict") {
+          return { status: "conflict", createdId, updatedAt: latestUpdatedAt };
+        }
+      } catch (err) {
+        return {
+          status: "error",
+          createdId,
+          updatedAt,
+          kind: classifySaveError(err),
+          phase: "update",
+          uploadedKeys: [],
+        };
+      }
+    }
     if (!opts.update) {
       return {
         status: "error",
@@ -129,10 +163,11 @@ export async function saveNewNote(opts: {
         uploadedKeys: [],
       };
     }
+    if (audience() !== "same") return detached();
     try {
       const saved = await opts.update(createdId);
       updatedAt = saved.updatedAt ?? updatedAt;
-      opts.onTextSynced?.({ id: createdId, updatedAt });
+      if (audience() !== "abandoned") opts.onTextSynced?.({ id: createdId, updatedAt });
     } catch (err) {
       return {
         status: "error",
@@ -145,8 +180,11 @@ export async function saveNewNote(opts: {
     }
   }
 
+  if (audience() !== "same") return detached();
+
   const uploadedKeys: string[] = [];
   for (const file of opts.files) {
+    if (audience() !== "same") return detached();
     try {
       await file.upload();
       uploadedKeys.push(file.key);
@@ -187,6 +225,7 @@ export function settleSavedRevision(
 export type ExistingSaveResult =
   | { status: "saved"; updatedAt: string | null }
   | { status: "conflict" }
+  | { status: "detached" }
   | { status: "error"; kind: SaveFailureKind };
 
 /**
@@ -200,6 +239,8 @@ export async function runExistingNoteSave(opts: {
   force: boolean;
   loadLatest: () => Promise<{ updatedAt?: string | null }>;
   update: () => Promise<{ updatedAt?: string | null }>;
+  /** When this returns false, the PUT is not sent. A PUT already awaited may have committed. */
+  allowUpdate?: () => boolean;
 }): Promise<ExistingSaveResult> {
   let latest: string | null;
   try {
@@ -209,9 +250,13 @@ export async function runExistingNoteSave(opts: {
     return { status: "error", kind: classifySaveError(err) };
   }
 
+  if (opts.allowUpdate && !opts.allowUpdate()) return { status: "detached" };
+
   if (decideExistingSave(opts.baseUpdatedAt, latest, opts.force) === "conflict") {
     return { status: "conflict" };
   }
+
+  if (opts.allowUpdate && !opts.allowUpdate()) return { status: "detached" };
 
   try {
     const saved = await opts.update();

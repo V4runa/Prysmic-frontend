@@ -45,6 +45,11 @@ import {
   settleSavedRevision,
   shouldShowNoteEditor,
 } from "../noteSave";
+import {
+  clientEffectsForSave,
+  currentSessionEpoch,
+  saveAudience,
+} from "../../lib/sessionBoundary";
 import { useWritingGuard } from "../useWritingGuard";
 
 // TipTap is heavy; load it only when the editor actually renders so it stays
@@ -108,6 +113,7 @@ export default function ViewNotePage() {
   const [hydrated, setHydrated] = useState(false);
   const hydratedRef = useRef(false);
   const savingRef = useRef(false);
+  const sessionEpochAtEdit = useRef(currentSessionEpoch());
   const sessionOwnerRef = useRef<number | null>(null);
   const latestRef = useRef<NoteDraftCopy>({ title: "", content: "", tagIds: [] });
   latestRef.current = { title: editedTitle, content: editedContent, tagIds: selectedTagIds };
@@ -206,6 +212,10 @@ export default function ViewNotePage() {
     }
     const owner = draftOwner();
     const storage = noteDraftStorage();
+    const effects = clientEffectsForSave(
+      saveAudience(sessionEpochAtEdit.current, owner, noteOwnerId(getUserFromToken()?.userId))
+    );
+    if (!effects.writeDraft) return;
     if (!owner || !storage) {
       setPersisted(false);
       return;
@@ -241,7 +251,10 @@ export default function ViewNotePage() {
       const owner = draftOwner();
       const storage = noteDraftStorage();
       const latest = latestRef.current;
-      if (!owner || !storage || !draftHasWriting(latest)) {
+      const effects = clientEffectsForSave(
+        saveAudience(sessionEpochAtEdit.current, owner, noteOwnerId(getUserFromToken()?.userId))
+      );
+      if (!effects.writeDraft || !owner || !storage || !draftHasWriting(latest)) {
         setPersisted(false);
         return;
       }
@@ -288,11 +301,16 @@ export default function ViewNotePage() {
     };
     setActionError("");
     setSaving(true);
+    const startedEpoch = currentSessionEpoch();
+    const ownerAtSave = draftOwner();
+    const audienceNow = () =>
+      saveAudience(startedEpoch, ownerAtSave, noteOwnerId(getUserFromToken()?.userId));
     let result: Awaited<ReturnType<typeof runExistingNoteSave>>;
     try {
       result = await runExistingNoteSave({
       baseUpdatedAt,
       force: pendingOverwrite,
+      allowUpdate: () => audienceNow() === "same",
       loadLatest: () => apiFetch<Note>(`/notes/${noteId}`),
       update: () =>
         apiFetch<Note>(`/notes/${noteId}`, {
@@ -305,6 +323,8 @@ export default function ViewNotePage() {
       setSaving(false);
     }
 
+    if (audienceNow() === "abandoned" || result.status === "detached") return;
+
     if (result.status === "conflict") {
       setPendingOverwrite(true);
       setActionError(CONFLICT_MESSAGE);
@@ -315,6 +335,8 @@ export default function ViewNotePage() {
       setActionError(saveErrorMessage(result.kind, "update"));
       return;
     }
+
+    if (!clientEffectsForSave(audienceNow()).touchCache) return;
 
     queryClient.setQueryData<Note | null>(["note", noteId], (old) =>
       old

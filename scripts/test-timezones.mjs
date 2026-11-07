@@ -27,6 +27,7 @@ const notes = spawnSync(
     "src/app/notes/noteDraft.test.ts",
     "src/app/notes/noteSave.test.ts",
     "src/app/lib/personalCache.test.ts",
+    "src/app/lib/sessionBoundary.test.ts",
   ],
   { stdio: "inherit", env: process.env }
 );
