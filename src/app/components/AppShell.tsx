@@ -3,7 +3,18 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { syncPersonalCache } from "../lib/personalCache";
+import { bumpSessionEpoch } from "../lib/sessionBoundary";
+import {
+  clearDraft,
+  clearDraftIfOtherUser,
+  draftHasWriting,
+  noteDraftStorage,
+  noteOwnerId,
+  readDraft,
+} from "../notes/noteDraft";
 import {
   StickyNote,
   Tag as TagIcon,
@@ -18,20 +29,40 @@ import {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      syncPersonalCache(queryClient, null);
+      return;
+    }
     try {
       const decoded = JSON.parse(atob(token.split(".")[1]));
       setUsername(decoded.username || null);
+      const owner = noteOwnerId(decoded.sub);
+      syncPersonalCache(queryClient, owner);
+      const storage = noteDraftStorage();
+      if (storage && owner) clearDraftIfOtherUser(storage, owner);
     } catch {
       setUsername(null);
     }
-  }, []);
+  }, [queryClient]);
 
   const handleLogout = () => {
+    const storage = noteDraftStorage();
+    const draft = storage ? readDraft(storage) : null;
+    if (
+      draft &&
+      draftHasWriting(draft) &&
+      !window.confirm("Log out? Unsaved writing in this tab will be discarded.")
+    ) {
+      return;
+    }
+    bumpSessionEpoch();
+    if (storage) clearDraft(storage);
+    syncPersonalCache(queryClient, null);
     localStorage.removeItem("token");
     router.push("/login");
   };
