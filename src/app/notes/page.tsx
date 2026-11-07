@@ -8,6 +8,13 @@ import PageTransition from "../components/PageTransition";
 import Spinner from "../components/Spinner";
 import { apiFetch } from "../hooks/useApi";
 import { getUserFromToken } from "../hooks/useAuth";
+import {
+  clearDraftIfOtherUser,
+  draftVisibleToUser,
+  noteOwnerId,
+  readDraft,
+  recoveryHref,
+} from "./noteDraft";
 import { useTags } from "../hooks/useTags";
 import { tactile } from "../lib/motion";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,6 +40,7 @@ interface TagData {
 
 export default function NotesOverviewPage() {
   const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [unsavedHref, setUnsavedHref] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [notesPerPage] = useState(8);
 
@@ -73,6 +81,13 @@ export default function NotesOverviewPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTags]);
+
+  useEffect(() => {
+    const owner = noteOwnerId(getUserFromToken()?.userId);
+    if (owner) clearDraftIfOtherUser(sessionStorage, owner);
+    const draft = draftVisibleToUser(readDraft(sessionStorage), owner);
+    setUnsavedHref(draft ? recoveryHref(draft) : null);
+  }, []);
 
   const toggleTag = (name: string) => {
     setActiveTags((prev) =>
@@ -241,6 +256,15 @@ export default function NotesOverviewPage() {
               </motion.div>
             </div>
           </div>
+
+          {unsavedHref && (
+            <p className="text-sm text-slate-400">
+              Unsaved writing is still in this tab.{" "}
+              <Link href={unsavedHref} className="text-cyan-300 hover:underline">
+                Continue
+              </Link>
+            </p>
+          )}
 
           {/* Mobile tag filter bar */}
           {allTags.length > 0 && (

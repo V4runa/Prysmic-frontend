@@ -5,6 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  clearDraft,
+  clearDraftIfOtherUser,
+  draftHasWriting,
+  noteOwnerId,
+  readDraft,
+} from "../notes/noteDraft";
+import {
   StickyNote,
   Tag as TagIcon,
   Flame,
@@ -26,12 +33,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     try {
       const decoded = JSON.parse(atob(token.split(".")[1]));
       setUsername(decoded.username || null);
+      const owner = noteOwnerId(decoded.sub);
+      if (owner) clearDraftIfOtherUser(sessionStorage, owner);
     } catch {
       setUsername(null);
     }
   }, []);
 
   const handleLogout = () => {
+    const draft = readDraft(sessionStorage);
+    if (
+      draft &&
+      draftHasWriting(draft) &&
+      !window.confirm("Log out? Unsaved writing in this tab will be discarded.")
+    ) {
+      return;
+    }
+    clearDraft(sessionStorage);
     localStorage.removeItem("token");
     router.push("/login");
   };

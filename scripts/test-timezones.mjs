@@ -17,4 +17,18 @@ for (const TZ of zones) {
   if (result.status !== 0) failed += 1;
 }
 
+console.log("\n=== note writing safety ===\n");
+const notes = spawnSync(
+  process.execPath,
+  [
+    "--import",
+    "tsx",
+    "--test",
+    "src/app/notes/noteDraft.test.ts",
+    "src/app/notes/noteSave.test.ts",
+  ],
+  { stdio: "inherit", env: process.env }
+);
+if (notes.status !== 0) failed += 1;
+
 process.exit(failed === 0 ? 0 : 1);

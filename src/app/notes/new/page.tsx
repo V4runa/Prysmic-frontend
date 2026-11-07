@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
+import { getUserFromToken } from "../../hooks/useAuth";
 import { useTags } from "../../hooks/useTags";
 import {
   uploadAttachment,
@@ -19,6 +20,19 @@ import AttachmentZone, {
 } from "../../components/AttachmentZone";
 import dynamic from "next/dynamic";
 import { noteHtmlToText } from "../../lib/noteContent";
+import {
+  clearDraft,
+  clearDraftIfOtherUser,
+  copiesMatch,
+  draftHasWriting,
+  noteOwnerId,
+  readDraft,
+  writeDraft,
+  type NoteDraft,
+  type NoteDraftCopy,
+} from "../noteDraft";
+import { saveErrorMessage, saveNewNote } from "../noteSave";
+import { useWritingGuard } from "../useWritingGuard";
 
 // TipTap is heavy; load it only when the editor actually renders so it stays
 // out of the initial route bundle.
@@ -60,6 +74,15 @@ export default function CreateNotePage() {
   const [staged, setStaged] = useState<StagedFile[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [createdId, setCreatedId] = useState<number | null>(null);
+  const [serverCopy, setServerCopy] = useState<NoteDraftCopy | null>(null);
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null);
+  const [uploadedKeys, setUploadedKeys] = useState<string[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [persisted, setPersisted] = useState(true);
+  const [restored, setRestored] = useState(false);
+  const createdIdRef = useRef<number | null>(null);
+  const suppressPersist = useRef(false);
 
   // Revoke any lingering preview URLs when leaving the page.
   const stagedRef = useRef(staged);
@@ -71,6 +94,60 @@ export default function CreateNotePage() {
 
   const contentText = noteHtmlToText(content);
   const wordCount = contentText ? contentText.split(/\s+/).length : 0;
+  const dirty = draftHasWriting({ title, content, tagIds: selectedTagIds }) || createdId != null;
+  useWritingGuard(hydrated && dirty, persisted);
+
+  useEffect(() => {
+    const owner = noteOwnerId(getUserFromToken()?.userId);
+    if (owner) clearDraftIfOtherUser(sessionStorage, owner);
+    const draft = readDraft(sessionStorage);
+    if (draft && owner && draft.userId === owner && draft.noteKey === "new") {
+      const copy = { title: draft.title, content: draft.content, tagIds: draft.tagIds };
+      if (draft.createdId && draft.serverCopy && copiesMatch(copy, draft.serverCopy)) {
+        clearDraft(sessionStorage);
+        router.replace(`/notes/${draft.createdId}`);
+        return;
+      }
+      setTitle(draft.title);
+      setContent(draft.content);
+      setSelectedTagIds(draft.tagIds);
+      setCreatedId(draft.createdId);
+      createdIdRef.current = draft.createdId;
+      setServerCopy(draft.serverCopy);
+      setBaseUpdatedAt(draft.baseUpdatedAt);
+      setRestored(draftHasWriting(copy));
+    }
+    setHydrated(true);
+  }, [router]);
+
+  useEffect(() => {
+    createdIdRef.current = createdId;
+  }, [createdId]);
+
+  useEffect(() => {
+    if (!hydrated || suppressPersist.current) return;
+    const owner = noteOwnerId(getUserFromToken()?.userId);
+    if (!owner) return;
+    const next: NoteDraft = {
+      v: 1,
+      userId: owner,
+      noteKey: "new",
+      title,
+      content,
+      tagIds: selectedTagIds,
+      createdId,
+      baseUpdatedAt,
+      serverCopy,
+      savedAt: Date.now(),
+    };
+    if (!draftHasWriting(next) && createdId == null) {
+      const existing = readDraft(sessionStorage);
+      if (existing?.userId === owner && existing.noteKey === "new") clearDraft(sessionStorage);
+      setPersisted(true);
+      return;
+    }
+    setPersisted(writeDraft(sessionStorage, next).ok);
+  }, [hydrated, title, content, selectedTagIds, createdId, baseUpdatedAt, serverCopy]);
 
   const attachmentItems: AttachmentItemView[] = staged.map((s) => ({
     key: s.id,
@@ -120,29 +197,67 @@ export default function CreateNotePage() {
     setError("");
     setSaving(true);
 
+    const owner = noteOwnerId(getUserFromToken()?.userId);
+    const pending = staged.filter((file) => !uploadedKeys.includes(file.id));
+
     try {
-      const created = await apiFetch<{ id: number }>("/notes", {
-        method: "POST",
-        body: JSON.stringify({
-          title,
-          content,
-          tagIds: selectedTagIds,
-        }),
+      const result = await saveNewNote({
+        title,
+        content,
+        tagIds: selectedTagIds,
+        createdId,
+        updatedAt: baseUpdatedAt,
+        files: pending.map((file) => ({
+          key: file.id,
+          upload: async () => {
+            const id = createdIdRef.current;
+            if (id == null) throw new Error("API Error: 500 missing note id");
+            await uploadAttachment(id, file.file);
+          },
+        })),
+        create: () =>
+          apiFetch<{ id: number; updatedAt?: string | null }>("/notes", {
+            method: "POST",
+            body: JSON.stringify({ title, content, tagIds: selectedTagIds }),
+          }),
+        onCreated: (created) => {
+          createdIdRef.current = created.id;
+          setCreatedId(created.id);
+          const copy = { title, content, tagIds: selectedTagIds };
+          setServerCopy(copy);
+          setBaseUpdatedAt(created.updatedAt);
+          if (!owner) return;
+          writeDraft(sessionStorage, {
+            v: 1,
+            userId: owner,
+            noteKey: "new",
+            title,
+            content,
+            tagIds: selectedTagIds,
+            createdId: created.id,
+            baseUpdatedAt: created.updatedAt,
+            serverCopy: copy,
+            savedAt: Date.now(),
+          });
+        },
       });
 
-      // Upload staged files onto the freshly-created note (images compress
-      // client-side inside uploadAttachment). Done sequentially to respect
-      // the per-note cap and keep ordering stable.
-      for (const s of staged) {
-        await uploadAttachment(created.id, s.file);
+      if (result.status === "error") {
+        setUploadedKeys((prev) => [...new Set([...prev, ...result.uploadedKeys])]);
+        if (result.createdId != null) setCreatedId(result.createdId);
+        setError(saveErrorMessage(result.kind, result.phase));
+        setSaving(false);
+        return;
       }
-      staged.forEach((s) => URL.revokeObjectURL(s.url));
 
+      suppressPersist.current = true;
+      clearDraft(sessionStorage);
+      staged.forEach((file) => URL.revokeObjectURL(file.url));
       queryClient.invalidateQueries({ queryKey: ["notes"] });
-      router.push(`/notes/${created.id}`);
-    } catch (err: Error | unknown) {
-      console.error("Note creation failed", err);
-      setError("Failed to create note.");
+      router.push(`/notes/${result.createdId}`);
+    } catch {
+      console.error("Note save failed");
+      setError(saveErrorMessage("server", "create"));
       setSaving(false);
     }
   };
@@ -232,27 +347,37 @@ export default function CreateNotePage() {
               </div>
             </motion.div>
 
-            <div className="flex-shrink-0 flex justify-between items-center gap-3 mt-4">
-              <span className="text-xs text-slate-500 tabular-nums">
-                {wordCount} {wordCount === 1 ? "word" : "words"}
-                <span className="hidden sm:inline text-slate-600">
-                  {"  ·  "}⌘/Ctrl + S to save
+            <div className="flex-shrink-0 flex flex-col gap-2 mt-4">
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-xs text-slate-500 tabular-nums">
+                  {wordCount} {wordCount === 1 ? "word" : "words"}
+                  <span className="hidden sm:inline text-slate-600">
+                    {"  ·  "}⌘/Ctrl + S to save
+                  </span>
                 </span>
-              </span>
-              <FormButton type="submit" variant="primary" disabled={saving}>
-                {saving ? "Saving…" : "Save"}
-              </FormButton>
+                <FormButton type="submit" variant="primary" disabled={saving}>
+                  {saving ? "Saving…" : "Save"}
+                </FormButton>
+              </div>
+              {restored && !error && (
+                <p className="text-xs text-slate-400">Restored unsaved writing from this tab.</p>
+              )}
+              {dirty && !saving && !error && (
+                <p className="text-xs text-slate-500">
+                  Unsaved writing stays in this tab until you save, discard it, log out, or close the tab. It is not uploaded until you save.
+                </p>
+              )}
+              {dirty && !persisted && (
+                <p className="text-xs text-amber-200/80">
+                  Couldn&apos;t keep a copy in this tab. Leaving this page can lose it.
+                </p>
+              )}
+              {error && (
+                <p role="alert" className="text-rose-300/90 text-sm">
+                  {error}
+                </p>
+              )}
             </div>
-
-            {error && (
-              <motion.p 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-red-400 text-sm text-center"
-              >
-                {error}
-              </motion.p>
-            )}
           </form>
         </div>
         </GlassPanel>
