@@ -5,6 +5,8 @@ import { apiFetchDownload } from "../hooks/useApi";
 import { getUserFromToken } from "../hooks/useAuth";
 import {
   deliverExportFile,
+  EXPORT_ABOUT,
+  EXPORT_DOWNLOAD_MESSAGE,
   exportErrorMessage,
   runAccountExport,
   type ExportFailureKind,
@@ -20,8 +22,8 @@ function currentExportSession() {
 }
 
 /**
- * Quiet account action. The label does not describe archive contents; a
- * limitation is shown only when the server sends one with the file.
+ * Quiet account action. The file is the JSON snapshot from GET /export.
+ * Attachment bytes are not in that file, and the app does not import it.
  */
 export default function ExportDataButton() {
   const lock = useRef(false);
@@ -32,8 +34,6 @@ export default function ExportDataButton() {
     | { kind: "started" }
     | { kind: "error"; failure: ExportFailureKind }
   >({ kind: "idle" });
-  const [notice, setNotice] = useState<string | null>(null);
-
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -45,7 +45,6 @@ export default function ExportDataButton() {
     if (lock.current) return;
     setPreparing(true);
     setResult({ kind: "idle" });
-    setNotice(null);
     const outcome = await runAccountExport({
       lock,
       started: currentExportSession(),
@@ -58,7 +57,6 @@ export default function ExportDataButton() {
     setPreparing(false);
     if (outcome.status === "downloaded") {
       setResult({ kind: "started" });
-      setNotice(outcome.notice);
       return;
     }
     if (outcome.status === "error") {
@@ -68,7 +66,7 @@ export default function ExportDataButton() {
 
   const message =
     result.kind === "started"
-      ? "Download started."
+      ? EXPORT_DOWNLOAD_MESSAGE
       : result.kind === "error"
         ? exportErrorMessage(result.failure)
         : "";
@@ -82,11 +80,15 @@ export default function ExportDataButton() {
         disabled={preparing}
         aria-busy={preparing}
         aria-label="Export your data"
-        aria-describedby={message ? "export-data-status" : undefined}
+        title={EXPORT_ABOUT}
+        aria-describedby={message ? "export-data-about export-data-status" : "export-data-about"}
         className="tap-target whitespace-nowrap px-1 text-xs text-slate-400 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-slate-400 sm:text-sm"
       >
         {preparing ? "Preparing export…" : "Export your data"}
       </button>
+      <span id="export-data-about" className="sr-only">
+        {EXPORT_ABOUT}
+      </span>
       {message && (
         <div
           id="export-data-status"
@@ -96,7 +98,6 @@ export default function ExportDataButton() {
           style={{ top: "var(--header-h)" }}
         >
           <span>{message}</span>
-          {notice && <span className="mt-0.5 block text-slate-500">{notice}</span>}
           {canRetry && (
             <button
               type="button"

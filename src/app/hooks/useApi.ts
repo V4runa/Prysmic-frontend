@@ -1,3 +1,5 @@
+import { shouldSaveExportBody } from "../lib/dataExport";
+
 const getBaseUrl = () =>
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
 
@@ -124,7 +126,6 @@ export async function apiFetchDownload(endpoint: string): Promise<{
   blob: Blob;
   contentType: string | null;
   contentDisposition: string | null;
-  notice: string | null;
 }> {
   const token = getToken();
 
@@ -138,7 +139,8 @@ export async function apiFetchDownload(endpoint: string): Promise<{
     handleUnauthorized(await res.text().catch(() => ""));
   }
 
-  if (!res.ok) {
+  if (!shouldSaveExportBody(res.status)) {
+    await res.body?.cancel().catch(() => undefined);
     throw new Error(`API Error: ${res.status}`);
   }
 
@@ -146,6 +148,5 @@ export async function apiFetchDownload(endpoint: string): Promise<{
     blob: await res.blob(),
     contentType: res.headers.get("content-type"),
     contentDisposition: res.headers.get("content-disposition"),
-    notice: res.headers.get("x-prysmic-export-notice"),
   };
 }

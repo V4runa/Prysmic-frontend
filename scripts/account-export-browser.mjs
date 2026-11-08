@@ -89,24 +89,40 @@ const cors = {
   "Access-Control-Allow-Origin": appUrl,
   "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Expose-Headers": "Content-Disposition, Content-Type, X-Prysmic-Export-Notice",
+  "Access-Control-Expose-Headers": "Content-Disposition",
 };
 
 const downloadDir = mkdtempSync(join(tmpdir(), "prysmic-export-"));
 const held = [];
-let exportMode = "file";
+let exportMode = "named";
 let exportCount = 0;
 
-function exportBody() {
-  if (exportMode === "user8") return "user-8-own";
-  if (exportMode === "second") return "second-export-bytes";
-  return "user-7-export-bytes";
+function snapshot(marker, day) {
+  return JSON.stringify({
+    format: "prysmic.account-export",
+    version: 1,
+    exportedAt: `${day}T17:49:05.000Z`,
+    marker,
+  });
 }
 
-function exportFilename() {
-  if (exportMode === "user8") return "User-eight.json";
-  if (exportMode === "second") return "Second-export.json";
-  return "Prysmic-kept.json";
+function exportBody() {
+  if (exportMode === "user8") return snapshot("user-8-own", "2026-11-09");
+  if (exportMode === "hidden") return snapshot("hidden-disposition-bytes", "2026-04-02");
+  if (exportMode === "held") return snapshot("held-once", "2026-11-08");
+  return snapshot("named-export-bytes", "2026-11-08");
+}
+
+function exportHeaders() {
+  const headers = {
+    ...cors,
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "private, no-store",
+  };
+  if (exportMode === "hidden") return headers;
+  const day = exportMode === "user8" ? "2026-11-09" : "2026-11-08";
+  headers["Content-Disposition"] = `attachment; filename="prysmic-export-${day}.json"`;
+  return headers;
 }
 
 const browser = await puppeteer.launch({
@@ -169,15 +185,19 @@ try {
       if (exportMode === "401") {
         return req.respond({ status: 401, headers: cors, body: "unauthorized" });
       }
+      if (exportMode === "413") {
+        return req.respond({
+          status: 413,
+          headers: { ...cors, "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify({
+            statusCode: 413,
+            message: "Export exceeds the notes limit of 2000. No file was produced.",
+          }),
+        });
+      }
       return req.respond({
         status: 200,
-        headers: {
-          ...cors,
-          "Content-Type": "application/json",
-          "Content-Disposition": `attachment; filename="${exportFilename()}"`,
-          "X-Prysmic-Export-Notice":
-            "Notes, tags, and rich writing are included. Attachment files are not.",
-        },
+        headers: exportHeaders(),
         body: exportBody(),
       });
     }
@@ -195,24 +215,23 @@ try {
 
   const before = exportCount;
   await button.click();
-  await page.waitForFunction(() => document.body.innerText.includes("Download started."));
+  await page.waitForFunction(() => document.body.innerText.includes("JSON file download started."));
   await page.waitForFunction(() =>
-    document.body.innerText.includes("Attachment files are not.")
+    document.body.innerText.includes("Attachment files are not included")
   );
-  const saved = await waitForSnippet("user-7-export-bytes");
-  if (!saved.length || saved[0].name !== "Prysmic-kept.json" || saved[0].text !== "user-7-export-bytes") {
-    throw new Error(`expected Prysmic-kept.json, got ${JSON.stringify(saved)}`);
+  const saved = await waitForSnippet("named-export-bytes");
+  if (!saved.length || saved[0].name !== "prysmic-export-2026-11-08.json") {
+    throw new Error(`expected prysmic-export-2026-11-08.json, got ${JSON.stringify(saved.map((file) => file.name))}`);
   }
   if (exportCount !== before + 1) throw new Error(`export requests ${exportCount}`);
   if (shotDir) await page.screenshot({ path: join(shotDir, "export-started.png") });
 
-  exportMode = "second";
+  exportMode = "hidden";
   await page.focus('button[aria-label="Export your data"]');
   await page.keyboard.press("Enter");
-  await waitForSnippet("second-export-bytes");
-  const second = await filesWith("second-export-bytes");
-  if (second[0]?.name !== "Second-export.json") {
-    throw new Error(`keyboard download name ${second[0]?.name}`);
+  const hidden = await waitForSnippet("hidden-disposition-bytes");
+  if (hidden[0]?.name !== "prysmic-export-2026-04-02.json") {
+    throw new Error(`hidden disposition name ${hidden[0]?.name}`);
   }
 
   exportMode = "hold";
@@ -231,14 +250,11 @@ try {
     const control = document.querySelector('button[aria-label="Export your data"]');
     return control instanceof HTMLButtonElement && control.disabled;
   });
+  exportMode = "held";
   await held.shift().respond({
     status: 200,
-    headers: {
-      ...cors,
-      "Content-Type": "application/json",
-      "Content-Disposition": 'attachment; filename="Held.json"',
-    },
-    body: "held-once",
+    headers: exportHeaders(),
+    body: exportBody(),
   });
   await waitForSnippet("held-once");
   await page.waitForFunction(() => {
@@ -255,10 +271,10 @@ try {
     status: 200,
     headers: {
       ...cors,
-      "Content-Type": "application/json",
-      "Content-Disposition": 'attachment; filename="Private.json"',
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Disposition": 'attachment; filename="prysmic-export-2026-01-01.json"',
     },
-    body: "user-7-private-should-not-download",
+    body: snapshot("user-7-private-should-not-download", "2026-01-01"),
   });
   await delay(800);
   const leaked = await filesWith("user-7-private-should-not-download");
@@ -272,7 +288,20 @@ try {
   exportMode = "user8";
   await page.click('button[aria-label="Export your data"]');
   const own = await waitForSnippet("user-8-own");
-  if (own[0]?.name !== "User-eight.json") throw new Error(`next account file ${own[0]?.name}`);
+  if (own[0]?.name !== "prysmic-export-2026-11-09.json") {
+    throw new Error(`next account file ${own[0]?.name}`);
+  }
+
+  await page.waitForFunction(() => {
+    const control = document.querySelector('button[aria-label="Export your data"]');
+    return control instanceof HTMLButtonElement && !control.disabled;
+  });
+  exportMode = "413";
+  await page.click('button[aria-label="Export your data"]');
+  await page.waitForFunction(() => document.body.innerText.includes("Nothing was downloaded."));
+  await delay(400);
+  const refused = await filesWith("No file was produced");
+  if (refused.length) throw new Error("413 error body was saved as the export");
 
   const context = await browser.createBrowserContext();
   const expired = await context.newPage();

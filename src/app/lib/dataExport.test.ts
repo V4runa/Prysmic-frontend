@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  accountExportFilename,
   classifyExportError,
+  EXPORT_ABOUT,
+  EXPORT_DOWNLOAD_MESSAGE,
   exportErrorMessage,
-  exportFilename,
   runAccountExport,
-  sanitizeExportNotice,
   shouldDeliverExport,
+  shouldSaveExportBody,
   type ExportPayload,
 } from "./dataExport";
 
@@ -17,9 +19,8 @@ const SESSION = { epoch: 3, owner: 7 };
 function jsonPayload(text: string, extra: Partial<ExportPayload> = {}): ExportPayload {
   return {
     blob: new Blob([text], { type: "application/json" }),
-    contentType: "application/json",
+    contentType: "application/json; charset=utf-8",
     contentDisposition: null,
-    notice: null,
     ...extra,
   };
 }
@@ -28,26 +29,27 @@ async function blobText(blob: Blob): Promise<string> {
   return blob.text();
 }
 
-test("a JSON response downloads those bytes with a timestamped .json name", async () => {
-  const body = '{"kept":"alpha beta","not":"parsed"}';
+test("a JSON snapshot downloads unchanged, named from exportedAt when the disposition header is hidden", async () => {
+  const body =
+    '{"format":"prysmic.account-export","version":1,"exportedAt":"2026-11-08T17:49:05.000Z","notes":[{"contentHtml":"<p>alpha</p>","contentText":"alpha"}]}';
   const saved: { filename: string; text: string }[] = [];
   const result = await runAccountExport({
     lock: { current: false },
     started: SESSION,
     readSession: () => SESSION,
-    now: NOW,
+    now: new Date("2026-12-01T00:00:00Z"),
     fetchExport: async () => jsonPayload(body),
     deliver: async (file) => {
       saved.push({ filename: file.filename, text: await blobText(file.blob) });
     },
   });
   assert.equal(result.status, "downloaded");
-  assert.equal(saved[0]?.filename, "Prysmic-export-20261108-174905.json");
+  assert.equal(saved[0]?.filename, "prysmic-export-2026-11-08.json");
   assert.equal(saved[0]?.text, body);
 });
 
-test("a server filename is kept, including a packaged download", async () => {
-  const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 9, 8, 7]);
+test("the server Content-Disposition name is kept and the bytes are not rewritten", async () => {
+  const bytes = new Uint8Array([0x7b, 0x22, 0x61, 0x22, 0x3a, 0x31, 0x7d]);
   const saved: { filename: string; bytes: number[] }[] = [];
   const result = await runAccountExport({
     lock: { current: false },
@@ -55,10 +57,9 @@ test("a server filename is kept, including a packaged download", async () => {
     readSession: () => SESSION,
     now: NOW,
     fetchExport: async () => ({
-      blob: new Blob([bytes], { type: "application/zip" }),
-      contentType: "application/zip",
-      contentDisposition: "attachment; filename=\"Account-snapshot.zip\"",
-      notice: null,
+      blob: new Blob([bytes], { type: "application/json" }),
+      contentType: "application/json; charset=utf-8",
+      contentDisposition: 'attachment; filename="prysmic-export-2026-11-08.json"',
     }),
     deliver: async (file) => {
       saved.push({
@@ -68,79 +69,74 @@ test("a server filename is kept, including a packaged download", async () => {
     },
   });
   assert.equal(result.status, "downloaded");
-  assert.equal(saved[0]?.filename, "Account-snapshot.zip");
+  assert.equal(saved[0]?.filename, "prysmic-export-2026-11-08.json");
   assert.deepEqual(saved[0]?.bytes, [...bytes]);
 });
 
-test("filename* wins, and an unsafe path falls back without leaving the extension off JSON", () => {
+test("a hidden Content-Disposition falls back to the contract JSON name", () => {
   assert.equal(
-    exportFilename({
-      contentType: "application/zip",
-      contentDisposition: "attachment; filename=\"plain.json\"; filename*=UTF-8''Prysmic%20export.zip",
+    accountExportFilename({
+      contentDisposition: "attachment; filename=\"plain.json\"; filename*=UTF-8''prysmic-export-2026-11-08.json",
       now: NOW,
     }),
-    "Prysmic export.zip"
+    "prysmic-export-2026-11-08.json"
   );
   assert.equal(
-    exportFilename({
-      contentType: "application/json; charset=utf-8",
+    accountExportFilename({
       contentDisposition: 'attachment; filename="../../secret.json"',
       now: NOW,
     }),
     "secret.json"
   );
   assert.equal(
-    exportFilename({
-      contentType: "application/json",
+    accountExportFilename({
       contentDisposition: "attachment; filename*=UTF-8''%2e%2e",
-      now: NOW,
+      exportedAt: "2026-11-08T17:49:05.000Z",
+      now: new Date("2026-12-01T00:00:00Z"),
     }),
-    "Prysmic-export-20261108-174905.json"
+    "prysmic-export-2026-11-08.json"
   );
   assert.equal(
-    exportFilename({
-      contentType: "application/json",
-      contentDisposition: "attachment; filename=\"bad\nname.json\"",
-      now: NOW,
-    }),
-    "Prysmic-export-20261108-174905.json"
-  );
-  assert.equal(
-    exportFilename({
-      contentType: "application/octet-stream",
+    accountExportFilename({
       contentDisposition: null,
       now: NOW,
     }),
-    "Prysmic-export-20261108-174905"
+    "prysmic-export-2026-11-08.json"
   );
   assert.equal(
-    exportFilename({
-      contentType: "application/json",
+    accountExportFilename({
       contentDisposition: 'attachment; filename="notes"',
       now: NOW,
     }),
     "notes.json"
   );
+  assert.equal(shouldSaveExportBody(200), true);
+  assert.equal(shouldSaveExportBody(413), false);
+  assert.equal(shouldSaveExportBody(401), false);
+  assert.equal(shouldSaveExportBody(404), false);
 });
 
-test("a limitation is shown only from a server notice, and it is one short line", async () => {
-  let notice: string | null = "unset";
-  await runAccountExport({
+test("a 413 error body is not downloaded", async () => {
+  const errorBody = '{"statusCode":413,"message":"Export exceeds the notes limit of 2000. No file was produced."}';
+  let delivered = 0;
+  const result = await runAccountExport({
     lock: { current: false },
     started: SESSION,
     readSession: () => SESSION,
     now: NOW,
-    fetchExport: async () =>
-      jsonPayload("{}", {
-        notice: " Notes and tags are included.\nAttachment files are not.\r\n<script> ",
-      }),
-    deliver: (file) => {
-      notice = file.notice;
+    fetchExport: async () => {
+      throw new Error("API Error: 413");
+    },
+    deliver: () => {
+      delivered += 1;
     },
   });
-  assert.equal(notice, "Notes and tags are included. Attachment files are not. <script>");
-  assert.equal(sanitizeExportNotice("   \n\t  "), null);
-  assert.equal(sanitizeExportNotice(null), null);
+  assert.equal(result.status, "error");
+  if (result.status === "error") assert.equal(result.kind, "too-large");
+  assert.equal(delivered, 0);
+  assert.match(exportErrorMessage("too-large"), /too large for one JSON file/);
+  assert.match(exportErrorMessage("too-large"), /Nothing was downloaded/);
+  assert.equal(errorBody.includes("contentHtml"), false);
 });
 
 test("network and server failures download nothing and can be retried; 401 cannot", async () => {
@@ -264,5 +260,11 @@ test("the export path does not clear drafts or store the file", () => {
   const shell = readFileSync(new URL("../components/AppShell.tsx", import.meta.url), "utf8");
   assert.match(button, /apiFetchDownload\("\/export"\)/);
   assert.match(button, /Export your data/);
+  assert.match(button, /EXPORT_ABOUT/);
   assert.match(shell, /ExportDataButton/);
+  assert.match(EXPORT_ABOUT, /JSON file/);
+  assert.match(EXPORT_ABOUT, /Attachment files are not included/);
+  assert.equal(/all files/i.test(EXPORT_ABOUT), false);
+  assert.equal(/\bbackup\b/i.test(EXPORT_DOWNLOAD_MESSAGE), false);
+  assert.match(EXPORT_DOWNLOAD_MESSAGE, /not imported/);
 });

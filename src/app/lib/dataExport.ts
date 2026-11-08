@@ -4,47 +4,52 @@
  * starts only while the same signed-in session is still current.
  */
 
-export type ExportFailureKind = "unauthorized" | "network" | "server";
+export type ExportFailureKind = "unauthorized" | "network" | "too-large" | "server";
 
 export interface ExportPayload {
   blob: Blob;
   contentType: string | null;
   contentDisposition: string | null;
-  notice: string | null;
 }
 
 export interface PreparedExport {
   filename: string;
   blob: Blob;
-  notice: string | null;
 }
 
 export type ExportResult =
-  | { status: "downloaded"; filename: string; notice: string | null }
+  | { status: "downloaded"; filename: string }
   | { status: "busy" }
   | { status: "dropped" }
   | { status: "error"; kind: ExportFailureKind };
+
+/** A non-2xx body is an error, not a partial snapshot. Never save it. */
+export function shouldSaveExportBody(status: number): boolean {
+  return status >= 200 && status < 300;
+}
 
 export function classifyExportError(err: unknown): ExportFailureKind {
   if (err instanceof TypeError) return "network";
   const message = err instanceof Error ? err.message : "";
   if (message.startsWith("Session expired")) return "unauthorized";
+  if (/\b413\b/.test(message)) return "too-large";
   return "server";
 }
 
 export function exportErrorMessage(kind: ExportFailureKind): string {
   if (kind === "unauthorized") return "Your session expired. Nothing was downloaded.";
   if (kind === "network") return "Could not reach the server. Nothing was downloaded.";
-  return "The export was not downloaded.";
+  if (kind === "too-large") {
+    return "This account is too large for one JSON file. Nothing was downloaded.";
+  }
+  return "The JSON file was not downloaded.";
 }
 
-/** Server-authored limitation text. Absent unless the response confirms one. */
-export function sanitizeExportNotice(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const cleaned = value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-  if (!cleaned) return null;
-  return cleaned.slice(0, 180);
-}
+export const EXPORT_ABOUT =
+  "Downloads a JSON file of this account: writing, tags, tasks, habits, moods, and calendar events. Attachment files are not included. This is not a backup of those files, and Prysmic does not import it.";
+
+export const EXPORT_DOWNLOAD_MESSAGE =
+  "JSON file download started. Attachment files are not included, and this file is not imported.";
 
 export function sanitizeExportFilename(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -76,36 +81,44 @@ export function filenameFromContentDisposition(header: string | null | undefined
   return null;
 }
 
-function extensionForContentType(contentType: string | null | undefined): string {
-  const mime = (contentType ?? "").split(";")[0].trim().toLowerCase();
-  if (mime === "application/json" || mime.endsWith("+json")) return ".json";
-  if (mime === "application/zip" || mime === "application/x-zip-compressed") return ".zip";
-  if (mime === "application/gzip" || mime === "application/x-gzip") return ".gz";
-  if (mime === "application/x-tar") return ".tar";
-  if (mime === "text/csv" || mime === "application/csv") return ".csv";
-  return "";
-}
-
-function utcStamp(now: Date): string {
+function utcDay(now: Date): string {
   const pad = (value: number) => String(value).padStart(2, "0");
-  return (
-    `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}` +
-    `-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}`
-  );
+  return `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}`;
 }
 
-export function exportFilename(input: {
-  contentType: string | null;
+/** `exportedAt` is an ISO instant. Only its UTC calendar day is used in the name. */
+export function exportDay(exportedAt: string | null | undefined): string | null {
+  if (!exportedAt) return null;
+  const match = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}:\d{2}/.exec(exportedAt);
+  return match ? match[1] : null;
+}
+
+/**
+ * Content-Disposition is not a CORS-safelisted header. When api.prysmic.me
+ * does not expose it, the name is rebuilt as prysmic-export-YYYY-MM-DD.json.
+ */
+export function accountExportFilename(input: {
   contentDisposition: string | null;
+  exportedAt?: string | null;
   now: Date;
 }): string {
-  const ext = extensionForContentType(input.contentType);
   const fromServer = filenameFromContentDisposition(input.contentDisposition);
   if (fromServer) {
-    if (ext && !/\.[A-Za-z0-9]{1,8}$/.test(fromServer)) return `${fromServer}${ext}`;
-    return fromServer;
+    if (/\.[A-Za-z0-9]{1,8}$/.test(fromServer)) return fromServer;
+    return `${fromServer}.json`;
   }
-  return `Prysmic-export-${utcStamp(input.now)}${ext}`;
+  return `prysmic-export-${exportDay(input.exportedAt) ?? utcDay(input.now)}.json`;
+}
+
+/** Read only the opening of a successful JSON blob. Failure leaves the name to the clock. */
+export async function exportedAtFromBlob(blob: Blob): Promise<string | null> {
+  try {
+    const head = await blob.slice(0, 480).text();
+    const match = /"exportedAt"\s*:\s*"([^"]+)"/.exec(head);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
 }
 
 export type ExportSession = { epoch: number; owner: number | null };
@@ -136,14 +149,14 @@ export async function runAccountExport(input: {
     if (!shouldDeliverExport(input.started, input.readSession())) {
       return { status: "dropped" };
     }
-    const filename = exportFilename({
-      contentType: payload.contentType,
+    const fromHeader = filenameFromContentDisposition(payload.contentDisposition);
+    const filename = accountExportFilename({
       contentDisposition: payload.contentDisposition,
+      exportedAt: fromHeader ? null : await exportedAtFromBlob(payload.blob),
       now: input.now,
     });
-    const notice = sanitizeExportNotice(payload.notice);
-    await input.deliver({ filename, blob: payload.blob, notice });
-    return { status: "downloaded", filename, notice };
+    await input.deliver({ filename, blob: payload.blob });
+    return { status: "downloaded", filename };
   } catch (err) {
     return { status: "error", kind: classifyExportError(err) };
   } finally {
