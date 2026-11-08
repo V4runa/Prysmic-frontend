@@ -1,4 +1,10 @@
-import { shouldSaveExportBody } from "../lib/dataExport";
+import {
+  exportBodyWithinLimit,
+  isAccountExportContentType,
+  shouldApplyExportUnauthorized,
+  shouldSaveExportBody,
+} from "../lib/dataExport";
+import { currentSessionEpoch } from "../lib/sessionBoundary";
 
 const getBaseUrl = () =>
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
@@ -119,24 +125,35 @@ export async function apiFetchBlob(endpoint: string): Promise<Blob> {
 }
 
 /**
- * Authenticated file download. The body is returned as bytes and is not parsed.
- * A 401 follows the same reauth path as every other API call.
+ * Authenticated JSON download. Only application/json is saved.
+ * A 401 clears the session only when this request's token and epoch are still current.
  */
 export async function apiFetchDownload(endpoint: string): Promise<{
   blob: Blob;
   contentType: string | null;
   contentDisposition: string | null;
 }> {
-  const token = getToken();
+  const startedToken = getToken();
+  const startedEpoch = currentSessionEpoch();
 
   const res = await fetch(`${getBaseUrl()}${endpoint}`, {
     method: "GET",
     cache: "no-store",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: startedToken ? { Authorization: `Bearer ${startedToken}` } : {},
   });
 
   if (res.status === 401) {
-    handleUnauthorized(await res.text().catch(() => ""));
+    const applies = shouldApplyExportUnauthorized({
+      startedEpoch,
+      startedToken,
+      currentEpoch: currentSessionEpoch(),
+      currentToken: getToken(),
+    });
+    if (applies) {
+      handleUnauthorized(await res.text().catch(() => ""));
+    }
+    await res.body?.cancel().catch(() => undefined);
+    throw new Error("Session expired.");
   }
 
   if (!shouldSaveExportBody(res.status)) {
@@ -144,9 +161,26 @@ export async function apiFetchDownload(endpoint: string): Promise<{
     throw new Error(`API Error: ${res.status}`);
   }
 
+  const contentType = res.headers.get("content-type");
+  if (!isAccountExportContentType(contentType)) {
+    await res.body?.cancel().catch(() => undefined);
+    throw new Error("API Error: 200");
+  }
+
+  const lengthHeader = res.headers.get("content-length");
+  if (lengthHeader != null && !exportBodyWithinLimit(Number(lengthHeader))) {
+    await res.body?.cancel().catch(() => undefined);
+    throw new Error("API Error: 413");
+  }
+
+  const blob = await res.blob();
+  if (!exportBodyWithinLimit(blob.size)) {
+    throw new Error("API Error: 413");
+  }
+
   return {
-    blob: await res.blob(),
-    contentType: res.headers.get("content-type"),
+    blob,
+    contentType,
     contentDisposition: res.headers.get("content-disposition"),
   };
 }

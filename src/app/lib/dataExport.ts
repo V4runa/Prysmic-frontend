@@ -49,7 +49,10 @@ export const EXPORT_ABOUT =
   "Downloads a JSON file of this account: writing, tags, tasks, habits, moods, and calendar events. Attachment files are not included. This is not a backup of those files, and Prysmic does not import it.";
 
 export const EXPORT_DOWNLOAD_MESSAGE =
-  "JSON file download started. Attachment files are not included, and this file is not imported.";
+  "JSON file download started. Attachment files are not included.";
+
+/** Client delivery rail. Collection ceilings stay on the server. */
+export const EXPORT_MAX_BYTES = 64 * 1024 * 1024;
 
 export function sanitizeExportFilename(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -60,6 +63,54 @@ export function sanitizeExportFilename(raw: string | null | undefined): string |
   if (/[\u0000-\u001f\u007f]/.test(base)) return null;
   if (/^[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}$/.test(base)) return null;
   return base;
+}
+
+/**
+ * A download name may only be a JSON file. `login.html` and any other
+ * extension are discarded so a 200 HTML body cannot be saved under that name.
+ */
+export function safeJsonExportFilename(raw: string | null | undefined): string | null {
+  const base = sanitizeExportFilename(raw);
+  if (!base) return null;
+  if (/\.[A-Za-z0-9]{1,8}$/.test(base)) {
+    if (!/\.json$/i.test(base)) return null;
+    const stem = base.slice(0, -5);
+    if (!stem || stem === "." || stem === "..") return null;
+    return `${stem}.json`;
+  }
+  return `${base}.json`;
+}
+
+export function isAccountExportContentType(header: string | null | undefined): boolean {
+  if (!header) return false;
+  const parts = header.split(";").map((part) => part.trim()).filter(Boolean);
+  if (parts[0]?.toLowerCase() !== "application/json") return false;
+  for (const part of parts.slice(1)) {
+    const [key, value = ""] = part.split("=");
+    if (key.trim().toLowerCase() !== "charset") continue;
+    if (value.trim().toLowerCase().replace(/^"|"$/g, "") !== "utf-8") return false;
+  }
+  return true;
+}
+
+export function exportBodyWithinLimit(size: number | null | undefined): boolean {
+  if (size == null || !Number.isFinite(size)) return true;
+  return size >= 0 && size <= EXPORT_MAX_BYTES;
+}
+
+/**
+ * A 401 may clear the token only for the session that sent the request.
+ * Logout or a later login must not be signed out by the old response.
+ */
+export function shouldApplyExportUnauthorized(input: {
+  startedEpoch: number;
+  startedToken: string | null;
+  currentEpoch: number;
+  currentToken: string | null;
+}): boolean {
+  if (input.currentEpoch !== input.startedEpoch) return false;
+  if (input.startedToken == null) return false;
+  return input.currentToken == null || input.currentToken === input.startedToken;
 }
 
 /** Prefer RFC 5987 filename* over filename. Unsafe names are discarded. */
@@ -102,11 +153,8 @@ export function accountExportFilename(input: {
   exportedAt?: string | null;
   now: Date;
 }): string {
-  const fromServer = filenameFromContentDisposition(input.contentDisposition);
-  if (fromServer) {
-    if (/\.[A-Za-z0-9]{1,8}$/.test(fromServer)) return fromServer;
-    return `${fromServer}.json`;
-  }
+  const fromServer = safeJsonExportFilename(filenameFromContentDisposition(input.contentDisposition));
+  if (fromServer) return fromServer;
   return `prysmic-export-${exportDay(input.exportedAt) ?? utcDay(input.now)}.json`;
 }
 
@@ -149,12 +197,27 @@ export async function runAccountExport(input: {
     if (!shouldDeliverExport(input.started, input.readSession())) {
       return { status: "dropped" };
     }
-    const fromHeader = filenameFromContentDisposition(payload.contentDisposition);
-    const filename = accountExportFilename({
-      contentDisposition: payload.contentDisposition,
-      exportedAt: fromHeader ? null : await exportedAtFromBlob(payload.blob),
-      now: input.now,
-    });
+    if (!isAccountExportContentType(payload.contentType)) {
+      return { status: "error", kind: "server" };
+    }
+    if (!exportBodyWithinLimit(payload.blob.size)) {
+      return { status: "error", kind: "too-large" };
+    }
+    let filename = safeJsonExportFilename(filenameFromContentDisposition(payload.contentDisposition));
+    if (!filename) {
+      const exportedAt = await exportedAtFromBlob(payload.blob);
+      if (!shouldDeliverExport(input.started, input.readSession())) {
+        return { status: "dropped" };
+      }
+      filename = accountExportFilename({
+        contentDisposition: null,
+        exportedAt,
+        now: input.now,
+      });
+    }
+    if (!shouldDeliverExport(input.started, input.readSession())) {
+      return { status: "dropped" };
+    }
     await input.deliver({ filename, blob: payload.blob });
     return { status: "downloaded", filename };
   } catch (err) {

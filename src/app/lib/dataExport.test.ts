@@ -6,8 +6,12 @@ import {
   classifyExportError,
   EXPORT_ABOUT,
   EXPORT_DOWNLOAD_MESSAGE,
+  EXPORT_MAX_BYTES,
   exportErrorMessage,
+  isAccountExportContentType,
   runAccountExport,
+  safeJsonExportFilename,
+  shouldApplyExportUnauthorized,
   shouldDeliverExport,
   shouldSaveExportBody,
   type ExportPayload,
@@ -266,5 +270,135 @@ test("the export path does not clear drafts or store the file", () => {
   assert.match(EXPORT_ABOUT, /Attachment files are not included/);
   assert.equal(/all files/i.test(EXPORT_ABOUT), false);
   assert.equal(/\bbackup\b/i.test(EXPORT_DOWNLOAD_MESSAGE), false);
-  assert.match(EXPORT_DOWNLOAD_MESSAGE, /not imported/);
+  assert.equal(EXPORT_DOWNLOAD_MESSAGE, "JSON file download started. Attachment files are not included.");
+});
+
+test("a deferred filename read cannot deliver after the session changes", async () => {
+  let release!: (value: string) => void;
+  let startedRead = false;
+  const gate = new Promise<string>((resolve) => {
+    release = resolve;
+  });
+  const session = { epoch: 3, owner: 7 as number | null };
+  let delivered = 0;
+  const pending = runAccountExport({
+    lock: { current: false },
+    started: { epoch: 3, owner: 7 },
+    readSession: () => ({ epoch: session.epoch, owner: session.owner }),
+    now: NOW,
+    fetchExport: async () => ({
+      blob: {
+        size: 80,
+        slice: () => ({
+          text: () => {
+            startedRead = true;
+            return gate;
+          },
+        }),
+      } as unknown as Blob,
+      contentType: "application/json; charset=utf-8",
+      contentDisposition: null,
+    }),
+    deliver: () => {
+      delivered += 1;
+    },
+  });
+  for (let i = 0; i < 20 && !startedRead; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  assert.equal(startedRead, true);
+  session.epoch = 4;
+  session.owner = 8;
+  release('{"exportedAt":"2026-11-08T17:49:05.000Z","notes":[]}');
+  const result = await pending;
+  assert.equal(result.status, "dropped");
+  assert.equal(delivered, 0);
+});
+
+test("a 200 HTML login page and a non-json filename are not saved", async () => {
+  assert.equal(isAccountExportContentType("application/json; charset=utf-8"), true);
+  assert.equal(isAccountExportContentType("text/html; charset=utf-8"), false);
+  assert.equal(isAccountExportContentType("text/html"), false);
+  assert.equal(safeJsonExportFilename("login.html"), null);
+  assert.equal(safeJsonExportFilename("../../login.html"), null);
+  assert.equal(
+    accountExportFilename({
+      contentDisposition: 'attachment; filename="login.html"',
+      now: NOW,
+    }),
+    "prysmic-export-2026-11-08.json"
+  );
+  let delivered = 0;
+  const html = await runAccountExport({
+    lock: { current: false },
+    started: SESSION,
+    readSession: () => SESSION,
+    now: NOW,
+    fetchExport: async () => ({
+      blob: new Blob(["<!doctype html><title>Sign in</title>"], { type: "text/html" }),
+      contentType: "text/html; charset=utf-8",
+      contentDisposition: 'attachment; filename="login.html"',
+    }),
+    deliver: () => {
+      delivered += 1;
+    },
+  });
+  assert.equal(html.status, "error");
+  assert.equal(delivered, 0);
+  const huge = await runAccountExport({
+    lock: { current: false },
+    started: SESSION,
+    readSession: () => SESSION,
+    now: NOW,
+    fetchExport: async () => ({
+      blob: { size: EXPORT_MAX_BYTES + 1, slice: () => ({ text: async () => "" }) } as unknown as Blob,
+      contentType: "application/json; charset=utf-8",
+      contentDisposition: 'attachment; filename="prysmic-export-2026-11-08.json"',
+    }),
+    deliver: () => {
+      delivered += 1;
+    },
+  });
+  assert.equal(huge.status, "error");
+  if (huge.status === "error") assert.equal(huge.kind, "too-large");
+  assert.equal(delivered, 0);
+});
+
+test("a stale export 401 does not apply after a new login", () => {
+  assert.equal(
+    shouldApplyExportUnauthorized({
+      startedEpoch: 1,
+      startedToken: "token-a",
+      currentEpoch: 1,
+      currentToken: "token-a",
+    }),
+    true
+  );
+  assert.equal(
+    shouldApplyExportUnauthorized({
+      startedEpoch: 1,
+      startedToken: "token-a",
+      currentEpoch: 1,
+      currentToken: null,
+    }),
+    true
+  );
+  assert.equal(
+    shouldApplyExportUnauthorized({
+      startedEpoch: 1,
+      startedToken: "token-a",
+      currentEpoch: 2,
+      currentToken: "token-b",
+    }),
+    false
+  );
+  assert.equal(
+    shouldApplyExportUnauthorized({
+      startedEpoch: 1,
+      startedToken: "token-a",
+      currentEpoch: 1,
+      currentToken: "token-b",
+    }),
+    false
+  );
 });

@@ -185,6 +185,21 @@ try {
       if (exportMode === "401") {
         return req.respond({ status: 401, headers: cors, body: "unauthorized" });
       }
+      if (exportMode === "hold-401" || exportMode === "hold") {
+        held.push(req);
+        return;
+      }
+      if (exportMode === "html") {
+        return req.respond({
+          status: 200,
+          headers: {
+            ...cors,
+            "Content-Type": "text/html; charset=utf-8",
+            "Content-Disposition": 'attachment; filename="login.html"',
+          },
+          body: "<!doctype html><title>Sign in</title>",
+        });
+      }
       if (exportMode === "413") {
         return req.respond({
           status: 413,
@@ -302,6 +317,32 @@ try {
   await delay(400);
   const refused = await filesWith("No file was produced");
   if (refused.length) throw new Error("413 error body was saved as the export");
+
+  exportMode = "hold-401";
+  const tokenB = token(9);
+  await page.click('button[aria-label="Export your data"]');
+  for (let i = 0; i < 40 && held.length < 1; i += 1) await delay(50);
+  if (held.length !== 1) throw new Error("held 401 did not start");
+  await page.click('button[aria-label="Log out"]');
+  await page.waitForFunction(() => location.pathname === "/login");
+  await page.evaluate((value) => localStorage.setItem("token", value), tokenB);
+  await page.goto(`${appUrl}/notes`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('button[aria-label="Export your data"]');
+  await held.shift().respond({ status: 401, headers: cors, body: "unauthorized" });
+  await delay(700);
+  const afterStale = await page.evaluate(() => ({
+    token: localStorage.getItem("token"),
+    toast: document.body.innerText.includes("Your session has expired"),
+  }));
+  if (afterStale.token !== tokenB) throw new Error("stale 401 cleared the new login");
+  if (afterStale.toast) throw new Error("stale 401 started reauth for the new login");
+
+  exportMode = "html";
+  await page.click('button[aria-label="Export your data"]');
+  await page.waitForFunction(() => document.body.innerText.includes("The JSON file was not downloaded."));
+  await delay(300);
+  const htmlSaved = await filesWith("Sign in");
+  if (htmlSaved.length) throw new Error("HTML login page was saved as the export");
 
   const context = await browser.createBrowserContext();
   const expired = await context.newPage();
