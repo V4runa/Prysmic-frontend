@@ -115,3 +115,37 @@ export async function apiFetchBlob(endpoint: string): Promise<Blob> {
 
   return res.blob();
 }
+
+/**
+ * Authenticated file download. The body is returned as bytes and is not parsed.
+ * A 401 follows the same reauth path as every other API call.
+ */
+export async function apiFetchDownload(endpoint: string): Promise<{
+  blob: Blob;
+  contentType: string | null;
+  contentDisposition: string | null;
+  notice: string | null;
+}> {
+  const token = getToken();
+
+  const res = await fetch(`${getBaseUrl()}${endpoint}`, {
+    method: "GET",
+    cache: "no-store",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (res.status === 401) {
+    handleUnauthorized(await res.text().catch(() => ""));
+  }
+
+  if (!res.ok) {
+    throw new Error(`API Error: ${res.status}`);
+  }
+
+  return {
+    blob: await res.blob(),
+    contentType: res.headers.get("content-type"),
+    contentDisposition: res.headers.get("content-disposition"),
+    notice: res.headers.get("x-prysmic-export-notice"),
+  };
+}
