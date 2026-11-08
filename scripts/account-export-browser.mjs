@@ -11,6 +11,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -91,6 +92,34 @@ const cors = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Expose-Headers": "Content-Disposition",
 };
+let export401HeadersFlushed = false;
+let releaseExport401Body = () => {};
+const export401Server = createHttpServer((req, res) => {
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, cors);
+    res.end();
+    return;
+  }
+  if (req.method === "GET" && req.url?.startsWith("/export")) {
+    res.writeHead(401, {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "private, no-store",
+      ...cors,
+    });
+    res.flushHeaders();
+    export401HeadersFlushed = true;
+    releaseExport401Body = () => {
+      if (!res.writableEnded) res.end("unauthorized-body-after-switch");
+    };
+    return;
+  }
+  res.writeHead(404);
+  res.end();
+});
+await new Promise((resolve, reject) => {
+  export401Server.once("error", reject);
+  export401Server.listen(3001, "127.0.0.1", resolve);
+});
 
 const downloadDir = mkdtempSync(join(tmpdir(), "prysmic-export-"));
 const held = [];
@@ -188,6 +217,9 @@ try {
       if (exportMode === "hold-401" || exportMode === "hold") {
         held.push(req);
         return;
+      }
+      if (exportMode === "hold-401-body") {
+        return req.continue();
       }
       if (exportMode === "html") {
         return req.respond({
@@ -337,6 +369,27 @@ try {
   if (afterStale.token !== tokenB) throw new Error("stale 401 cleared the new login");
   if (afterStale.toast) throw new Error("stale 401 started reauth for the new login");
 
+  export401HeadersFlushed = false;
+  exportMode = "hold-401-body";
+  const tokenC = token(10);
+  await page.click('button[aria-label="Export your data"]');
+  for (let i = 0; i < 40 && !export401HeadersFlushed; i += 1) await delay(50);
+  if (!export401HeadersFlushed) throw new Error("401 headers were not flushed");
+  await page.waitForFunction(() => document.body.innerText.includes("Preparing export"));
+  await page.click('button[aria-label="Log out"]');
+  await page.waitForFunction(() => location.pathname === "/login");
+  await page.evaluate((value) => localStorage.setItem("token", value), tokenC);
+  await page.goto(`${appUrl}/notes`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('button[aria-label="Export your data"]');
+  releaseExport401Body();
+  await delay(700);
+  const afterBody = await page.evaluate(() => ({
+    token: localStorage.getItem("token"),
+    toast: document.body.innerText.includes("Your session has expired"),
+  }));
+  if (afterBody.token !== tokenC) throw new Error("delayed 401 body cleared the new login");
+  if (afterBody.toast) throw new Error("delayed 401 body started reauth for the new login");
+
   exportMode = "html";
   await page.click('button[aria-label="Export your data"]');
   await page.waitForFunction(() => document.body.innerText.includes("The JSON file was not downloaded."));
@@ -400,5 +453,6 @@ try {
 } finally {
   await browser.close();
   if (appProcess) appProcess.kill("SIGTERM");
+  export401Server.close();
   rmSync(downloadDir, { recursive: true, force: true });
 }

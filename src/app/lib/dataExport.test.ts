@@ -8,7 +8,9 @@ import {
   EXPORT_DOWNLOAD_MESSAGE,
   EXPORT_MAX_BYTES,
   exportErrorMessage,
+  finishUnauthorizedExport,
   isAccountExportContentType,
+  readBoundedExportBody,
   runAccountExport,
   safeJsonExportFilename,
   shouldApplyExportUnauthorized,
@@ -362,6 +364,122 @@ test("a 200 HTML login page and a non-json filename are not saved", async () => 
   assert.equal(huge.status, "error");
   if (huge.status === "error") assert.equal(huge.kind, "too-large");
   assert.equal(delivered, 0);
+});
+
+function pacedStream(parts: Uint8Array[]): {
+  stream: ReadableStream<Uint8Array>;
+  release: () => void;
+  stats: { pulls: number; cancelled: boolean };
+} {
+  const stats = { pulls: 0, cancelled: false };
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const stream = new ReadableStream<Uint8Array>(
+    {
+      async pull(controller) {
+        stats.pulls += 1;
+        if (stats.pulls === 1) await gate;
+        const next = parts[stats.pulls - 1];
+        if (!next) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(next);
+        if (stats.pulls === parts.length) controller.close();
+      },
+      cancel() {
+        stats.cancelled = true;
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  return { stream, release, stats };
+}
+
+test("a stream without Content-Length stops at the byte cap and keeps no further chunks", async () => {
+  const encoder = new TextEncoder();
+  const { stream, release, stats } = pacedStream([
+    encoder.encode("123"),
+    encoder.encode("45678"),
+    encoder.encode("TAIL-SHOULD-NOT-BE-READ"),
+  ]);
+  const pending = readBoundedExportBody(stream, 5);
+  release();
+  await assert.rejects(pending, /API Error: 413/);
+  assert.equal(stats.cancelled, true);
+  assert.equal(stats.pulls < 3, true);
+});
+
+test("a session change between chunks cancels the stream and drops the bytes", async () => {
+  const encoder = new TextEncoder();
+  let releaseSecond = () => {};
+  const second = new Promise<void>((resolve) => {
+    releaseSecond = resolve;
+  });
+  const stats = { pulls: 0, cancelled: false };
+  const stream = new ReadableStream<Uint8Array>(
+    {
+      async pull(controller) {
+        stats.pulls += 1;
+        if (stats.pulls === 1) {
+          controller.enqueue(encoder.encode("kept"));
+          return;
+        }
+        await second;
+        controller.enqueue(encoder.encode("later"));
+      },
+      cancel() {
+        stats.cancelled = true;
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  let current = true;
+  const pending = readBoundedExportBody(stream, 100, () => current);
+  for (let i = 0; i < 20 && stats.pulls < 2; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  assert.equal(stats.pulls, 2);
+  current = false;
+  releaseSecond();
+  await assert.rejects(pending, /Export dropped/);
+  assert.equal(stats.cancelled, true);
+});
+
+test("chunks under the cap are returned whole", async () => {
+  const encoder = new TextEncoder();
+  const { stream, release } = pacedStream([encoder.encode("{\"a\":"), encoder.encode("1}")]);
+  const pending = readBoundedExportBody(stream, 100);
+  release();
+  const blob = await pending;
+  assert.equal(await blob.text(), "{\"a\":1}");
+});
+
+test("a 401 body that arrives after the next login does not sign that login out", async () => {
+  const encoder = new TextEncoder();
+  const { stream, release, stats } = pacedStream([encoder.encode("unauthorized-body-after-switch")]);
+  const auth = { epoch: 1, token: "token-a" };
+  let signedOut = 0;
+  const pending = finishUnauthorizedExport({
+    body: stream,
+    startedEpoch: 1,
+    startedToken: "token-a",
+    readAuth: () => ({ epoch: auth.epoch, token: auth.token }),
+    onUnauthorized: () => {
+      signedOut += 1;
+    },
+  });
+  for (let i = 0; i < 20 && stats.pulls < 1; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  assert.equal(stats.pulls, 1);
+  auth.epoch = 2;
+  auth.token = "token-b";
+  release();
+  await pending;
+  assert.equal(signedOut, 0);
 });
 
 test("a stale export 401 does not apply after a new login", () => {

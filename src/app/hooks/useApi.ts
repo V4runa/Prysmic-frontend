@@ -1,7 +1,10 @@
 import {
+  EXPORT_MAX_BYTES,
   exportBodyWithinLimit,
+  exportRequestStillCurrent,
+  finishUnauthorizedExport,
   isAccountExportContentType,
-  shouldApplyExportUnauthorized,
+  readBoundedExportBody,
   shouldSaveExportBody,
 } from "../lib/dataExport";
 import { currentSessionEpoch } from "../lib/sessionBoundary";
@@ -143,16 +146,13 @@ export async function apiFetchDownload(endpoint: string): Promise<{
   });
 
   if (res.status === 401) {
-    const applies = shouldApplyExportUnauthorized({
+    await finishUnauthorizedExport({
+      body: res.body,
       startedEpoch,
       startedToken,
-      currentEpoch: currentSessionEpoch(),
-      currentToken: getToken(),
+      readAuth: () => ({ epoch: currentSessionEpoch(), token: getToken() }),
+      onUnauthorized: (message) => handleUnauthorized(message),
     });
-    if (applies) {
-      handleUnauthorized(await res.text().catch(() => ""));
-    }
-    await res.body?.cancel().catch(() => undefined);
     throw new Error("Session expired.");
   }
 
@@ -173,10 +173,14 @@ export async function apiFetchDownload(endpoint: string): Promise<{
     throw new Error("API Error: 413");
   }
 
-  const blob = await res.blob();
-  if (!exportBodyWithinLimit(blob.size)) {
-    throw new Error("API Error: 413");
-  }
+  const blob = await readBoundedExportBody(res.body, EXPORT_MAX_BYTES, () =>
+    exportRequestStillCurrent({
+      startedEpoch,
+      startedToken,
+      currentEpoch: currentSessionEpoch(),
+      currentToken: getToken(),
+    }),
+  );
 
   return {
     blob,

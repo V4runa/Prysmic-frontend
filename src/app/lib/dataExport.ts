@@ -98,6 +98,94 @@ export function exportBodyWithinLimit(size: number | null | undefined): boolean 
   return size >= 0 && size <= EXPORT_MAX_BYTES;
 }
 
+/** The request's own token is still the one in storage. Logout and a new login are not. */
+export function exportRequestStillCurrent(input: {
+  startedEpoch: number;
+  startedToken: string | null;
+  currentEpoch: number;
+  currentToken: string | null;
+}): boolean {
+  if (input.currentEpoch !== input.startedEpoch) return false;
+  if (input.startedToken == null) return false;
+  return input.currentToken === input.startedToken;
+}
+
+/**
+ * Count decoded bytes and cancel the stream as soon as the cap is crossed.
+ * Chunks already queued are dropped, and nothing past the cap is kept.
+ * `stillCurrent` is read after every chunk so a logout stops the read.
+ */
+export async function readBoundedExportBody(
+  stream: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+  stillCurrent: () => boolean = () => true,
+): Promise<Blob> {
+  if (!stream) return new Blob([]);
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const discard = () => {
+    chunks.length = 0;
+  };
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (!stillCurrent()) {
+        discard();
+        await reader.cancel().catch(() => undefined);
+        throw new Error("Export dropped.");
+      }
+      if (done) break;
+      const bytes = value?.byteLength ?? 0;
+      if (bytes === 0) continue;
+      if (total + bytes > maxBytes) {
+        discard();
+        await reader.cancel().catch(() => undefined);
+        throw new Error("API Error: 413");
+      }
+      chunks.push(value);
+      total += bytes;
+    }
+    return new Blob(chunks as BlobPart[]);
+  } catch (error) {
+    discard();
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  }
+}
+
+/**
+ * Read a 401 body first, then decide. The session can change while the body
+ * is still arriving, so the token and epoch are read again immediately
+ * before any sign-out side effect.
+ */
+export async function finishUnauthorizedExport(input: {
+  body: ReadableStream<Uint8Array> | null;
+  startedEpoch: number;
+  startedToken: string | null;
+  readAuth: () => { epoch: number; token: string | null };
+  onUnauthorized: (message: string) => void;
+}): Promise<void> {
+  let message = "";
+  try {
+    const blob = await readBoundedExportBody(input.body, 8192);
+    message = (await blob.text()).slice(0, 300);
+  } catch {
+    message = "";
+  }
+  const auth = input.readAuth();
+  if (
+    shouldApplyExportUnauthorized({
+      startedEpoch: input.startedEpoch,
+      startedToken: input.startedToken,
+      currentEpoch: auth.epoch,
+      currentToken: auth.token,
+    })
+  ) {
+    input.onUnauthorized(message);
+  }
+}
+
 /**
  * A 401 may clear the token only for the session that sent the request.
  * Logout or a later login must not be signed out by the old response.
