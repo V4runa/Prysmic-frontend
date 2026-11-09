@@ -29,6 +29,7 @@ const notes = spawnSync(
     "src/app/notes/bindNewNoteCreate.test.ts",
     "src/app/lib/personalCache.test.ts",
     "src/app/lib/sessionBoundary.test.ts",
+    "src/app/lib/dataExport.test.ts",
   ],
   { stdio: "inherit", env: process.env }
 );
@@ -40,5 +41,12 @@ const restore = spawnSync(process.execPath, ["scripts/note-body-restore.mjs"], {
   env: process.env,
 });
 if (restore.status !== 0) failed += 1;
+
+console.log("\n=== account export (mounted) ===\n");
+const accountExport = spawnSync(process.execPath, ["scripts/account-export-browser.mjs"], {
+  stdio: "inherit",
+  env: process.env,
+});
+if (accountExport.status !== 0) failed += 1;
 
 process.exit(failed === 0 ? 0 : 1);

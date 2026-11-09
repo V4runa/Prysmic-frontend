@@ -1,3 +1,14 @@
+import {
+  EXPORT_MAX_BYTES,
+  exportBodyWithinLimit,
+  exportRequestStillCurrent,
+  finishUnauthorizedExport,
+  isAccountExportContentType,
+  readBoundedExportBody,
+  shouldSaveExportBody,
+} from "../lib/dataExport";
+import { currentSessionEpoch } from "../lib/sessionBoundary";
+
 const getBaseUrl = () =>
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
 
@@ -114,4 +125,66 @@ export async function apiFetchBlob(endpoint: string): Promise<Blob> {
   }
 
   return res.blob();
+}
+
+/**
+ * Authenticated JSON download. Only application/json is saved.
+ * A 401 clears the session only when this request's token and epoch are still current.
+ */
+export async function apiFetchDownload(endpoint: string): Promise<{
+  blob: Blob;
+  contentType: string | null;
+  contentDisposition: string | null;
+}> {
+  const startedToken = getToken();
+  const startedEpoch = currentSessionEpoch();
+
+  const res = await fetch(`${getBaseUrl()}${endpoint}`, {
+    method: "GET",
+    cache: "no-store",
+    headers: startedToken ? { Authorization: `Bearer ${startedToken}` } : {},
+  });
+
+  if (res.status === 401) {
+    await finishUnauthorizedExport({
+      body: res.body,
+      startedEpoch,
+      startedToken,
+      readAuth: () => ({ epoch: currentSessionEpoch(), token: getToken() }),
+      onUnauthorized: (message) => handleUnauthorized(message),
+    });
+    throw new Error("Session expired.");
+  }
+
+  if (!shouldSaveExportBody(res.status)) {
+    await res.body?.cancel().catch(() => undefined);
+    throw new Error(`API Error: ${res.status}`);
+  }
+
+  const contentType = res.headers.get("content-type");
+  if (!isAccountExportContentType(contentType)) {
+    await res.body?.cancel().catch(() => undefined);
+    throw new Error("API Error: 200");
+  }
+
+  const lengthHeader = res.headers.get("content-length");
+  if (lengthHeader != null && !exportBodyWithinLimit(Number(lengthHeader))) {
+    await res.body?.cancel().catch(() => undefined);
+    throw new Error("API Error: 413");
+  }
+
+  const blob = await readBoundedExportBody(res.body, EXPORT_MAX_BYTES, () =>
+    exportRequestStillCurrent({
+      startedEpoch,
+      startedToken,
+      currentEpoch: currentSessionEpoch(),
+      currentToken: getToken(),
+    }),
+  );
+
+  return {
+    blob,
+    contentType,
+    contentDisposition: res.headers.get("content-disposition"),
+  };
 }

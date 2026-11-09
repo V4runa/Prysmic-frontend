@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import ExportDataButton from "./ExportDataButton";
 import { syncPersonalCache } from "../lib/personalCache";
 import { bumpSessionEpoch } from "../lib/sessionBoundary";
 import {
@@ -130,6 +131,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               Wandering as {username}
             </span>
           )}
+          <ExportDataButton />
           <button
             onClick={handleLogout}
             aria-label="Log out"
