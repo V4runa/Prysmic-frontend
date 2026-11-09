@@ -53,7 +53,7 @@ export default function NewHabitPage() {
         <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
           <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
             <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Forge a New Contract</h2>
-            <p className="text-slate-400 text-sm sm:text-base">Define your intent. This is a sacred act.</p>
+            <p className="text-slate-400 text-sm sm:text-base">Name the habit and why you want to keep it.</p>
           </div>
 
           <div className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1">
@@ -120,7 +120,7 @@ export default function NewHabitPage() {
                 <TextArea
                   id="new-habit-affirmation"
                   rows={3}
-                  placeholder="What truth shall you repeat?"
+                  placeholder="A short line you want to remember"
                   value={form.affirmation}
                   onChange={(e) => handleChange("affirmation", e.target.value)}
                 />

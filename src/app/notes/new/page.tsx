@@ -427,7 +427,7 @@ export default function CreateNotePage() {
                 editable={!saving}
                 content={content}
                 onChange={setContent}
-                placeholder="Let it flow onto the pond..."
+                placeholder="Start writing…"
               />
 
               <AttachmentZone

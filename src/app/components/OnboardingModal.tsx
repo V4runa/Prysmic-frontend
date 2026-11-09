@@ -34,31 +34,31 @@ const features = [
   {
     icon: NotebookPen,
     label: "Notes",
-    desc: "Capture a thought the moment it arrives, before it slips away.",
+    desc: "Write down ideas and thoughts, and come back to them later.",
     color: "text-cyan-300",
   },
   {
     icon: Tags,
     label: "Tag Codex",
-    desc: "Give thoughts color and meaning so you can find a single thread later.",
+    desc: "Create your own tags so you can organize notes and find them again.",
     color: "text-violet-300",
   },
   {
     icon: ScrollText,
     label: "Contracts",
-    desc: "Your habits, framed as quiet promises. Each check-in grows a streak.",
+    desc: "Habits framed as personal commitments, with check-ins and streaks.",
     color: "text-emerald-300",
   },
   {
     icon: ListChecks,
     label: "Tasks",
-    desc: "The things that need doing, sorted by what matters most.",
+    desc: "Things you need to do, organized by what matters most.",
     color: "text-amber-300",
   },
   {
     icon: HeartPulse,
     label: "Moods",
-    desc: "A gentle daily check-in with how you actually feel.",
+    desc: "Check in with how you feel, and see it next to the rest of your day.",
     color: "text-rose-300",
   },
 ];
@@ -66,18 +66,18 @@ const features = [
 const steps = [
   {
     eyebrow: "Welcome, wanderer",
-    title: "Enter the Flow",
-    body: "Prysmic is an extension to your cognition — a calm place to set down what your mind would rather not carry alone.",
+    title: "Welcome to Prysmic",
+    body: "Prysmic is a place to keep your notes, moods, and the commitments you want to follow through on.",
   },
   {
-    eyebrow: "The lay of the land",
-    title: "Five quiet rooms",
-    body: "We've prepared a small sample of each so nothing feels empty on your first visit.",
+    eyebrow: "What's here",
+    title: "Five parts of the app",
+    body: "We've added a small sample of each so nothing feels empty on your first visit.",
   },
   {
     eyebrow: "You're in control",
-    title: "Begin where you like",
-    body: "We pinned a ✦ Start Here note at the top of your Notes. Everything you see is a sample — keep it, reshape it, or clear it all out.",
+    title: "Start wherever you like",
+    body: "There's a Start Here note pinned at the top of Notes. Everything you see is a sample — keep it, change it, or clear it out.",
   },
 ];
 
@@ -161,13 +161,7 @@ export default function OnboardingModal() {
                 transition={springSoft}
               >
                 <h2 className="text-2xl sm:text-3xl font-semibold text-slate-100 tracking-wide mb-3">
-                  {step === 0 ? (
-                    <>
-                      Enter the <span className="text-cyan-300">Flow</span>
-                    </>
-                  ) : (
-                    current.title
-                  )}
+                  {current.title}
                 </h2>
                 <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
                   {current.body}
@@ -229,7 +223,7 @@ export default function OnboardingModal() {
                   onClick={() => (isLast ? finish() : setStep((s) => s + 1))}
                   className="rounded-md border border-cyan-300/20 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-100 px-5 py-2.5 text-sm tracking-wide transition"
                 >
-                  {isLast ? "Enter the Flow" : "Continue"}
+                  {isLast ? "Get started" : "Continue"}
                 </motion.button>
               </div>
             </div>
