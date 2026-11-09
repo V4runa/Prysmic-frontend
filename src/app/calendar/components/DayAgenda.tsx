@@ -23,11 +23,13 @@ import {
   filterBuckets,
   formatClock,
   SourceFilter,
+  taskDoneToggleLabel,
 } from "../lib/calendarLib";
 import { CalendarHabitItem } from "../types";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { habitIconMap, IconKey } from "../../components/habitIcons";
 import { calendarQueryKey, quickAddTask, toggleHabitCheck } from "../../hooks/useCalendar";
+import { useToggleCalendarTask } from "../../hooks/taskCompletionSync";
 import { tactileRow, tactileSubtle } from "../../lib/motion";
 import { TextField } from "../../components/forms";
 import HabitProgressRing from "./HabitProgressRing";
@@ -56,6 +58,7 @@ export default function DayAgenda({
   const [taskTitle, setTaskTitle] = useState("");
   const [adding, setAdding] = useState(false);
   const [pendingHabit, setPendingHabit] = useState<number | null>(null);
+  const { pendingId: pendingTask, toggleTask } = useToggleCalendarTask();
 
   const visible = filterBuckets(buckets, sources);
   const { events, tasks, habits, moods, notes } = visible;
@@ -192,45 +195,58 @@ export default function DayAgenda({
           <section className="flex flex-col gap-1.5">
             <span className={sectionTitle}>Tasks due</span>
             {tasks.map((t) => (
-              <motion.button
+              <motion.div
                 key={`task-${t.id}`}
                 {...tactileRow}
-                onClick={() => router.push("/tasks")}
-                aria-label={t.isComplete ? `Completed task, ${t.title}` : t.title}
                 className={clsx(
-                  "text-left flex items-center gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110 hover:shadow-lg hover:shadow-black/25",
+                  "flex items-center gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110 hover:shadow-lg hover:shadow-black/25",
                   t.isComplete
                     ? "bg-green-500/10 border-green-400/30"
                     : SOURCE_ACCENT.task.chip
                 )}
               >
-                {t.isComplete ? (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" aria-hidden="true" />
-                ) : (
-                  <Square className="h-4 w-4 shrink-0 text-sky-300" aria-hidden="true" />
-                )}
-                <span className="min-w-0 flex-1">
-                  <span
-                    className={clsx(
-                      "relative inline-block max-w-full truncate text-sm",
-                      t.isComplete ? "text-green-300/70" : "text-slate-100"
-                    )}
-                  >
-                    {t.title}
-                    {t.isComplete && (
-                      <span
-                        className="pointer-events-none absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 bg-green-400"
-                        aria-hidden="true"
-                      />
-                    )}
+                <button
+                  type="button"
+                  onClick={() => void toggleTask(t)}
+                  disabled={pendingTask === t.id}
+                  aria-pressed={t.isComplete}
+                  aria-label={taskDoneToggleLabel(t.title, t.isComplete)}
+                  className="tap-target flex shrink-0 items-center justify-center rounded-sm disabled:opacity-50"
+                >
+                  {t.isComplete ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-400" aria-hidden="true" />
+                  ) : (
+                    <Square className="h-4 w-4 text-sky-300" aria-hidden="true" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/tasks")}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={clsx(
+                        "relative inline-block max-w-full truncate text-sm",
+                        t.isComplete ? "text-green-300/70" : "text-slate-100"
+                      )}
+                    >
+                      {t.title}
+                      {t.isComplete && (
+                        <span
+                          className="pointer-events-none absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 bg-green-400"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </span>
                   </span>
-                </span>
-                {t.isComplete && (
-                  <span className="ml-auto shrink-0 text-[11px] font-medium text-green-300/80">
-                    Completed
-                  </span>
-                )}
-              </motion.button>
+                  {t.isComplete && (
+                    <span className="ml-auto shrink-0 text-[11px] font-medium text-green-300/80">
+                      Completed
+                    </span>
+                  )}
+                </button>
+              </motion.div>
             ))}
           </section>
         )}

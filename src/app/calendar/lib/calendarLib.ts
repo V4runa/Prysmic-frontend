@@ -166,6 +166,68 @@ export function indexFeed(items: CalendarItem[]): CalendarIndex {
   return { byDay, events };
 }
 
+/**
+ * Completion for one task across a calendar feed.
+ *
+ * The feed already carries the task's `isComplete` boolean (the same field as
+ * GET /tasks). This only replaces that flag. Priority, the due date, and the
+ * id stay as they are — those are always present and must not be read as
+ * "done".
+ */
+export function withTaskCompletion(
+  items: CalendarItem[],
+  taskId: number,
+  isComplete: boolean,
+): CalendarItem[] {
+  let changed = false;
+  const next = items.map((item) => {
+    if (item.source !== "task" || item.id !== taskId || item.isComplete === isComplete) {
+      return item;
+    }
+    changed = true;
+    return { ...item, isComplete };
+  });
+  return changed ? next : items;
+}
+
+/** Month-cell task mark. A check means every task that day is actually done. */
+export function monthTaskMark(tasks: { isComplete: boolean }[]): {
+  done: number;
+  total: number;
+  checked: boolean;
+  text: string;
+  label: string;
+} {
+  const total = tasks.length;
+  const done = tasks.filter((task) => task.isComplete).length;
+  const checked = total > 0 && done === total;
+  const noun = total === 1 ? "task" : "tasks";
+  if (done === 0) {
+    return { done, total, checked, text: String(total), label: `${total} open ${noun}` };
+  }
+  if (checked) {
+    return {
+      done,
+      total,
+      checked,
+      text: String(total),
+      label: `${total} completed ${noun}`,
+    };
+  }
+  return {
+    done,
+    total,
+    checked,
+    text: `${done}/${total}`,
+    label: `${done} of ${total} tasks completed`,
+  };
+}
+
+/** Accessible name for the calendar control that toggles a task. */
+export function taskDoneToggleLabel(title: string, isComplete: boolean): string {
+  return isComplete ? `Mark not done, ${title}` : `Mark done, ${title}`;
+}
+
 /** Everything active on a given day (events expanded to each covered day). */
 export function bucketsForDay(
   index: CalendarIndex,

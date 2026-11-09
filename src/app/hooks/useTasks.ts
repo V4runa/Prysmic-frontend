@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Task } from "../tasks/types/task";
 import { apiFetch } from "./useApi";
+import { calendarQueryKey } from "./useCalendar";
 
 export const tasksQueryKey = ["tasks"] as const;
 
@@ -32,5 +33,12 @@ export function useTasks() {
 
 export function useInvalidateTasks() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: tasksQueryKey });
+  // The calendar keeps its own feed. Habit checks already invalidate it;
+  // task edits have to as well, or a visit within the cache window still
+  // shows the previous done state.
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: tasksQueryKey }),
+      queryClient.invalidateQueries({ queryKey: calendarQueryKey }),
+    ]);
 }
