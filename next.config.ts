@@ -11,6 +11,16 @@ const apiProxyTarget = process.env.API_PROXY_TARGET;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  async headers() {
+    const privateLink = [
+      { key: "Referrer-Policy", value: "no-referrer" },
+      { key: "X-Robots-Tag", value: "noindex, nofollow" },
+    ];
+    return [
+      { source: "/verify-email", headers: privateLink },
+      { source: "/reset-password", headers: privateLink },
+    ];
+  },
   async rewrites() {
     if (!apiProxyTarget) {
       return [];

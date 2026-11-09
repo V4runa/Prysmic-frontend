@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import GlassPanel from "../components/GlassPanel";
-import { apiFetch } from "../hooks/useApi";
+import { ApiError, apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
 import { markOnboardingPending } from "../components/OnboardingModal";
 import { TextField, FormButton } from "../components/forms";
+import { interpretSignupError } from "../lib/authMessages";
+import { applyAuthSession } from "../lib/storedSession";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -26,19 +28,27 @@ export default function SignupPage() {
     const slowTimer = setTimeout(() => setSlow(true), 3500);
 
     try {
-      const res = await apiFetch<{ access_token: string }>("/auth/signup", {
+      const res = await apiFetch<{ access_token: string; emailVerified?: boolean }>("/auth/signup", {
         method: "POST",
         body: JSON.stringify({ username, email, password }),
       });
 
-      localStorage.setItem("token", res.access_token);
+      applyAuthSession({
+        token: res.access_token,
+        emailVerified: res.emailVerified,
+        signedUp: res.emailVerified !== true,
+      });
       markOnboardingPending();
       clearTimeout(slowTimer);
       router.push("/notes");
     } catch (err: Error | unknown) {
       console.error("Signup failed", err);
       clearTimeout(slowTimer);
-      setError("Signup failed. Please try again.");
+      setError(
+        err instanceof ApiError
+          ? interpretSignupError(err.status, err.body)
+          : "Signup couldn't finish. Please try again."
+      );
       setLoading(false);
       setSlow(false);
     }
@@ -88,7 +98,7 @@ export default function SignupPage() {
           </form>
 
           {error && (
-            <p className="text-rose-400 text-sm mt-3 text-center">{error}</p>
+            <p role="alert" className="text-rose-400 text-sm mt-3 text-center">{error}</p>
           )}
 
           {slow && !error && (

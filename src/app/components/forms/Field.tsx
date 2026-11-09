@@ -41,9 +41,17 @@ export default function Field({
       )}
       {children}
       {error ? (
-        <span className={fieldError}>{error}</span>
+        <span
+          id={htmlFor ? `${htmlFor}-error` : undefined}
+          role="alert"
+          className={fieldError}
+        >
+          {error}
+        </span>
       ) : hint ? (
-        <span className={fieldHint}>{hint}</span>
+        <span id={htmlFor ? `${htmlFor}-hint` : undefined} className={fieldHint}>
+          {hint}
+        </span>
       ) : null}
     </div>
   );
