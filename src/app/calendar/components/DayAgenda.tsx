@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import clsx from "clsx";
 import {
   CalendarClock,
-  CheckSquare,
+  CheckCircle2,
   Square,
   StickyNote,
   Plus,
@@ -16,7 +16,14 @@ import {
   CalendarPlus,
   Sparkles,
 } from "lucide-react";
-import { DayBuckets, dayLabel, dayStats, formatClock } from "../lib/calendarLib";
+import {
+  DayBuckets,
+  dayLabel,
+  dayStats,
+  filterBuckets,
+  formatClock,
+  SourceFilter,
+} from "../lib/calendarLib";
 import { CalendarHabitItem } from "../types";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { habitIconMap, IconKey } from "../../components/habitIcons";
@@ -29,6 +36,8 @@ import DayMoodEditor from "./DayMoodEditor";
 interface DayAgendaProps {
   day: string;
   buckets: DayBuckets;
+  /** Same source lens as the month and week grids. */
+  sources: SourceFilter;
   onOpenEvent: (eventId: number) => void;
   onCreateEvent: (date: string) => void;
 }
@@ -38,6 +47,7 @@ const sectionTitle = "text-[11px] uppercase tracking-widest text-slate-500 font-
 export default function DayAgenda({
   day,
   buckets,
+  sources,
   onOpenEvent,
   onCreateEvent,
 }: DayAgendaProps) {
@@ -47,10 +57,17 @@ export default function DayAgenda({
   const [adding, setAdding] = useState(false);
   const [pendingHabit, setPendingHabit] = useState<number | null>(null);
 
-  const { events, tasks, habits, moods, notes } = buckets;
-  const stats = dayStats(buckets);
+  const visible = filterBuckets(buckets, sources);
+  const { events, tasks, habits, moods, notes } = visible;
+  const stats = dayStats(visible);
   const isEmpty =
     !events.length && !tasks.length && !habits.length && !moods.length && !notes.length;
+  const dayIsEmpty =
+    !buckets.events.length &&
+    !buckets.tasks.length &&
+    !buckets.habits.length &&
+    !buckets.moods.length &&
+    !buckets.notes.length;
 
   const invalidate = () =>
     Promise.all([
@@ -118,7 +135,9 @@ export default function DayAgenda({
       <div className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1 flex flex-col gap-4">
         {isEmpty && (
           <p className="text-slate-500 text-sm py-6 text-center">
-            Nothing here yet. Add an event or task to begin.
+            {dayIsEmpty
+              ? "Nothing here yet. Add an event or task to begin."
+              : "Nothing in this day matches the filters."}
           </p>
         )}
 
@@ -177,25 +196,40 @@ export default function DayAgenda({
                 key={`task-${t.id}`}
                 {...tactileRow}
                 onClick={() => router.push("/tasks")}
+                aria-label={t.isComplete ? `Completed task, ${t.title}` : t.title}
                 className={clsx(
                   "text-left flex items-center gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110 hover:shadow-lg hover:shadow-black/25",
-                  SOURCE_ACCENT.task.chip,
-                  t.isComplete && "opacity-50"
+                  t.isComplete
+                    ? "bg-green-500/10 border-green-400/30"
+                    : SOURCE_ACCENT.task.chip
                 )}
               >
                 {t.isComplete ? (
-                  <CheckSquare className="h-4 w-4 shrink-0 text-sky-300" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" aria-hidden="true" />
                 ) : (
-                  <Square className="h-4 w-4 shrink-0 text-sky-300" />
+                  <Square className="h-4 w-4 shrink-0 text-sky-300" aria-hidden="true" />
                 )}
-                <span
-                  className={clsx(
-                    "text-sm text-slate-100 truncate",
-                    t.isComplete && "line-through"
-                  )}
-                >
-                  {t.title}
+                <span className="min-w-0 flex-1">
+                  <span
+                    className={clsx(
+                      "relative inline-block max-w-full truncate text-sm",
+                      t.isComplete ? "text-green-300/70" : "text-slate-100"
+                    )}
+                  >
+                    {t.title}
+                    {t.isComplete && (
+                      <span
+                        className="pointer-events-none absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 bg-green-400"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </span>
                 </span>
+                {t.isComplete && (
+                  <span className="ml-auto shrink-0 text-[11px] font-medium text-green-300/80">
+                    Completed
+                  </span>
+                )}
               </motion.button>
             ))}
           </section>
@@ -252,8 +286,9 @@ export default function DayAgenda({
           </section>
         )}
 
-        {/* Mood — inline editor so moods can be logged/updated retroactively */}
-        <DayMoodEditor day={day} mood={moods[0]} />
+        {/* Mood — inline editor so moods can be logged/updated retroactively.
+            Hidden with the rest of the mood layer when that filter is off. */}
+        {sources.mood && <DayMoodEditor day={day} mood={moods[0]} />}
 
         {/* Notes */}
         {notes.length > 0 && (

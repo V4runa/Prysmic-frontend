@@ -6,12 +6,11 @@ import clsx from "clsx";
 import { Plus } from "lucide-react";
 import {
   buildMonthMatrix,
-  bucketsForDay,
   CalendarIndex,
   dayStats,
-  filterBuckets,
   layoutWeekBars,
   SourceFilter,
+  visibleDayBuckets,
   WEEKDAY_LABELS,
   WeekBarLayout,
   formatClock,
@@ -106,7 +105,7 @@ function DesktopMonth({
               {/* Day cells */}
               <div className="grid grid-cols-7 h-full gap-1">
                 {week.map((cell, ci) => {
-                  const b = filterBuckets(bucketsForDay(index, cell.key), sources);
+                  const b = visibleDayBuckets(index, cell.key, sources);
                   const stats = dayStats(b);
                   const mood = b.moods[0];
                   const moodViz = mood
@@ -283,7 +282,7 @@ function MobileMonth({
         {weeks.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 gap-1">
             {week.map((cell) => {
-              const b = filterBuckets(bucketsForDay(index, cell.key), sources);
+              const b = visibleDayBuckets(index, cell.key, sources);
               const stats = dayStats(b);
               const mood = b.moods[0];
               const moodViz = mood

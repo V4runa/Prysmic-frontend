@@ -12,6 +12,7 @@ import {
   ALL_SOURCES_ON,
   bucketsForDay,
   dayLabel,
+  focusDayForView,
   indexFeed,
   monthGridRange,
   monthLabel,
@@ -89,15 +90,26 @@ export default function CalendarPage() {
   };
 
   // Week view isn't offered on phones; fall back to Day if the screen shrinks.
+  // Land on the same day the week was showing, not on a stale anchor.
   useEffect(() => {
-    if (isNarrow && view === "week") setView("day");
-  }, [isNarrow, view]);
+    if (!isNarrow || view !== "week") return;
+    const focus = focusDayForView(view, anchor, selectedDay);
+    setAnchor(focus);
+    setSelectedDay(focus);
+    setView("day");
+  }, [isNarrow, view, anchor, selectedDay]);
 
   const availableViews: CalendarView[] = isNarrow
     ? ["month", "day"]
     : ["month", "week", "day"];
 
-  const changeView = (next: CalendarView) => setView(next);
+  const changeView = (next: CalendarView) => {
+    if (next === view) return;
+    const focus = focusDayForView(view, anchor, selectedDay);
+    setAnchor(focus);
+    setSelectedDay(focus);
+    setView(next);
+  };
 
   // Fetch window depends on the active view.
   const range = useMemo(() => {
@@ -200,8 +212,8 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            {/* Interactive legend — explains the icons AND toggles grid layers */}
-            {(view === "month" || view === "week") && !isLoading && !isError && (
+            {/* Legend and lens — the same source toggles apply to the grid and the agenda. */}
+            {!isLoading && !isError && (
               <CalendarFilters value={sources} onChange={changeSources} />
             )}
 
@@ -243,6 +255,7 @@ export default function CalendarPage() {
                 <DayAgenda
                   day={anchor}
                   buckets={dayViewBuckets}
+                  sources={sources}
                   onOpenEvent={openEvent}
                   onCreateEvent={openCreate}
                 />
@@ -257,6 +270,7 @@ export default function CalendarPage() {
                 <DayAgenda
                   day={selectedDay}
                   buckets={selectedBuckets}
+                  sources={sources}
                   onOpenEvent={openEvent}
                   onCreateEvent={openCreate}
                 />
@@ -297,6 +311,7 @@ export default function CalendarPage() {
                     <DayAgenda
                       day={selectedDay}
                       buckets={selectedBuckets}
+                      sources={sources}
                       onOpenEvent={openEvent}
                       onCreateEvent={openCreate}
                     />

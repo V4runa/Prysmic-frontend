@@ -20,6 +20,7 @@ import {
   CalendarNoteItem,
   CalendarSource,
   CalendarTaskItem,
+  CalendarView,
 } from "../types";
 import { localDateKey, taskDueDayKey } from "../../lib/date";
 
@@ -189,7 +190,7 @@ export const ALL_SOURCES_ON: SourceFilter = {
   note: true,
 };
 
-/** Drop the sources the user has toggled off so the grid renders a clean lens. */
+/** Drop the sources the user has toggled off. The grid and the agenda share this lens. */
 export function filterBuckets(b: DayBuckets, f: SourceFilter): DayBuckets {
   return {
     events: f.event ? b.events : [],
@@ -198,6 +199,50 @@ export function filterBuckets(b: DayBuckets, f: SourceFilter): DayBuckets {
     moods: f.mood ? b.moods : [],
     notes: f.note ? b.notes : [],
   };
+}
+
+/** The day bucket a grid cell and the agenda both render for the active lens. */
+export function visibleDayBuckets(
+  index: CalendarIndex,
+  day: string,
+  sources: SourceFilter
+): DayBuckets {
+  return filterBuckets(bucketsForDay(index, day), sources);
+}
+
+/**
+ * Day a view switch should open on.
+ *
+ * Month and week navigation keep an anchor that is not the day the user
+ * clicked, and the selection starts as today even after they leave that month.
+ * Day view used to follow the anchor, so a day in a past month opened on today.
+ * The selected day wins when it is actually on screen (including a leading or
+ * trailing cell). Otherwise the period opens on its first day — the first of
+ * the month, or Monday — instead of snapping back to today.
+ */
+export function focusDayForView(
+  view: CalendarView,
+  anchor: string,
+  selectedDay: string | null | undefined
+): string {
+  if (view === "day") return anchor;
+
+  if (view === "week") {
+    const { from, to } = weekRange(anchor);
+    if (selectedDay && selectedDay >= from && selectedDay <= to) return selectedDay;
+    return from;
+  }
+
+  const monthStart = dayKey(startOfMonth(parseDayKey(anchor)));
+  const monthEnd = dayKey(endOfMonth(parseDayKey(anchor)));
+  if (selectedDay && selectedDay >= monthStart && selectedDay <= monthEnd) {
+    return selectedDay;
+  }
+  const grid = monthGridRange(anchor);
+  if (selectedDay && selectedDay >= grid.from && selectedDay <= grid.to) {
+    return selectedDay;
+  }
+  return monthStart;
 }
 
 // ----------------------- Per-day derived metrics -----------------------

@@ -4,15 +4,14 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import clsx from "clsx";
 import { format } from "date-fns";
-import { CalendarClock, StickyNote, CheckSquare } from "lucide-react";
+import { CalendarClock, CheckCircle2, Square, StickyNote } from "lucide-react";
 import {
-  bucketsForDay,
   CalendarIndex,
   dayStats,
-  filterBuckets,
   formatClock,
   parseDayKey,
   SourceFilter,
+  visibleDayBuckets,
   weekDays,
 } from "../lib/calendarLib";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
@@ -55,7 +54,7 @@ export default function WeekView({
       className="flex-1 grid grid-cols-7 gap-1 min-h-0"
     >
       {days.map((cell) => {
-        const b = filterBuckets(bucketsForDay(index, cell.key), sources);
+        const b = visibleDayBuckets(index, cell.key, sources);
         const stats = dayStats(b);
         const mood = b.moods[0];
         const moodViz = mood
@@ -148,14 +147,28 @@ export default function WeekView({
               {b.tasks.map((t) => (
                 <div
                   key={`task-${t.id}`}
+                  title={t.isComplete ? `Completed: ${t.title}` : t.title}
                   className={clsx(
-                    "flex items-center gap-1 rounded border px-1.5 py-1 text-[11px] truncate",
-                    SOURCE_ACCENT.task.chip,
-                    t.isComplete && "opacity-50 line-through"
+                    "flex items-center gap-1 rounded border px-1.5 py-1 text-[11px]",
+                    t.isComplete
+                      ? "border-green-400/30 bg-green-500/10 text-green-300/70"
+                      : SOURCE_ACCENT.task.chip
                   )}
                 >
-                  <CheckSquare className="h-3 w-3 shrink-0 text-sky-300" />
-                  <span className="truncate">{t.title}</span>
+                  {t.isComplete ? (
+                    <CheckCircle2 className="h-3 w-3 shrink-0 text-green-400" aria-hidden="true" />
+                  ) : (
+                    <Square className="h-3 w-3 shrink-0 text-sky-300" aria-hidden="true" />
+                  )}
+                  <span
+                    className={clsx(
+                      "min-w-0 truncate",
+                      t.isComplete && "line-through decoration-green-400"
+                    )}
+                  >
+                    {t.title}
+                  </span>
+                  {t.isComplete && <span className="sr-only">Completed</span>}
                 </div>
               ))}
 
