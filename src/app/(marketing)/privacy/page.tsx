@@ -75,7 +75,7 @@ export default function PrivacyPage() {
 
         <Section title="Analytics">
           <p>
-            We use Vercel Web Analytics on the public pages only (home, sign-in, sign-up, privacy and terms). It uses no cookies, counts visits without identifying you, and never runs inside the app where you write. When an account is created, we count that as one sign-up with no details attached.
+            We use Vercel Web Analytics on the public pages only (the home page, sign-in, sign-up, password reset and email confirmation pages, and the privacy and terms pages). It uses no cookies, counts visits without identifying you, and never runs inside the app where you write. When an account is created, we count that as one sign-up with no details attached.
           </p>
         </Section>
 
