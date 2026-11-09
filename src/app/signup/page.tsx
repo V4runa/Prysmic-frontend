@@ -8,7 +8,9 @@ import { ApiError, apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
 import { markOnboardingPending } from "../components/OnboardingModal";
 import { TextField, FormButton } from "../components/forms";
+import PasswordHints from "../components/PasswordHints";
 import { interpretSignupError } from "../lib/authMessages";
+import { passwordBlockMessage } from "../lib/passwordPolicy";
 import { applyAuthSession } from "../lib/storedSession";
 
 export default function SignupPage() {
@@ -23,6 +25,11 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    const block = passwordBlockMessage(password, { email, username });
+    if (block) {
+      setError(block);
+      return;
+    }
     setError("");
     setLoading(true);
     const slowTimer = setTimeout(() => setSlow(true), 3500);
@@ -84,8 +91,18 @@ export default function SignupPage() {
               type="password"
               placeholder="Password"
               autoComplete="new-password"
+              aria-describedby={error ? "signup-password-rules signup-error" : "signup-password-rules"}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError("");
+              }}
+            />
+            <PasswordHints
+              id="signup-password-rules"
+              password={password}
+              email={email}
+              username={username}
             />
             <FormButton
               type="submit"
@@ -97,9 +114,9 @@ export default function SignupPage() {
             </FormButton>
           </form>
 
-          {error && (
-            <p role="alert" className="text-rose-400 text-sm mt-3 text-center">{error}</p>
-          )}
+          {error ? (
+            <p id="signup-error" role="alert" className="text-rose-400 text-sm mt-3 text-center">{error}</p>
+          ) : null}
 
           {slow && !error && (
             <p className="text-slate-400 text-xs mt-3 text-center">

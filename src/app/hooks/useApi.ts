@@ -35,7 +35,11 @@ export class ApiError extends Error {
   }
 }
 
-type ApiInit = RequestInit & { auth?: boolean };
+type ApiInit = RequestInit & {
+  auth?: boolean;
+  /** Account deletion uses 401 for a wrong password. Leave the session in place. */
+  keepSessionOn401?: boolean;
+};
 
 function buildHeaders(token: string | null, headerInit?: HeadersInit): Headers {
   const headers = new Headers({
@@ -70,7 +74,7 @@ export async function apiFetch<T>(
   endpoint: string,
   options: ApiInit = {}
 ): Promise<T> {
-  const { auth = true, headers: headerInit, ...request } = options;
+  const { auth = true, keepSessionOn401 = false, headers: headerInit, ...request } = options;
   const token = auth ? getToken() : null;
   const headers = buildHeaders(token, headerInit);
 
@@ -79,7 +83,7 @@ export async function apiFetch<T>(
     headers,
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !keepSessionOn401) {
     handleUnauthorized(await res.text().catch(() => ""));
   }
 

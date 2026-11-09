@@ -159,19 +159,27 @@ test("opening a reset link keeps the token in memory and does not submit", () =>
 
   const ready = preparePasswordReset({
     token: remount.token,
-    password: "longer",
-    confirm: "longer",
+    password: "quiet-path",
+    confirm: "quiet-path",
   });
-  assert.deepEqual(ready, { ok: true, body: { token: "secret", password: "longer" } });
+  assert.deepEqual(ready, { ok: true, body: { token: "secret", password: "quiet-path" } });
   assert.equal(
-    preparePasswordReset({ token: remount.token, password: "longer", confirm: "other1" }).ok,
+    preparePasswordReset({ token: remount.token, password: "quiet-path", confirm: "other-path" }).ok,
     false
   );
   assert.equal(
-    preparePasswordReset({ token: null, password: "longer", confirm: "longer" }).ok,
+    preparePasswordReset({ token: null, password: "quiet-path", confirm: "quiet-path" }).ok,
     false
   );
   assert.equal(preparePasswordReset({ token: "secret", password: "short", confirm: "short" }).ok, false);
+  const named = preparePasswordReset({
+    token: "secret",
+    password: "adawander",
+    confirm: "adawander",
+    username: "AdaWander",
+  });
+  assert.equal(named.ok, false);
+  if (!named.ok) assert.equal(named.reason, "identity");
 });
 
 test("the client snapshot clears the token once and stays stable", () => {
@@ -289,7 +297,11 @@ test("verify and reset responses map to success or an invalid link", () => {
   );
   assert.deepEqual(
     interpretPasswordReset(400, { message: ["password must be longer than or equal to 6 characters"] }),
-    { type: "rejected", message: "Use at least 6 characters." }
+    { type: "rejected", message: "password must be longer than or equal to 6 characters" }
+  );
+  assert.deepEqual(
+    interpretPasswordReset(400, { message: "This is a common password." }),
+    { type: "rejected", message: "This is a common password." }
   );
   assert.equal(interpretPasswordReset(200, { passwordUpdated: true }).type, "updated");
   assert.equal(PASSWORD_UPDATED_NOTICE.includes("password"), true);
@@ -304,6 +316,11 @@ test("signup errors stay specific when the API names the conflict", () => {
     interpretSignupError(409, { message: "Email already in use!" }),
     "That email is already in use."
   );
+  assert.equal(
+    interpretSignupError(400, { message: "This is a common password." }),
+    "This is a common password."
+  );
+  assert.equal(interpretSignupError(400, null).includes("6"), false);
   assert.match(interpretSignupError(500, null), /try again/i);
 });
 
@@ -444,6 +461,8 @@ test("reset submits only from the form, and the forgot message is not built from
   assert.match(reset, /useAuthLink\("reset"\)/);
   assert.match(reset, /\/auth\/password\/reset/);
   assert.match(reset, /preparePasswordReset/);
+  assert.match(reset, /PasswordHints/);
+  assert.equal(/6 characters/.test(reset), false);
   const linkHook = readFileSync(new URL("./useAuthLink.ts", import.meta.url), "utf8");
   assert.match(linkHook, /captureLinkToken/);
   assert.match(linkHook, /history\.replaceState/);

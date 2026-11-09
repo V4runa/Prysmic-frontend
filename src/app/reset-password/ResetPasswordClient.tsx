@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import AuthFrame from "../components/AuthFrame";
+import PasswordHints from "../components/PasswordHints";
 import { Field, FormButton, TextField } from "../components/forms";
 import { ApiError, apiFetch } from "../hooks/useApi";
 import {
@@ -60,7 +61,14 @@ export default function ResetPasswordClient() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (loading) return;
-    const decision = preparePasswordReset({ token: link?.token ?? null, password, confirm });
+    // This link may belong to someone else, so the signed-in name is not
+    // compared here. Length is checked locally; a username or email match
+    // comes back as the server's 400.
+    const decision = preparePasswordReset({
+      token: link?.token ?? null,
+      password,
+      confirm,
+    });
     if (!decision.ok) {
       if (decision.reason === "invalid-link") {
         setRejected(true);
@@ -136,8 +144,12 @@ export default function ResetPasswordClient() {
     );
   }
 
-  const passwordDescribedBy =
-    errorTarget === "password" && error ? "new-password-error" : "new-password-hint";
+  const passwordDescribedBy = [
+    "new-password-rules",
+    errorTarget === "password" && error ? "new-password-error" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <AuthFrame>
@@ -156,7 +168,6 @@ export default function ResetPasswordClient() {
         <Field
           label="New password"
           htmlFor="new-password"
-          hint="At least 6 characters."
           error={errorTarget === "password" ? error ?? undefined : undefined}
         >
           <TextField
@@ -176,6 +187,7 @@ export default function ResetPasswordClient() {
             }}
           />
         </Field>
+        <PasswordHints id="new-password-rules" password={password} />
         <Field
           label="Confirm password"
           htmlFor="confirm-password"
