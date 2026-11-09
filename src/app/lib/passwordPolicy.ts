@@ -37,20 +37,30 @@ export function utf8ByteLength(value: string): number {
   return new TextEncoder().encode(value).length;
 }
 
-function comparable(value: string | null | undefined): string {
-  return (value ?? "").trim().toLowerCase();
+/** Password is lowercased only. Trimming it would accept a spaced copy of the email. */
+function comparablePassword(password: string): string {
+  return password.toLowerCase();
+}
+
+/** Email is compared the way it is stored: trimmed, then lowercased. */
+function comparableEmail(email: string | null | undefined): string {
+  return (email ?? "").trim().toLowerCase();
+}
+
+function comparableUsername(username: string | null | undefined): string {
+  return (username ?? "").toLowerCase();
 }
 
 export function identityKnown(identity: PasswordIdentity = {}): boolean {
-  return comparable(identity.email).length > 0 || comparable(identity.username).length > 0;
+  return comparableEmail(identity.email).length > 0 || comparableUsername(identity.username).length > 0;
 }
 
 /** Case-insensitive match against the email, its local part, or the username. */
 export function passwordMatchesIdentity(password: string, identity: PasswordIdentity = {}): boolean {
-  const candidate = comparable(password);
+  const candidate = comparablePassword(password);
   if (!candidate) return false;
-  const email = comparable(identity.email);
-  const username = comparable(identity.username);
+  const email = comparableEmail(identity.email);
+  const username = comparableUsername(identity.username);
   const at = email.indexOf("@");
   const local = at > 0 ? email.slice(0, at) : "";
   if (email && candidate === email) return true;

@@ -7,6 +7,8 @@ import {
   deleteConfirmationReady,
   deletionFailureMessage,
   interpretDeleteAccount,
+  signalSessionExpired,
+  WRONG_PASSWORD_MESSAGE,
 } from "./accountDeletion";
 import { resetPersonalCacheOwnerForTests, syncPersonalCache } from "./personalCache";
 import { isPublicPath } from "./publicPaths";
@@ -94,14 +96,31 @@ test("deletion waits for DELETE and a password", () => {
 
 test("delete responses stay on the page except for success", () => {
   assert.equal(interpretDeleteAccount(204, null, null).type, "deleted");
-  assert.deepEqual(interpretDeleteAccount(401, { message: "Unauthorized" }, null), {
+  assert.deepEqual(interpretDeleteAccount(401, { message: "Invalid credentials" }, null), {
     type: "rejected",
-    message: "That password doesn't match.",
+    message: WRONG_PASSWORD_MESSAGE,
   });
-  assert.deepEqual(interpretDeleteAccount(401, { message: "Wrong password." }, null), {
-    type: "rejected",
-    message: "Wrong password.",
-  });
+  assert.equal(WRONG_PASSWORD_MESSAGE, "That password doesn't match.");
+  assert.deepEqual(
+    interpretDeleteAccount(401, { message: "Unauthorized: Invalid or missing token" }, null),
+    { type: "expired" }
+  );
+  assert.equal(
+    deletionFailureMessage({
+      status: 401,
+      body: { message: "Invalid credentials" },
+      retryAfter: null,
+    }),
+    WRONG_PASSWORD_MESSAGE
+  );
+  assert.equal(
+    deletionFailureMessage({
+      status: 401,
+      body: { message: "Unauthorized: Invalid or missing token" },
+      retryAfter: null,
+    }),
+    ""
+  );
   const wait = interpretDeleteAccount(429, { message: "Too Many Requests" }, "30");
   assert.equal(wait.type, "wait");
   if (wait.type === "wait") {
@@ -110,9 +129,33 @@ test("delete responses stay on the page except for success", () => {
     assert.equal(wait.message.includes("Too Many Requests"), false);
   }
   const missing = interpretDeleteAccount(400, { message: "Password is required." }, null);
-  assert.equal(missing.type === "deleted" ? "" : missing.message, "Password is required.");
+  assert.equal(missing.type === "deleted" || missing.type === "expired" ? "" : missing.message, "Password is required.");
   assert.equal(deletionFailureMessage({ network: true }).includes("still here"), true);
   assert.equal(deletionFailureMessage({}).includes("still here"), true);
+});
+
+test("a dead session during deletion uses the usual sign-out signal", () => {
+  localStorage.setItem("token", "still-signed-in");
+  localStorage.setItem("lastMoodDate", "2026-11-09");
+  const events: string[] = [];
+  Object.defineProperty(globalThis, "window", {
+    value: {
+      dispatchEvent(event: Event) {
+        events.push(event.type);
+        return true;
+      },
+    },
+    configurable: true,
+  });
+  try {
+    signalSessionExpired();
+    assert.equal(localStorage.getItem("token"), null);
+    assert.equal(localStorage.getItem("lastMoodDate"), "2026-11-09");
+    assert.deepEqual(events, ["token-expired"]);
+    assert.equal(readLoginNotice(), null);
+  } finally {
+    delete (globalThis as { window?: unknown }).window;
+  }
 });
 
 test("deleting an account clears that user's draft and reminder, then the session", () => {
@@ -127,6 +170,9 @@ test("deleting an account clears that user's draft and reminder, then the sessio
 
   localStorage.setItem("token", jwt(7));
   localStorage.setItem("lastMoodDate", "2026-11-09");
+  localStorage.setItem("prysmic_onboarding_pending", "1");
+  localStorage.setItem("prysmic_onboarding_complete", "1");
+  localStorage.setItem("prysmic.calendarSources", "{\"notes\":true}");
   const storage = draftStorage();
   assert.deepEqual(writeDraft(storage, draft(7)), { ok: true });
   syncPersonalCache({ clear() {} }, 7);
@@ -148,6 +194,9 @@ test("deleting an account clears that user's draft and reminder, then the sessio
   assert.equal(readLoginNotice(), ACCOUNT_DELETED_NOTICE);
   assert.equal(ACCOUNT_DELETED_NOTICE, "Your account has been deleted.");
   assert.equal(localStorage.getItem("lastMoodDate"), "2026-11-09");
+  assert.equal(localStorage.getItem("prysmic_onboarding_pending"), "1");
+  assert.equal(localStorage.getItem("prysmic_onboarding_complete"), "1");
+  assert.equal(localStorage.getItem("prysmic.calendarSources"), "{\"notes\":true}");
   assert.ok(currentSessionEpoch() > epoch);
   assert.equal(cleared, 1);
 
@@ -184,6 +233,8 @@ test("account deletion stays inside the app shell and reuses export", () => {
   assert.match(page, /notes, tags, habits, tasks, and moods/);
   assert.match(page, /can(?:'|&#39;|&apos;)t be undone/);
   assert.match(page, /DeleteAccountDialog/);
+  assert.match(page, /readStoredToken/);
+  assert.match(page, /router\.replace\("\/login"\)/);
 
   const dialog = readFileSync(new URL("../components/DeleteAccountDialog.tsx", import.meta.url), "utf8");
   assert.match(dialog, /can(?:'|&#39;|&apos;)t be undone/);
@@ -195,6 +246,7 @@ test("account deletion stays inside the app shell and reuses export", () => {
   assert.ok(submit.indexOf('"/users/me"') < submit.indexOf("clearDeletedAccount"));
   assert.ok(submit.indexOf("clearDeletedAccount") < submit.indexOf('router.push("/login")'));
   assert.match(dialog, /router\.push\("\/login"\)/);
+  assert.match(dialog, /signalSessionExpired/);
   assert.equal(dialog.includes("clearDraft"), false);
 
   const appShell = readFileSync(new URL("../components/AppShell.tsx", import.meta.url), "utf8");

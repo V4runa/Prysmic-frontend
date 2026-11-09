@@ -42,7 +42,14 @@ test("hard rules allow a light password and refuse length, bytes, and identity",
   const identity = { email: "Ada@Prysmic.test", username: "Wanderer" };
   assert.equal(passwordMatchesIdentity("ada@prysmic.test", identity), true);
   assert.equal(passwordMatchesIdentity("ADA", identity), true);
-  assert.equal(passwordMatchesIdentity("  wanderer  ", identity), true);
+  assert.equal(passwordMatchesIdentity("wanderer", identity), true);
+  assert.equal(passwordMatchesIdentity("  wanderer  ", identity), false);
+  assert.equal(
+    passwordMatchesIdentity("ada@prysmic.test", { email: "  Ada@Prysmic.test  " }),
+    true
+  );
+  assert.equal(passwordMatchesIdentity(" ada@prysmic.test", { email: "Ada@Prysmic.test" }), false);
+  assert.equal(passwordMatchesIdentity("ada", { email: "  Ada@Prysmic.test " }), true);
   assert.equal(passwordMatchesIdentity("prysmic.test", identity), false);
   assert.equal(passwordMatchesIdentity("quiet-path", identity), false);
   assert.equal(passwordMatchesIdentity("quiet-path", {}), false);
@@ -110,6 +117,8 @@ test("signup and reset show the rules and no longer mention 6 characters", () =>
   assert.ok(submit.indexOf("passwordBlockMessage") < submit.indexOf("apiFetch"));
   assert.match(reset, /PasswordHints/);
   assert.match(reset, /id="new-password-rules"/);
+  assert.equal(reset.includes("readSessionClaims"), false);
+  assert.equal(reset.includes("useSessionIdentity"), false);
   assert.equal(reset.includes('hint="At least'), false);
 
   const hints = readFileSync(new URL("../components/PasswordHints.tsx", import.meta.url), "utf8");

@@ -1,17 +1,39 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
 import ExportDataButton from "../components/ExportDataButton";
 import DeleteAccountDialog from "../components/DeleteAccountDialog";
 import { FormButton } from "../components/forms";
 import { useSessionIdentity } from "../hooks/useAuth";
+import { readStoredToken } from "../lib/storedSession";
+
+function subscribeSession() {
+  return () => {};
+}
+
+function readAccountToken(): string | null | undefined {
+  return readStoredToken();
+}
+
+function accountTokenOnServer(): string | null | undefined {
+  return undefined;
+}
 
 export default function AccountPage() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const { username, email } = useSessionIdentity();
   const close = useCallback(() => setOpen(false), []);
+  const token = useSyncExternalStore(subscribeSession, readAccountToken, accountTokenOnServer);
+
+  useEffect(() => {
+    if (token === null) router.replace("/login");
+  }, [token, router]);
+
+  if (!token) return null;
 
   return (
     <PageTransition>

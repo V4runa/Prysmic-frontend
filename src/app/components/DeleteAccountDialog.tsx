@@ -11,6 +11,8 @@ import {
   clearDeletedAccount,
   deleteConfirmationReady,
   deletionFailureMessage,
+  interpretDeleteAccount,
+  signalSessionExpired,
 } from "../lib/accountDeletion";
 import { Field, FormButton, TextField } from "./forms";
 
@@ -65,7 +67,8 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
       if (alive.current) setSlow(true);
     }, 3500);
     try {
-      // 401 is a wrong password. It must not clear the session.
+      // Read a 401 body before deciding. A wrong password stays here.
+      // A dead token uses the same sign-out path as other expired sessions.
       await apiFetch("/users/me", {
         method: "DELETE",
         keepSessionOn401: true,
@@ -75,18 +78,22 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
       router.push("/login");
     } catch (err) {
       pending.current = false;
+      if (err instanceof ApiError) {
+        const outcome = interpretDeleteAccount(err.status, err.body, err.retryAfter);
+        if (outcome.type === "expired") {
+          signalSessionExpired();
+          return;
+        }
+        if (!alive.current || outcome.type === "deleted") return;
+        setLoading(false);
+        setSlow(false);
+        setError(outcome.message);
+        return;
+      }
       if (!alive.current) return;
       setLoading(false);
       setSlow(false);
-      if (err instanceof ApiError) {
-        setError(
-          deletionFailureMessage({
-            status: err.status,
-            body: err.body,
-            retryAfter: err.retryAfter,
-          })
-        );
-      } else if (err instanceof TypeError) {
+      if (err instanceof TypeError) {
         setError(deletionFailureMessage({ network: true }));
       } else {
         setError(deletionFailureMessage({}));

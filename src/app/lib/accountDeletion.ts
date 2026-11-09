@@ -7,6 +7,7 @@ import {
 } from "./authMessages";
 import { clearDraft, noteDraftStorage, type DraftStorage } from "../notes/noteDraft";
 import {
+  ACCESS_TOKEN_KEY,
   clearStoredSession,
   clearUserAuthMemory,
   readStoredUserId,
@@ -15,9 +16,12 @@ import {
 
 export const DELETE_CONFIRM_TEXT = "DELETE";
 
+export const WRONG_PASSWORD_MESSAGE = "That password doesn't match.";
+
 export type DeleteAccountOutcome =
   | { type: "deleted" }
   | { type: "rejected"; message: string }
+  | { type: "expired" }
   | { type: "wait"; message: string }
   | { type: "failed"; message: string };
 
@@ -32,7 +36,9 @@ export function deleteConfirmationReady(confirmation: string, password: string):
 }
 
 /**
- * 204 deletes the account. 401 is a wrong password and must stay on this screen.
+ * 204 deletes the account.
+ * 401 "Invalid credentials" is a wrong password and stays on this screen.
+ * 401 "Unauthorized…" is a dead session and follows the usual sign-out path.
  * 429 is a wait, not a failure of the password.
  */
 export function interpretDeleteAccount(
@@ -42,11 +48,9 @@ export function interpretDeleteAccount(
 ): DeleteAccountOutcome {
   if (status === 204 || (status >= 200 && status < 300)) return { type: "deleted" };
   if (status === 401) {
-    const message = messageFromBody(body);
-    if (message && !/^unauthorized$/i.test(message)) {
-      return { type: "rejected", message };
-    }
-    return { type: "rejected", message: "That password doesn't match." };
+    const message = messageFromBody(body) ?? "";
+    if (/^unauthorized\b/i.test(message)) return { type: "expired" };
+    return { type: "rejected", message: WRONG_PASSWORD_MESSAGE };
   }
   if (status === 429) {
     const retryAfterSec = parseRetryAfter(retryAfter);
@@ -72,8 +76,24 @@ export function deletionFailureMessage(err: {
   if (err.network) return "Could not reach the server. The account is still here.";
   if (err.status == null) return "The account is still here. Try again in a moment.";
   const outcome = interpretDeleteAccount(err.status, err.body, err.retryAfter ?? null);
-  if (outcome.type === "deleted") return "";
+  if (outcome.type === "deleted" || outcome.type === "expired") return "";
   return outcome.message;
+}
+
+/**
+ * A dead token, not a deleted account. Matches the other 401s: drop the
+ * access token and let the shell's session toast send them to sign in.
+ * The note draft stays, so the same person can recover it after they sign in.
+ */
+export function signalSessionExpired(): void {
+  try {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+  } catch {
+    // Ignore.
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("token-expired"));
+  }
 }
 
 /**
@@ -91,4 +111,6 @@ export function clearDeletedAccount(input: {
   const storage = input.draftStorage === undefined ? noteDraftStorage() : input.draftStorage;
   if (storage) clearDraft(storage);
   setLoginNotice(ACCOUNT_DELETED_NOTICE);
+  // lastMoodDate, onboarding flags, and calendar source prefs are not stored
+  // against a user id, so another person on this browser keeps them.
 }
