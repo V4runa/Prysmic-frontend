@@ -19,15 +19,43 @@ test("robots.txt disallows signed-in routes and omits the nonstandard Host line"
   }
 });
 
-test("draft privacy and terms stay noindex and out of the sitemap", () => {
+test("privacy and terms are indexable and listed in the sitemap", async () => {
   const urls = sitemap().map((entry) => entry.url);
   assert.ok(urls.includes("https://www.prysmic.me/"));
-  assert.equal(urls.some((url) => url.includes("/privacy") || url.includes("/terms")), false);
+  assert.ok(urls.includes("https://www.prysmic.me/privacy"));
+  assert.ok(urls.includes("https://www.prysmic.me/terms"));
 
   for (const file of ["../(marketing)/privacy/page.tsx", "../(marketing)/terms/page.tsx"]) {
     const page = readFileSync(new URL(file, import.meta.url), "utf8");
-    assert.match(page, /index:\s*false/);
+    assert.equal(/index:\s*false/.test(page), false);
+    assert.equal(page.includes("Draft."), false);
+    assert.equal(page.includes("["), false);
+    assert.equal(page.includes("]"), false);
+    assert.match(page, /mailto:hello@prysmic\.me/);
+    assert.match(page, /November 9, 2026/);
+    assert.match(page, /Eduardo Martin Gargani/);
   }
+
+  const terms = readFileSync(new URL("../(marketing)/terms/page.tsx", import.meta.url), "utf8");
+  assert.match(terms, /href="\/privacy"/);
+  assert.match(
+    terms,
+    /Accounts created during early access will keep free access to the features they had during early access\./,
+  );
+
+  const signup = readFileSync(new URL("../signup/page.tsx", import.meta.url), "utf8");
+  assert.match(signup, /By creating an account, you agree to the/);
+  assert.match(signup, /href="\/terms"/);
+  assert.match(signup, /href="\/privacy"/);
+
+  const headerRules = await nextConfig.headers!();
+  const noindexSources = headerRules
+    .filter((rule) =>
+      rule.headers.some((header) => header.key === "X-Robots-Tag" && header.value.includes("noindex")),
+    )
+    .map((rule) => rule.source);
+  assert.equal(noindexSources.includes("/privacy"), false);
+  assert.equal(noindexSources.includes("/terms"), false);
 });
 
 test("signed-in routes and forgot-password render noindex", async () => {
