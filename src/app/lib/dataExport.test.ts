@@ -264,10 +264,12 @@ test("the export path does not clear drafts or store the file", () => {
   }
   const button = readFileSync(new URL("../components/ExportDataButton.tsx", import.meta.url), "utf8");
   const shell = readFileSync(new URL("../components/AppShell.tsx", import.meta.url), "utf8");
+  const settings = readFileSync(new URL("../settings/page.tsx", import.meta.url), "utf8");
   assert.match(button, /apiFetchDownload\("\/export"\)/);
   assert.match(button, /Export your data/);
   assert.match(button, /EXPORT_ABOUT/);
-  assert.match(shell, /ExportDataButton/);
+  assert.match(settings, /ExportDataButton/);
+  assert.equal(shell.includes("ExportDataButton"), false);
   assert.match(EXPORT_ABOUT, /JSON file/);
   assert.match(EXPORT_ABOUT, /Attachment files are not included/);
   assert.equal(/all files/i.test(EXPORT_ABOUT), false);

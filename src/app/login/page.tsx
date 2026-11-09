@@ -7,6 +7,7 @@ import GlassPanel from "../components/GlassPanel";
 import { apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
 import { TextField, FormButton } from "../components/forms";
+import { landingHref } from "../lib/preferences";
 import { applyAuthSession, readLoginNotice } from "../lib/storedSession";
 
 export default function LoginPage() {
@@ -42,7 +43,7 @@ export default function LoginPage() {
 
       applyAuthSession({ token: res.access_token, emailVerified: res.emailVerified });
       clearTimeout(slowTimer);
-      router.push("/notes");
+      router.push(landingHref());
     } catch (err: Error | unknown) {
       console.error("Login failed", err);
       clearTimeout(slowTimer);

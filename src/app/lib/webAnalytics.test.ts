@@ -45,6 +45,7 @@ test("analytics drops signed-in app routes, including nested ones", () => {
     "/tasks",
     "/calendar",
     "/account",
+    "/settings",
     "/tags",
     "/test",
   ]) {

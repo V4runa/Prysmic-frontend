@@ -12,6 +12,7 @@ import { TextField, FormButton } from "../components/forms";
 import PasswordHints from "../components/PasswordHints";
 import { interpretSignupError } from "../lib/authMessages";
 import { passwordBlockMessage } from "../lib/passwordPolicy";
+import { landingHref } from "../lib/preferences";
 import { applyAuthSession } from "../lib/storedSession";
 
 export default function SignupPage() {
@@ -49,7 +50,7 @@ export default function SignupPage() {
       markOnboardingPending();
       track("signup");
       clearTimeout(slowTimer);
-      router.push("/notes");
+      router.push(landingHref());
     } catch (err: Error | unknown) {
       console.error("Signup failed", err);
       clearTimeout(slowTimer);

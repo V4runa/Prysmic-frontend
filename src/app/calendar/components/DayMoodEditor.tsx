@@ -9,7 +9,8 @@ import { apiFetch } from "../../hooks/useApi";
 import { useMoodOptions } from "../../hooks/useMoodOptions";
 import { calendarQueryKey } from "../../hooks/useCalendar";
 import { resolveMoodVisual, moodColor } from "../../lib/moodColors";
-import { localToday, logicalToday } from "../../lib/date";
+import { localToday } from "../../lib/date";
+import { useLogicalToday } from "../../hooks/usePreferences";
 import { tactileSubtle } from "../../lib/motion";
 import { CalendarMoodItem } from "../types";
 import { TextField } from "../../components/forms";
@@ -44,6 +45,7 @@ export default function DayMoodEditor({ day, mood }: DayMoodEditorProps) {
   }, [day, mood?.id, mood?.note]);
 
   const isFuture = day > localToday();
+  const logicalDay = useLogicalToday();
 
   const refresh = () =>
     Promise.all([
@@ -67,7 +69,7 @@ export default function DayMoodEditor({ day, mood }: DayMoodEditorProps) {
           // Anything not logged on the live logical day is retroactive and must
           // not count toward the streak. Edits to an existing entry keep their
           // original classification server-side regardless of this value.
-          backfilled: day !== logicalToday(),
+          backfilled: day !== logicalDay,
         }),
       });
       await refresh();

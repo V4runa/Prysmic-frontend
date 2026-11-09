@@ -12,6 +12,8 @@ import { verifyOnce, type VerifyPhase } from "../lib/authLink";
 import { INVALID_LINK_MESSAGE, interpretVerify } from "../lib/authMessages";
 import { clearSignupEmailNote, hasStoredSession, rememberEmailVerified } from "../lib/storedSession";
 import { useAuthLink } from "../lib/useAuthLink";
+import { usePreferences } from "../hooks/usePreferences";
+import { landingHref } from "../lib/preferences";
 
 async function requestVerification(token: string): Promise<VerifyPhase> {
   try {
@@ -32,6 +34,7 @@ async function requestVerification(token: string): Promise<VerifyPhase> {
 export default function VerifyEmailClient() {
   const router = useRouter();
   const link = useAuthLink("verify");
+  const prefs = usePreferences();
   const [result, setResult] = useState<VerifyPhase | null>(null);
   const [retrying, setRetrying] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -102,7 +105,7 @@ export default function VerifyEmailClient() {
             Your email is confirmed. The space is yours.
           </p>
           <Link
-            href={signedIn ? "/notes" : "/login"}
+            href={signedIn ? landingHref(prefs) : "/login"}
             className="tap-target mt-6 inline-flex items-center justify-center rounded-md border border-cyan-300/30 bg-cyan-400/10 px-5 py-2.5 text-sm text-cyan-100 hover:bg-cyan-400/20 transition"
           >
             {signedIn ? "Continue" : "Sign in"}

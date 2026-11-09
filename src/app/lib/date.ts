@@ -1,3 +1,5 @@
+import { readDayResetHour } from "./preferences";
+
 // Local-day date utilities.
 //
 // We intentionally avoid `toISOString()` (which returns the UTC date) so that
@@ -40,20 +42,25 @@ export function localToday(): string {
   return format(new Date());
 }
 
-// The hour (0-23, local) at which a new "logical" day begins for the purpose of
-// logging habits and moods. Setting this to 6am gives late-night users grace:
-// anything logged between midnight and 6am still counts toward the day that just
-// ended, so someone recounting their day at 2am caps off *yesterday* rather than
-// being forced to record for a day they never lived yet.
+// Default hour (0-23, local) at which a new "logical" day begins for habits and
+// moods. 6am gives late-night users grace: anything logged between midnight and
+// 6am still counts toward the day that just ended. Settings can store another
+// hour from midnight through 8 AM; logicalToday reads that preference unless a
+// caller passes an hour explicitly.
 export const DAY_RESET_HOUR = 6;
 
+function boundaryHour(hour: number): number {
+  if (!Number.isInteger(hour) || hour < 0 || hour > 8) return DAY_RESET_HOUR;
+  return hour;
+}
+
 // The current *logical* day for habit/mood logging and streaks (YYYY-MM-DD).
-// Before DAY_RESET_HOUR this returns the previous calendar day. This is
+// Before the rollover hour this returns the previous calendar day. This is
 // deliberately separate from `localToday()` — the calendar's "today" highlight
-// stays anchored to the real calendar midnight.
-export function logicalToday(): string {
-  const shifted = new Date();
-  shifted.setHours(shifted.getHours() - DAY_RESET_HOUR);
+// stays anchored to the real calendar midnight. Week start stays Monday.
+export function logicalToday(now = new Date(), resetHour = readDayResetHour()): string {
+  const shifted = new Date(now);
+  shifted.setHours(shifted.getHours() - boundaryHour(resetHour));
   return format(shifted);
 }
 

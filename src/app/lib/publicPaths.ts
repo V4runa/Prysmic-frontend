@@ -1,7 +1,8 @@
 /**
  * Routes that render outside the authenticated app shell.
- * Login and signup still land on /notes. These paths must never include
- * /notes, /calendar, /habits, /tasks, /moods, or /tags. The account screen stays private.
+ * Login and signup land in the app. Notes is the default; a saved preference
+ * can choose another private screen. These paths must never include the
+ * signed-in screens. The account and settings screens stay private.
  */
 export const PUBLIC_PATHS = [
   "/",

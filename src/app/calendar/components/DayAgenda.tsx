@@ -34,6 +34,7 @@ import { tactileRow, tactileSubtle } from "../../lib/motion";
 import { TextField } from "../../components/forms";
 import HabitProgressRing from "./HabitProgressRing";
 import DayMoodEditor from "./DayMoodEditor";
+import { usePreferences } from "../../hooks/usePreferences";
 
 interface DayAgendaProps {
   day: string;
@@ -55,6 +56,7 @@ export default function DayAgenda({
 }: DayAgendaProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { clockFormat } = usePreferences();
   const [taskTitle, setTaskTitle] = useState("");
   const [adding, setAdding] = useState(false);
   const [pendingHabit, setPendingHabit] = useState<number | null>(null);
@@ -168,8 +170,8 @@ export default function DayAgenda({
                     <span className="block text-xs text-slate-400">
                       {ev.allDay
                         ? "All day"
-                        : `${formatClock(ev.startTime)}${
-                            ev.endTime ? ` – ${formatClock(ev.endTime)}` : ""
+                        : `${formatClock(ev.startTime, clockFormat)}${
+                            ev.endTime ? ` – ${formatClock(ev.endTime, clockFormat)}` : ""
                           }`}
                       {ev.recurrence !== "none" && " · repeats"}
                     </span>

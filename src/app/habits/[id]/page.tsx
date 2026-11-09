@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { habitIconMap as iconMap, IconKey } from "../../components/habitIcons";
 import { getHabitColor } from "../../lib/habitColors";
-import { logicalToday } from "../../lib/date";
+import { useLogicalToday } from "../../hooks/usePreferences";
 import { calendarQueryKey } from "../../hooks/useCalendar";
 import { tactile, tactileSubtle } from "../../lib/motion";
 import Sparkles from "../../components/Sparkles";
@@ -59,6 +59,8 @@ export default function HabitDetailPage() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
   const queryClient = useQueryClient();
+  const today = useLogicalToday();
+  const seenDay = useRef<string | null>(null);
   const [habit, setHabit] = useState<Habit | null>(null);
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState<Partial<Habit>>({});
@@ -66,7 +68,7 @@ export default function HabitDetailPage() {
 
   const { data: fetchedHabit, isError: loadError } = useQuery({
     queryKey: ["habit", id],
-    queryFn: () => apiFetch<Habit>(`/habits/${id}?today=${logicalToday()}`),
+    queryFn: () => apiFetch<Habit>(`/habits/${id}?today=${today}`),
     enabled: !!id,
     // Paint instantly from the habits-list cache (name, streaks, checked
     // state) while the full record — intent, affirmation, frequency — loads.
@@ -88,6 +90,16 @@ export default function HabitDetailPage() {
   useEffect(() => {
     if (loadError && !habit) setError("Could not load habit");
   }, [loadError, habit]);
+
+  useEffect(() => {
+    if (seenDay.current === null) {
+      seenDay.current = today;
+      return;
+    }
+    if (seenDay.current === today) return;
+    seenDay.current = today;
+    queryClient.invalidateQueries({ queryKey: ["habit", id] });
+  }, [today, id, queryClient]);
 
   const isCheckedToday = habit?.checkedToday ?? false;
   const color = form.color || habit?.color || "cyan";
@@ -126,7 +138,7 @@ export default function HabitDetailPage() {
       // GET is needed.
       const habitData = await apiFetch<Habit>(`/habits/${id}/check`, {
         method: "POST",
-        body: JSON.stringify({ date: logicalToday() }),
+        body: JSON.stringify({ date: today }),
       });
       setHabit(habitData);
       setForm(habitData);

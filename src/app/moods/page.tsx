@@ -9,7 +9,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import MoodPicker from "../components/MoodPicker";
 import MoodReflection from "../components/MoodReflection";
 import MoodTimeline from "../components/MoodTimeline";
-import { logicalToday, localDateKey } from "../lib/date";
+import { localDateKey } from "../lib/date";
+import { useLogicalToday } from "../hooks/usePreferences";
 import { calendarQueryKey } from "../hooks/useCalendar";
 import { MoodOption, useMoodOptions } from "../hooks/useMoodOptions";
 
@@ -55,7 +56,7 @@ export default function MoodPage() {
   const [phase, setPhase] = useState<MoodPhase>(MoodPhase.PICK);
   const [selectedMood, setSelectedMood] = useState<MoodOption | null>(null);
 
-  const todayKey = logicalToday();
+  const todayKey = useLogicalToday();
 
   const {
     data: moodsRaw = [],

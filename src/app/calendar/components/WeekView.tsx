@@ -19,6 +19,7 @@ import { useToggleCalendarTask } from "../../hooks/taskCompletionSync";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { resolveMoodVisual } from "../../lib/moodColors";
 import { localToday } from "../../lib/date";
+import { usePreferences } from "../../hooks/usePreferences";
 import DayAura from "./DayAura";
 import HabitProgressRing from "./HabitProgressRing";
 
@@ -46,6 +47,7 @@ export default function WeekView({
 }: WeekViewProps) {
   const days = useMemo(() => weekDays(anchor), [anchor]);
   const today = localToday();
+  const { clockFormat } = usePreferences();
   const { pendingId: pendingTask, toggleTask } = useToggleCalendarTask();
 
   return (
@@ -141,7 +143,7 @@ export default function WeekView({
                       <span className="truncate font-medium">{ev.title}</span>
                     </span>
                     <span className="block text-[10px] opacity-80">
-                      {ev.allDay ? "All day" : formatClock(ev.startTime)}
+                      {ev.allDay ? "All day" : formatClock(ev.startTime, clockFormat)}
                     </span>
                   </motion.button>
                 );

@@ -101,6 +101,11 @@ export function hasStoredSession(): boolean {
  * emailVerified is cached per user in localStorage so another tab already
  * knows, and a profile refresh is not required on every visit.
  */
+export function emitSessionChange(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event("prysmic-session"));
+}
+
 export function applyAuthSession(input: {
   token: string;
   emailVerified?: boolean;
@@ -114,6 +119,7 @@ export function applyAuthSession(input: {
   }
   if (input.signedUp) sessionSet(SIGNUP_NOTE_KEY, "1");
   else sessionRemove(SIGNUP_NOTE_KEY);
+  emitSessionChange();
 }
 
 export function rememberEmailVerified(verified: boolean): void {
@@ -126,6 +132,13 @@ export function rememberEmailVerified(verified: boolean): void {
     clearVerifySnooze(id);
     sessionRemove(SIGNUP_NOTE_KEY);
   }
+}
+
+/** A new address has to be confirmed. Drop the snooze so the note can show. */
+export function rememberEmailNeedsConfirmation(): void {
+  const id = currentUserId();
+  rememberEmailVerified(false);
+  if (id != null) clearVerifySnooze(id);
 }
 
 export function readRememberedEmailVerified(): boolean | null {
@@ -230,4 +243,5 @@ export function clearStoredSession(queryClient?: QueryClientLike): void {
   }
   sessionRemove(REFRESH_KEY);
   sessionRemove(SIGNUP_NOTE_KEY);
+  emitSessionChange();
 }
