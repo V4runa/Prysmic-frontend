@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 import clsx from "clsx";
-import { CalendarClock, CheckSquare, StickyNote } from "lucide-react";
-import { DayBuckets } from "../lib/calendarLib";
+import { CalendarClock, CheckCircle2, Square, StickyNote } from "lucide-react";
+import { DayBuckets, monthTaskMark } from "../lib/calendarLib";
 
 interface DaySummaryProps {
   buckets: DayBuckets;
@@ -12,9 +12,9 @@ interface DaySummaryProps {
   className?: string;
 }
 
-// A single segmented pill: consistent icon + colour per source, with a count.
-// Carrying the meaning in an icon (not a truncated title) keeps dense month
-// cells legible — the day panel holds the full detail on tap.
+// A single segmented pill, with a count. The task mark is that day's completion:
+// an empty square until every task is done, then a check. The day panel holds
+// each task.
 const pill =
   "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none border tabular-nums";
 
@@ -23,7 +23,7 @@ export default function DaySummary({
   eventOverflow = 0,
   className,
 }: DaySummaryProps) {
-  const taskCount = buckets.tasks.length;
+  const tasks = monthTaskMark(buckets.tasks);
   const noteCount = buckets.notes.length;
 
   const pills: ReactNode[] = [];
@@ -35,11 +35,26 @@ export default function DaySummary({
       </span>
     );
   }
-  if (taskCount > 0) {
+  if (tasks.total > 0) {
     pills.push(
-      <span key="task" className={clsx(pill, "bg-sky-500/10 border-sky-400/30 text-sky-200")}>
-        <CheckSquare className="h-3 w-3 shrink-0" />
-        {taskCount}
+      <span
+        key="task"
+        role="img"
+        title={tasks.label}
+        aria-label={tasks.label}
+        className={clsx(
+          pill,
+          tasks.checked
+            ? "bg-green-500/10 border-green-400/30 text-green-300/80"
+            : "bg-sky-500/10 border-sky-400/30 text-sky-200"
+        )}
+      >
+        {tasks.checked ? (
+          <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+        ) : (
+          <Square className="h-3 w-3 shrink-0" aria-hidden="true" />
+        )}
+        {tasks.text}
       </span>
     );
   }

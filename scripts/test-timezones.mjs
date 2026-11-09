@@ -4,6 +4,7 @@ const zones = ["America/New_York", "UTC", "Asia/Tokyo"];
 const files = [
   "src/app/lib/date.test.ts",
   "src/app/calendar/lib/calendarPlacement.test.ts",
+  "src/app/hooks/taskCompletionSync.test.ts",
 ];
 
 let failed = 0;

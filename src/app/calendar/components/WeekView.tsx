@@ -11,9 +11,11 @@ import {
   formatClock,
   parseDayKey,
   SourceFilter,
+  taskDoneToggleLabel,
   visibleDayBuckets,
   weekDays,
 } from "../lib/calendarLib";
+import { useToggleCalendarTask } from "../../hooks/taskCompletionSync";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { resolveMoodVisual } from "../../lib/moodColors";
 import { localToday } from "../../lib/date";
@@ -44,6 +46,7 @@ export default function WeekView({
 }: WeekViewProps) {
   const days = useMemo(() => weekDays(anchor), [anchor]);
   const today = localToday();
+  const { pendingId: pendingTask, toggleTask } = useToggleCalendarTask();
 
   return (
     <motion.div
@@ -145,11 +148,19 @@ export default function WeekView({
               })}
 
               {b.tasks.map((t) => (
-                <div
+                <button
                   key={`task-${t.id}`}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void toggleTask(t);
+                  }}
+                  disabled={pendingTask === t.id}
+                  aria-pressed={t.isComplete}
+                  aria-label={taskDoneToggleLabel(t.title, t.isComplete)}
                   title={t.isComplete ? `Completed: ${t.title}` : t.title}
                   className={clsx(
-                    "flex items-center gap-1 rounded border px-1.5 py-1 text-[11px]",
+                    "tap-target flex items-center gap-1 rounded border px-1.5 py-1 text-left text-[11px] disabled:opacity-50",
                     t.isComplete
                       ? "border-green-400/30 bg-green-500/10 text-green-300/70"
                       : SOURCE_ACCENT.task.chip
@@ -169,7 +180,7 @@ export default function WeekView({
                     {t.title}
                   </span>
                   {t.isComplete && <span className="sr-only">Completed</span>}
-                </div>
+                </button>
               ))}
 
               {/* Habits are intentionally not listed here — the header ring

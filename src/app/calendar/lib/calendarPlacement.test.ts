@@ -9,8 +9,11 @@ import {
   focusDayForView,
   indexFeed,
   itemDay,
+  monthTaskMark,
+  taskDoneToggleLabel,
   visibleDayBuckets,
   weekRange,
+  withTaskCompletion,
   type SourceFilter,
 } from "./calendarLib";
 import type { CalendarSource } from "../types";
@@ -286,6 +289,51 @@ test("notes stay on the local instant; contracts, moods, and events stay on thei
   } else {
     assert.fail(`unexpected TZ ${process.env.TZ}`);
   }
+});
+
+test("a task is checked only when isComplete is true", () => {
+  // Priority, id, and due date are always set. They are not completion.
+  const open = monthTaskMark([activeTask, timedTask]);
+  assert.equal(open.checked, false);
+  assert.equal(open.done, 0);
+  assert.equal(open.text, "2");
+  assert.match(open.label, /open/);
+
+  const mixed = monthTaskMark([activeTask, completedTask]);
+  assert.equal(mixed.checked, false);
+  assert.equal(mixed.text, "1/2");
+  assert.equal(mixed.label, "1 of 2 tasks completed");
+
+  const done = monthTaskMark([completedTask]);
+  assert.equal(done.checked, true);
+  assert.equal(done.text, "1");
+  assert.equal(done.label, "1 completed task");
+
+  assert.equal(taskDoneToggleLabel(activeTask.title, false), `Mark done, ${activeTask.title}`);
+  assert.equal(
+    taskDoneToggleLabel(completedTask.title, true),
+    `Mark not done, ${completedTask.title}`,
+  );
+});
+
+test("updating completion flips isComplete and leaves the rest of the feed", () => {
+  const feed: CalendarItem[] = [activeTask, completedTask, event, habit];
+  const marked = withTaskCompletion(feed, activeTask.id, true);
+  const updated = marked.find((item) => item.source === "task" && item.id === activeTask.id);
+  assert.ok(updated && updated.source === "task" && updated.isComplete);
+  assert.equal(activeTask.isComplete, false);
+  assert.equal(
+    marked.find((item) => item.source === "task" && item.id === completedTask.id),
+    completedTask,
+  );
+  assert.equal(marked.find((item) => item.source === "event"), event);
+
+  const cleared = withTaskCompletion(marked, completedTask.id, false);
+  const reopened = cleared.find((item) => item.source === "task" && item.id === completedTask.id);
+  assert.ok(reopened && reopened.source === "task" && reopened.isComplete === false);
+  assert.equal(monthTaskMark(cleared.filter((item) => item.source === "task")).checked, false);
+
+  assert.equal(withTaskCompletion(feed, activeTask.id, false), feed);
 });
 
 test("a timed task follows the local day and does not drag contracts with it", () => {
