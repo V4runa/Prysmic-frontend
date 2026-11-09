@@ -1,3 +1,6 @@
+"use client";
+
+import { useSyncExternalStore } from "react";
 import { jwtDecode } from "jwt-decode";
 
 interface JwtPayload {
@@ -40,4 +43,33 @@ export function readSessionClaims(): {
   } catch {
     return null;
   }
+}
+
+export interface SessionIdentity {
+  email: string | null;
+  username: string | null;
+}
+
+const EMPTY_IDENTITY: SessionIdentity = { email: null, username: null };
+
+let identitySnapshot: SessionIdentity = EMPTY_IDENTITY;
+
+function readIdentitySnapshot(): SessionIdentity {
+  const claims = readSessionClaims();
+  const email = claims?.email ?? null;
+  const username = claims?.username ?? null;
+  if (identitySnapshot.email === email && identitySnapshot.username === username) {
+    return identitySnapshot;
+  }
+  identitySnapshot = { email, username };
+  return identitySnapshot;
+}
+
+/** Session claims for render. The server snapshot stays empty so hydration matches. */
+export function useSessionIdentity(): SessionIdentity {
+  return useSyncExternalStore(
+    () => () => {},
+    readIdentitySnapshot,
+    () => EMPTY_IDENTITY
+  );
 }

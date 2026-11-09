@@ -160,11 +160,34 @@ export function clearSignupEmailNote(): void {
   sessionRemove(SIGNUP_NOTE_KEY);
 }
 
+function removeRecordEntry(key: string, id: string): void {
+  const record = readRecord(key);
+  if (!(id in record)) return;
+  delete record[id];
+  if (Object.keys(record).length === 0) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore.
+    }
+    return;
+  }
+  localSet(key, JSON.stringify(record));
+}
+
 function clearVerifySnooze(userId: number): void {
-  const snoozes = readRecord(SNOOZE_KEY);
-  if (!(String(userId) in snoozes)) return;
-  delete snoozes[String(userId)];
-  localSet(SNOOZE_KEY, JSON.stringify(snoozes));
+  removeRecordEntry(SNOOZE_KEY, String(userId));
+}
+
+export function readStoredUserId(): number | null {
+  return currentUserId();
+}
+
+/** Drop this user's email-reminder snooze and remembered verification. */
+export function clearUserAuthMemory(userId: number | null): void {
+  if (userId == null) return;
+  removeRecordEntry(SNOOZE_KEY, String(userId));
+  removeRecordEntry(VERIFIED_KEY, String(userId));
 }
 
 /** Hide the note for this user for three days. A later verification clears it. */

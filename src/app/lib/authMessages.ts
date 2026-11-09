@@ -1,3 +1,5 @@
+import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES, passwordBlockMessage, utf8ByteLength } from "./passwordPolicy";
+
 /** Same sentence the API returns for forgot-password and resend. */
 export const GENERIC_EMAIL_MESSAGE =
   "If an account exists for that email, a message is on its way.";
@@ -12,6 +14,8 @@ export const RATE_LIMIT_MESSAGE =
 
 export const PASSWORD_UPDATED_NOTICE =
   "Your password is updated. Sign in with the new one.";
+
+export const ACCOUNT_DELETED_NOTICE = "Your account has been deleted.";
 
 export const SIGNUP_EMAIL_NOTE =
   "A confirmation email is on its way. You can wander in the meantime.";
@@ -122,19 +126,31 @@ export function interpretVerify(status: number): "success" | "invalid" | "failed
 
 export type ResetDecision =
   | { ok: true; body: { token: string; password: string } }
-  | { ok: false; reason: "invalid-link" | "short" | "mismatch"; message: string };
+  | { ok: false; reason: "invalid-link" | "short" | "long" | "identity" | "mismatch"; message: string };
 
 /** Client-side gate. This does not call the API — submit does, and only when ok. */
 export function preparePasswordReset(input: {
   token: string | null;
   password: string;
   confirm: string;
+  email?: string | null;
+  username?: string | null;
 }): ResetDecision {
   if (!input.token) {
     return { ok: false, reason: "invalid-link", message: INVALID_LINK_MESSAGE };
   }
-  if (input.password.length < 6) {
-    return { ok: false, reason: "short", message: "Use at least 6 characters." };
+  const block = passwordBlockMessage(input.password, {
+    email: input.email,
+    username: input.username,
+  });
+  if (block) {
+    const reason =
+      input.password.length < PASSWORD_MIN_LENGTH
+        ? "short"
+        : utf8ByteLength(input.password) > PASSWORD_MAX_BYTES
+          ? "long"
+          : "identity";
+    return { ok: false, reason, message: block };
   }
   if (input.password !== input.confirm) {
     return { ok: false, reason: "mismatch", message: "Those passwords don't match yet." };
@@ -155,9 +171,6 @@ export function interpretPasswordReset(status: number, body: unknown): PasswordR
     if (message.includes("invalid or has expired")) {
       return { type: "invalid-link" };
     }
-    if (/password/i.test(message) && /6|short|longer/i.test(message)) {
-      return { type: "rejected", message: "Use at least 6 characters." };
-    }
     return {
       type: "rejected",
       message: message || "That password wasn't accepted.",
@@ -170,6 +183,6 @@ export function interpretSignupError(status: number, body: unknown): string {
   const message = messageFromBody(body);
   if (message === "Username already taken!") return "That username is already taken.";
   if (message === "Email already in use!") return "That email is already in use.";
-  if (status === 400) return "Check the username, email, and a password of at least 6 characters.";
+  if (status === 400) return message || "Check the username, email, and password.";
   return "Signup couldn't finish. Please try again.";
 }

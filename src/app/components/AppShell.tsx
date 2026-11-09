@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import EmailVerificationPrompt from "./EmailVerificationPrompt";
 import ExportDataButton from "./ExportDataButton";
+import { readSessionClaims, useSessionIdentity } from "../hooks/useAuth";
 import { syncPersonalCache } from "../lib/personalCache";
 import { bumpSessionEpoch } from "../lib/sessionBoundary";
 import {
@@ -25,6 +26,7 @@ import {
   Smile,
   CalendarDays,
   LogOut,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,25 +34,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
-  const [username, setUsername] = useState<string | null>(null);
+  const { username } = useSessionIdentity();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    const claims = readSessionClaims();
+    if (!claims) {
       syncPersonalCache(queryClient, null);
       return;
     }
-    try {
-      const decoded = JSON.parse(atob(token.split(".")[1]));
-      setUsername(decoded.username || null);
-      const owner = noteOwnerId(decoded.sub);
-      syncPersonalCache(queryClient, owner);
-      const storage = noteDraftStorage();
-      if (storage && owner) clearDraftIfOtherUser(storage, owner);
-    } catch {
-      setUsername(null);
-    }
-  }, [queryClient]);
+    const owner = noteOwnerId(claims.userId);
+    syncPersonalCache(queryClient, owner);
+    const storage = noteDraftStorage();
+    if (storage && owner) clearDraftIfOtherUser(storage, owner);
+  }, [queryClient, username]);
 
   const handleLogout = () => {
     const storage = noteDraftStorage();
@@ -94,6 +90,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
+  const accountActive = isActive("/account");
 
   return (
     <div className="min-h-[100dvh] text-slate-100 font-sans relative overflow-hidden">
@@ -127,11 +124,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex gap-2 sm:gap-4 items-center text-xs sm:text-sm min-w-0">
-          {username && (
-            <span className="text-slate-400 italic hidden sm:inline">
-              Wandering as {username}
+          <Link
+            href="/account"
+            aria-label={username ? `Account, wandering as ${username}` : "Account"}
+            aria-current={accountActive ? "page" : undefined}
+            className={`tap-target inline-flex items-center justify-center gap-1.5 hover:text-cyan-300 ${
+              accountActive ? "text-cyan-300" : "text-slate-400"
+            }`}
+          >
+            <UserRound className="h-4 w-4 sm:hidden" aria-hidden="true" />
+            <span className="hidden sm:inline italic">
+              {username ? `Wandering as ${username}` : "Account"}
             </span>
-          )}
+          </Link>
           <ExportDataButton />
           <button
             onClick={handleLogout}

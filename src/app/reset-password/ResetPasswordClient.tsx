@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import AuthFrame from "../components/AuthFrame";
+import PasswordHints from "../components/PasswordHints";
 import { Field, FormButton, TextField } from "../components/forms";
 import { ApiError, apiFetch } from "../hooks/useApi";
+import { readSessionClaims, useSessionIdentity } from "../hooks/useAuth";
 import {
   INVALID_LINK_MESSAGE,
   PASSWORD_UPDATED_NOTICE,
@@ -27,6 +29,7 @@ export default function ResetPasswordClient() {
   const [errorTarget, setErrorTarget] = useState<"password" | "confirm" | null>(null);
   const [loading, setLoading] = useState(false);
   const [slow, setSlow] = useState(false);
+  const identity = useSessionIdentity();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
@@ -60,7 +63,14 @@ export default function ResetPasswordClient() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (loading) return;
-    const decision = preparePasswordReset({ token: link?.token ?? null, password, confirm });
+    const claims = readSessionClaims();
+    const decision = preparePasswordReset({
+      token: link?.token ?? null,
+      password,
+      confirm,
+      email: claims?.email ?? identity.email,
+      username: claims?.username ?? identity.username,
+    });
     if (!decision.ok) {
       if (decision.reason === "invalid-link") {
         setRejected(true);
@@ -136,8 +146,12 @@ export default function ResetPasswordClient() {
     );
   }
 
-  const passwordDescribedBy =
-    errorTarget === "password" && error ? "new-password-error" : "new-password-hint";
+  const passwordDescribedBy = [
+    "new-password-rules",
+    errorTarget === "password" && error ? "new-password-error" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <AuthFrame>
@@ -156,7 +170,6 @@ export default function ResetPasswordClient() {
         <Field
           label="New password"
           htmlFor="new-password"
-          hint="At least 6 characters."
           error={errorTarget === "password" ? error ?? undefined : undefined}
         >
           <TextField
@@ -176,6 +189,12 @@ export default function ResetPasswordClient() {
             }}
           />
         </Field>
+        <PasswordHints
+          id="new-password-rules"
+          password={password}
+          email={identity.email}
+          username={identity.username}
+        />
         <Field
           label="Confirm password"
           htmlFor="confirm-password"
