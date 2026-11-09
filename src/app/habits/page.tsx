@@ -136,7 +136,7 @@ export default function HabitsPage() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Your Contracts</h2>
-            <p className="text-slate-400 text-sm sm:text-base">Sacred commitments to self-discipline and growth.</p>
+            <p className="text-slate-400 text-sm sm:text-base">Personal commitments you can check in on.</p>
           </div>
           <motion.button
             {...tactile}

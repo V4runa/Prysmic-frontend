@@ -570,7 +570,7 @@ export default function ViewNotePage() {
                           if (html !== editedContent) setDirty(true);
                         }}
                         autoFocus
-                        placeholder="Let it flow onto the pond..."
+                        placeholder="Start writing…"
                       />
                       <span className="text-xs text-slate-500 tabular-nums">
                         {wordCount} {wordCount === 1 ? "word" : "words"}

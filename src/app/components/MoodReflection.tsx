@@ -79,7 +79,7 @@ export default function MoodReflection({
         </h2>
 
         <p className="text-sm text-slate-400">
-          Just a few words about your day — or skip if you’d prefer silence.
+          Just a few words about your day, or skip this.
         </p>
 
         <TextArea

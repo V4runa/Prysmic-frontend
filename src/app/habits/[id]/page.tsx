@@ -272,7 +272,7 @@ export default function HabitDetailPage() {
                         rows={2}
                         value={form.affirmation || ""}
                         onChange={(e) => handleChange("affirmation", e.target.value)}
-                        placeholder="A truth to repeat"
+                        placeholder="A short line you want to remember"
                       />
                     </Field>
                     <Field label="Frequency" htmlFor="habit-frequency">
