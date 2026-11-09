@@ -4,8 +4,12 @@ import { bumpSessionEpoch } from "./sessionBoundary";
 /** Existing session key. Login, signup, and logout already use this name. */
 export const ACCESS_TOKEN_KEY = "token";
 
+/** How long "Not now" hides the confirmation note. */
+export const VERIFY_PROMPT_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
+
 const VERIFIED_KEY = "prysmic.emailVerified";
-const DISMISS_KEY = "prysmic.verifyPromptDismissed";
+const SNOOZE_KEY = "prysmic.verifyPromptSnooze";
+const REFRESH_KEY = "prysmic.emailVerifiedRefreshed";
 const SIGNUP_NOTE_KEY = "prysmic.signupEmailNote";
 const LOGIN_NOTICE_KEY = "prysmic.loginNotice";
 
@@ -38,6 +42,47 @@ function sessionRemove(key: string): void {
   }
 }
 
+function localGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function localSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Private mode can reject storage.
+  }
+}
+
+function readRecord(key: string): Record<string, unknown> {
+  const raw = localGet(key);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return parsed as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+function currentUserId(): number | null {
+  const token = readStoredToken();
+  if (!token) return null;
+  try {
+    const part = token.split(".")[1];
+    if (!part) return null;
+    const json = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/"))) as { sub?: unknown };
+    return typeof json.sub === "number" ? json.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 export function readStoredToken(): string | null {
   try {
     return localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -53,7 +98,8 @@ export function hasStoredSession(): boolean {
 /**
  * Remember login or signup. The access token stays in localStorage under
  * "token", the same place the rest of the app already reads it.
- * emailVerified lives in sessionStorage so a later profile read can refresh it.
+ * emailVerified is cached per user in localStorage so another tab already
+ * knows, and a profile refresh is not required on every visit.
  */
 export function applyAuthSession(input: {
   token: string;
@@ -61,27 +107,49 @@ export function applyAuthSession(input: {
   signedUp?: boolean;
 }): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, input.token);
-  sessionRemove(DISMISS_KEY);
   sessionRemove(LOGIN_NOTICE_KEY);
+  sessionRemove(REFRESH_KEY);
   if (typeof input.emailVerified === "boolean") {
-    sessionSet(VERIFIED_KEY, input.emailVerified ? "1" : "0");
-  } else {
-    sessionRemove(VERIFIED_KEY);
+    rememberEmailVerified(input.emailVerified);
   }
   if (input.signedUp) sessionSet(SIGNUP_NOTE_KEY, "1");
   else sessionRemove(SIGNUP_NOTE_KEY);
 }
 
 export function rememberEmailVerified(verified: boolean): void {
-  sessionSet(VERIFIED_KEY, verified ? "1" : "0");
-  if (verified) sessionRemove(SIGNUP_NOTE_KEY);
+  const id = currentUserId();
+  if (id == null) return;
+  const cache = readRecord(VERIFIED_KEY);
+  cache[String(id)] = verified;
+  localSet(VERIFIED_KEY, JSON.stringify(cache));
+  if (verified) {
+    clearVerifySnooze(id);
+    sessionRemove(SIGNUP_NOTE_KEY);
+  }
 }
 
 export function readRememberedEmailVerified(): boolean | null {
-  const value = sessionGet(VERIFIED_KEY);
-  if (value === "1") return true;
-  if (value === "0") return false;
-  return null;
+  const id = currentUserId();
+  if (id == null) return null;
+  const value = readRecord(VERIFIED_KEY)[String(id)];
+  return typeof value === "boolean" ? value : null;
+}
+
+/**
+ * The profile is fetched at most once per tab session, and skipped entirely
+ * when this user is already known to be verified.
+ */
+export function shouldRefreshEmailVerified(): boolean {
+  if (readRememberedEmailVerified() === true) return false;
+  const id = currentUserId();
+  if (id == null) return false;
+  return sessionGet(REFRESH_KEY) !== String(id);
+}
+
+export function markEmailVerifiedRefreshed(): void {
+  const id = currentUserId();
+  if (id == null) return;
+  sessionSet(REFRESH_KEY, String(id));
 }
 
 export function readSignupEmailNote(): boolean {
@@ -92,12 +160,27 @@ export function clearSignupEmailNote(): void {
   sessionRemove(SIGNUP_NOTE_KEY);
 }
 
-export function dismissVerifyPrompt(): void {
-  sessionSet(DISMISS_KEY, "1");
+function clearVerifySnooze(userId: number): void {
+  const snoozes = readRecord(SNOOZE_KEY);
+  if (!(String(userId) in snoozes)) return;
+  delete snoozes[String(userId)];
+  localSet(SNOOZE_KEY, JSON.stringify(snoozes));
 }
 
-export function isVerifyPromptDismissed(): boolean {
-  return sessionGet(DISMISS_KEY) === "1";
+/** Hide the note for this user for three days. A later verification clears it. */
+export function dismissVerifyPrompt(now = Date.now()): void {
+  const id = currentUserId();
+  if (id == null) return;
+  const snoozes = readRecord(SNOOZE_KEY);
+  snoozes[String(id)] = now + VERIFY_PROMPT_SNOOZE_MS;
+  localSet(SNOOZE_KEY, JSON.stringify(snoozes));
+}
+
+export function isVerifyPromptDismissed(now = Date.now()): boolean {
+  const id = currentUserId();
+  if (id == null) return false;
+  const until = readRecord(SNOOZE_KEY)[String(id)];
+  return typeof until === "number" && until > now;
 }
 
 export function setLoginNotice(message: string): void {
@@ -122,7 +205,6 @@ export function clearStoredSession(queryClient?: QueryClientLike): void {
   } catch {
     // Ignore.
   }
-  sessionRemove(VERIFIED_KEY);
-  sessionRemove(DISMISS_KEY);
+  sessionRemove(REFRESH_KEY);
   sessionRemove(SIGNUP_NOTE_KEY);
 }

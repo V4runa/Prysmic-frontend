@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FormButton, TextField } from "./forms";
 import { ApiError, apiFetch } from "../hooks/useApi";
@@ -15,9 +15,11 @@ import {
   dismissVerifyPrompt,
   hasStoredSession,
   isVerifyPromptDismissed,
+  markEmailVerifiedRefreshed,
   readRememberedEmailVerified,
   readSignupEmailNote,
   rememberEmailVerified,
+  shouldRefreshEmailVerified,
 } from "../lib/storedSession";
 
 interface PublicUser {
@@ -81,12 +83,14 @@ function refreshPrompt(): void {
 
 export default function EmailVerificationPrompt() {
   const prompt = useSyncExternalStore(subscribe, readSnapshot, () => HIDDEN);
+  const bannerRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (!hasStoredSession()) return;
+    if (!shouldRefreshEmailVerified()) return;
+    markEmailVerifiedRefreshed();
     let cancelled = false;
     apiFetch<PublicUser[]>("/users")
       .then((users) => {
@@ -110,6 +114,26 @@ export default function EmailVerificationPrompt() {
     emailVerified: prompt.verified,
     dismissed: prompt.dismissed,
   });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!show) {
+      root.style.setProperty("--verify-banner-h", "0px");
+      return;
+    }
+    const el = bannerRef.current;
+    if (!el) return;
+    const apply = () => {
+      root.style.setProperty("--verify-banner-h", `${el.offsetHeight}px`);
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.setProperty("--verify-banner-h", "0px");
+    };
+  }, [show, notice]);
 
   const dismiss = () => {
     dismissVerifyPrompt();
@@ -154,18 +178,19 @@ export default function EmailVerificationPrompt() {
     <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          ref={bannerRef}
+          initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 8 }}
+          exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.25 }}
-          className="fixed z-40 inset-x-3 bottom-[calc(var(--bottomnav-h)+0.75rem)] sm:inset-x-auto sm:right-6 sm:bottom-auto sm:top-[calc(var(--header-h)+0.75rem)] sm:w-full sm:max-w-sm"
+          className="px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3"
         >
           <div
             role="region"
             aria-label="Email confirmation"
-            className="glass-card rounded-xl px-4 py-3.5 shadow-lg shadow-black/40"
+            className="glass-card rounded-xl px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           >
-            <p className="text-sm text-slate-200 leading-relaxed" aria-live="polite">
+            <p className="text-sm text-slate-200 leading-relaxed sm:flex-1" aria-live="polite">
               {notice ?? verificationPromptCopy(prompt.justSignedUp)}
             </p>
             {!prompt.email && (
@@ -184,7 +209,7 @@ export default function EmailVerificationPrompt() {
                 />
               </label>
             )}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <FormButton
                 type="button"
                 variant="secondary"

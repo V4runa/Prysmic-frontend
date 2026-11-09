@@ -36,10 +36,14 @@ import {
   clearStoredSession,
   dismissVerifyPrompt,
   isVerifyPromptDismissed,
+  markEmailVerifiedRefreshed,
   readLoginNotice,
   readRememberedEmailVerified,
   readSignupEmailNote,
+  rememberEmailVerified,
   setLoginNotice,
+  shouldRefreshEmailVerified,
+  VERIFY_PROMPT_SNOOZE_MS,
 } from "./storedSession";
 
 function memoryStorage(): Storage {
@@ -303,7 +307,12 @@ test("signup errors stay specific when the API names the conflict", () => {
   assert.match(interpretSignupError(500, null), /try again/i);
 });
 
-test("the verification prompt is dismissible for the rest of the tab session", () => {
+function jwt(sub: number): string {
+  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "none", typ: "JWT" })}.${encode({ sub, username: "Ada", email: "ada@prysmic.test" })}.sig`;
+}
+
+test("the verification prompt snoozes per user for three days", () => {
   assert.equal(
     shouldShowVerificationPrompt({ hasSession: true, emailVerified: false, dismissed: false }),
     true
@@ -327,21 +336,39 @@ test("the verification prompt is dismissible for the rest of the tab session", (
   assert.equal(verificationPromptCopy(true), SIGNUP_EMAIL_NOTE);
   assert.notEqual(verificationPromptCopy(false), SIGNUP_EMAIL_NOTE);
 
-  applyAuthSession({ token: "jwt", emailVerified: false, signedUp: true });
-  assert.equal(localStorage.getItem(ACCESS_TOKEN_KEY), "jwt");
+  const now = Date.parse("2026-11-09T00:00:00.000Z");
+  const token = jwt(7);
+  applyAuthSession({ token, emailVerified: false, signedUp: true });
+  assert.equal(localStorage.getItem(ACCESS_TOKEN_KEY), token);
   assert.equal(ACCESS_TOKEN_KEY, "token");
   assert.equal(readRememberedEmailVerified(), false);
   assert.equal(readSignupEmailNote(), true);
-  dismissVerifyPrompt();
-  assert.equal(isVerifyPromptDismissed(), true);
-  assert.equal(
-    shouldShowVerificationPrompt({
-      hasSession: true,
-      emailVerified: readRememberedEmailVerified(),
-      dismissed: isVerifyPromptDismissed(),
-    }),
-    false
-  );
+  dismissVerifyPrompt(now);
+  assert.equal(isVerifyPromptDismissed(now), true);
+  assert.equal(isVerifyPromptDismissed(now + VERIFY_PROMPT_SNOOZE_MS - 1), true);
+  assert.equal(isVerifyPromptDismissed(now + VERIFY_PROMPT_SNOOZE_MS), false);
+
+  sessionStorage.clear();
+  localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  assert.equal(isVerifyPromptDismissed(now), true);
+  assert.equal(readRememberedEmailVerified(), false);
+
+  applyAuthSession({ token, emailVerified: false });
+  assert.equal(isVerifyPromptDismissed(now), true);
+
+  localStorage.setItem(ACCESS_TOKEN_KEY, jwt(8));
+  assert.equal(isVerifyPromptDismissed(now), false);
+
+  localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  rememberEmailVerified(true);
+  assert.equal(readRememberedEmailVerified(), true);
+  assert.equal(isVerifyPromptDismissed(now), false);
+  assert.equal(shouldRefreshEmailVerified(), false);
+
+  rememberEmailVerified(false);
+  assert.equal(shouldRefreshEmailVerified(), true);
+  markEmailVerifiedRefreshed();
+  assert.equal(shouldRefreshEmailVerified(), false);
 });
 
 test("password reset clears the stored token and keeps the login notice", () => {
@@ -397,6 +424,8 @@ test("confirmation and reset pages are public, noindex, and do not leak referrer
   const prompt = readFileSync(new URL("../components/EmailVerificationPrompt.tsx", import.meta.url), "utf8");
   assert.match(prompt, /dismissVerifyPrompt/);
   assert.match(prompt, /shouldShowVerificationPrompt/);
+  assert.match(prompt, /shouldRefreshEmailVerified/);
+  assert.equal(prompt.includes("fixed z-40"), false);
   const appShell = readFileSync(new URL("../components/AppShell.tsx", import.meta.url), "utf8");
   assert.match(appShell, /EmailVerificationPrompt/);
 });
