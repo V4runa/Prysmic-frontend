@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import { PRIVATE_PATH_PREFIXES } from "./src/app/lib/privatePaths";
 
 /**
@@ -9,9 +10,13 @@ import { PRIVATE_PATH_PREFIXES } from "./src/app/lib/privatePaths";
  * so /api/* is proxied to the backend container.
  */
 const apiProxyTarget = process.env.API_PROXY_TARGET;
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN?.trim();
+const uploadSourceMaps = Boolean(sentryAuthToken);
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // The browser bundle cannot read VERCEL_ENV unless it is inlined here.
+  ...(process.env.VERCEL_ENV ? { env: { VERCEL_ENV: process.env.VERCEL_ENV } } : {}),
   async headers() {
     const privateLink = [
       { key: "Referrer-Policy", value: "no-referrer" },
@@ -44,4 +49,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: sentryAuthToken,
+  silent: !process.env.CI,
+  telemetry: false,
+  sourcemaps: {
+    disable: !uploadSourceMaps,
+  },
+  release: {
+    create: uploadSourceMaps,
+  },
+  widenClientFileUpload: uploadSourceMaps,
+});
