@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { format } from "date-fns";
-import { localDateKey, taskDueDayKey } from "./date";
+import { localDateKey, logicalToday, taskDueDayKey } from "./date";
 import { formatTaskDueDate, taskDueInputValue } from "../tasks/taskDueDate";
 
 /**
@@ -123,6 +123,18 @@ test("a timestamp with a real time-of-day stays on the local day", () => {
   } else {
     assert.fail(`unexpected TZ ${tz}`);
   }
+});
+
+test("logical today follows the rollover hour and defaults to 6am", () => {
+  const early = new Date(2026, 10, 9, 5, 30, 0);
+  const boundary = new Date(2026, 10, 9, 6, 0, 0);
+  const twoAm = new Date(2026, 10, 9, 2, 0, 0);
+  assert.equal(logicalToday(early, 6), "2026-11-08");
+  assert.equal(logicalToday(boundary, 6), "2026-11-09");
+  assert.equal(logicalToday(twoAm, 0), "2026-11-09");
+  assert.equal(logicalToday(twoAm, 8), "2026-11-08");
+  assert.equal(logicalToday(new Date(2026, 10, 9, 8, 0, 0), 8), "2026-11-09");
+  assert.equal(logicalToday(early), "2026-11-08");
 });
 
 test("an empty due date stays empty in the editor", () => {

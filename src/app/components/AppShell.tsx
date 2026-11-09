@@ -5,18 +5,19 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import EmailVerificationPrompt from "./EmailVerificationPrompt";
-import ExportDataButton from "./ExportDataButton";
+import EmailVerificationPrompt, { syncVerificationProfile } from "./EmailVerificationPrompt";
+import UserAvatar from "./UserAvatar";
 import { readSessionClaims, useSessionIdentity } from "../hooks/useAuth";
+import { apiFetch } from "../hooks/useApi";
+import { readSelf } from "../lib/accountProfile";
+import { requestLogout } from "../lib/logout";
 import { syncPersonalCache } from "../lib/personalCache";
-import { bumpSessionEpoch } from "../lib/sessionBoundary";
+import { usePreferences } from "../hooks/usePreferences";
+import { publishSessionProfile } from "../lib/sessionIdentity";
 import {
-  clearDraft,
   clearDraftIfOtherUser,
-  draftHasWriting,
   noteDraftStorage,
   noteOwnerId,
-  readDraft,
 } from "../notes/noteDraft";
 import {
   StickyNote,
@@ -26,7 +27,7 @@ import {
   Smile,
   CalendarDays,
   LogOut,
-  UserRound,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const { username } = useSessionIdentity();
+  const { avatar } = usePreferences();
 
   useEffect(() => {
     const claims = readSessionClaims();
@@ -48,21 +50,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (storage && owner) clearDraftIfOtherUser(storage, owner);
   }, [queryClient, username]);
 
+  useEffect(() => {
+    const claims = readSessionClaims();
+    if (!claims) return;
+    let cancelled = false;
+    apiFetch<unknown>("/users")
+      .then((body) => {
+        if (cancelled) return;
+        const me = readSelf(body, claims.userId);
+        if (!me) return;
+        publishSessionProfile({
+          userId: me.id,
+          username: me.username,
+          email: me.email,
+          emailVerified: me.emailVerified,
+        });
+        syncVerificationProfile({ email: me.email, emailVerified: me.emailVerified });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleLogout = () => {
-    const storage = noteDraftStorage();
-    const draft = storage ? readDraft(storage) : null;
-    if (
-      draft &&
-      draftHasWriting(draft) &&
-      !window.confirm("Log out? Unsaved writing in this tab will be discarded.")
-    ) {
-      return;
-    }
-    bumpSessionEpoch();
-    if (storage) clearDraft(storage);
-    syncPersonalCache(queryClient, null);
-    localStorage.removeItem("token");
-    router.push("/login");
+    requestLogout({ queryClient, navigate: (href) => router.push(href) });
   };
 
   const navItems: {
@@ -90,7 +102,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
-  const accountActive = isActive("/account");
+  const settingsActive = isActive("/settings") || isActive("/account");
 
   return (
     <div className="min-h-[100dvh] text-slate-100 font-sans relative overflow-hidden">
@@ -125,19 +137,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="flex gap-2 sm:gap-4 items-center text-xs sm:text-sm min-w-0">
           <Link
-            href="/account"
-            aria-label={username ? `Account, wandering as ${username}` : "Account"}
-            aria-current={accountActive ? "page" : undefined}
-            className={`tap-target inline-flex items-center justify-center gap-1.5 hover:text-cyan-300 ${
-              accountActive ? "text-cyan-300" : "text-slate-400"
+            href="/settings"
+            aria-label={username ? `Settings, ${username}` : "Settings"}
+            aria-current={settingsActive ? "page" : undefined}
+            className={`tap-target inline-flex max-w-[46vw] items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs sm:max-w-none sm:px-3 sm:text-sm ${
+              settingsActive
+                ? "border-cyan-300/40 bg-white/15 text-cyan-50"
+                : "border-white/10 bg-white/10 text-slate-100 hover:bg-white/20"
             }`}
           >
-            <UserRound className="h-4 w-4 sm:hidden" aria-hidden="true" />
-            <span className="hidden sm:inline italic">
-              {username ? `Wandering as ${username}` : "Account"}
-            </span>
+            <UserAvatar username={username} avatar={avatar} />
+            <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate sm:hidden">Settings</span>
+            <span className="hidden max-w-[9rem] truncate sm:inline">{username || "Settings"}</span>
           </Link>
-          <ExportDataButton />
           <button
             onClick={handleLogout}
             aria-label="Log out"

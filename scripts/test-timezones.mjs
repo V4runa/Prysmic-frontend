@@ -27,6 +27,8 @@ const account = spawnSync(
       "src/app/lib/authFlow.test.ts",
       "src/app/lib/passwordPolicy.test.ts",
       "src/app/lib/accountDeletion.test.ts",
+      "src/app/lib/preferences.test.ts",
+      "src/app/lib/accountProfile.test.ts",
       "src/app/lib/webAnalytics.test.ts",
       "src/app/lib/seoRoutes.test.ts",
       "src/app/lib/sentryScrub.test.ts",

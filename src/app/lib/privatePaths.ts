@@ -10,5 +10,6 @@ export const PRIVATE_PATH_PREFIXES = [
   "/moods",
   "/tags",
   "/account",
+  "/settings",
   "/test",
 ] as const;

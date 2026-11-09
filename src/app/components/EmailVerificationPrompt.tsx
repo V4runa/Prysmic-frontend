@@ -81,6 +81,20 @@ function refreshPrompt(): void {
   listeners.forEach((listener) => listener());
 }
 
+/** Keep the confirmation note aligned with a profile the settings screen just saved. */
+export function syncVerificationProfile(input: {
+  email?: string | null;
+  emailVerified?: boolean | null;
+}): void {
+  if (typeof input.email === "string" && input.email.trim()) {
+    profileEmail = input.email.trim();
+  }
+  if (input.emailVerified === true || input.emailVerified === false) {
+    rememberEmailVerified(input.emailVerified);
+  }
+  refreshPrompt();
+}
+
 export default function EmailVerificationPrompt() {
   const prompt = useSyncExternalStore(subscribe, readSnapshot, () => HIDDEN);
   const bannerRef = useRef<HTMLDivElement>(null);

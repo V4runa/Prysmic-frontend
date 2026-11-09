@@ -9,6 +9,7 @@ import { apiFetch } from "../hooks/useApi";
 import { habitIconMap, IconKey } from "../components/habitIcons";
 import { getHabitColor } from "../lib/habitColors";
 import { logicalToday } from "../lib/date";
+import { useLogicalToday } from "../hooks/usePreferences";
 import { calendarQueryKey } from "../hooks/useCalendar";
 import { tactile, tactileSubtle } from "../lib/motion";
 import Sparkles from "../components/Sparkles";
@@ -35,23 +36,36 @@ const habitsQueryKey = ["habits"] as const;
 export default function HabitsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const today = useLogicalToday();
+  const seenDay = useRef<string | null>(null);
   const {
     data: habits = [],
     isError,
     isLoading,
   } = useQuery({
     queryKey: habitsQueryKey,
-    queryFn: () => apiFetch<Habit[]>(`/habits?today=${logicalToday()}`),
+    queryFn: () => apiFetch<Habit[]>(`/habits?today=${today}`),
   });
   const [error, setError] = useState("");
   const [animatingId, setAnimatingId] = useState<number | null>(null);
-  const lastCheckDate = useRef<string>(logicalToday());
+  const lastCheckDate = useRef<string>(today);
 
   useEffect(() => {
     if (isError) setError("Failed to load habits");
   }, [isError]);
 
-  // Auto-refresh when the logical day changes (6am reset boundary)
+  useEffect(() => {
+    if (seenDay.current === null) {
+      seenDay.current = today;
+      return;
+    }
+    if (seenDay.current === today) return;
+    seenDay.current = today;
+    lastCheckDate.current = today;
+    queryClient.invalidateQueries({ queryKey: habitsQueryKey });
+  }, [today, queryClient]);
+
+  // Auto-refresh when the logical day rolls over.
   useEffect(() => {
     const interval = setInterval(() => {
       const today = logicalToday();

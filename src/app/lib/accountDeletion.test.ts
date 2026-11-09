@@ -228,13 +228,16 @@ test("account deletion stays inside the app shell and reuses export", () => {
   const shell = readFileSync(new URL("../components/ClientShellWrapper.tsx", import.meta.url), "utf8");
   assert.equal(shell.includes("/account"), false);
 
-  const page = readFileSync(new URL("../account/page.tsx", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../settings/page.tsx", import.meta.url), "utf8");
   assert.match(page, /ExportDataButton/);
   assert.match(page, /notes, tags, habits, tasks, and moods/);
   assert.match(page, /can(?:'|&#39;|&apos;)t be undone/);
   assert.match(page, /DeleteAccountDialog/);
   assert.match(page, /readStoredToken/);
   assert.match(page, /router\.replace\("\/login"\)/);
+  const account = readFileSync(new URL("../account/page.tsx", import.meta.url), "utf8");
+  assert.match(account, /"\/settings"/);
+  assert.equal(isPublicPath("/settings"), false);
 
   const dialog = readFileSync(new URL("../components/DeleteAccountDialog.tsx", import.meta.url), "utf8");
   assert.match(dialog, /can(?:'|&#39;|&apos;)t be undone/);
@@ -250,7 +253,8 @@ test("account deletion stays inside the app shell and reuses export", () => {
   assert.equal(dialog.includes("clearDraft"), false);
 
   const appShell = readFileSync(new URL("../components/AppShell.tsx", import.meta.url), "utf8");
-  assert.match(appShell, /href="\/account"/);
+  assert.match(appShell, /href="\/settings"/);
+  assert.equal(appShell.includes("ExportDataButton"), false);
   const helper = readFileSync(new URL("./accountDeletion.ts", import.meta.url), "utf8");
   assert.match(helper, /clearDraft/);
   assert.match(helper, /clearUserAuthMemory/);

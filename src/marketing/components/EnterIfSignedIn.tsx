@@ -2,10 +2,11 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { landingHref } from "@/app/lib/preferences";
 
 /**
  * A valid session still belongs in the app. Login and signup already
- * land on /notes; opening the public home with that same session follows them.
+ * land on the saved default page; opening the public home follows them.
  * Expired or unreadable tokens stay on the marketing page.
  */
 function hasLiveSession(): boolean {
@@ -25,7 +26,7 @@ export function EnterIfSignedIn() {
   const router = useRouter();
 
   useEffect(() => {
-    if (hasLiveSession()) router.replace("/notes");
+    if (hasLiveSession()) router.replace(landingHref());
   }, [router]);
 
   return null;

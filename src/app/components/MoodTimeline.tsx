@@ -2,7 +2,8 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
-import { localDateKey, logicalToday, prevDayKey } from "../lib/date";
+import { localDateKey, prevDayKey } from "../lib/date";
+import { useLogicalToday } from "../hooks/usePreferences";
 import { resolveMoodVisual } from "../lib/moodColors";
 
 interface MoodEntry {
@@ -21,9 +22,9 @@ interface MoodTimelineProps {
 }
 
 export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
-  // 🔥 streak logic
+  const today = useLogicalToday();
   // Count consecutive logical days that have at least one *organically logged*
-  // mood entry, walking backwards from the current logical day (6am boundary).
+  // mood entry, walking backwards from the current logical day.
   // Backfilled entries — moods added retroactively through the calendar — are
   // excluded so filling in the past can't manufacture a streak. Using a Set of
   // local-day keys keeps this robust to multiple entries on the same day. A
@@ -34,7 +35,7 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
   );
   let streak = 0;
   if (loggedDays.size > 0) {
-    let cursor = logicalToday();
+    let cursor = today;
     if (!loggedDays.has(cursor)) {
       cursor = prevDayKey(cursor);
     }

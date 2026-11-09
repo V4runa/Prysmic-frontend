@@ -1,7 +1,7 @@
 /**
  * Mounted check for Export your data.
  *
- * Clicks the header control, reads the file Chrome saved, refuses a second
+ * Opens Settings and clicks Export, reads the file Chrome saved, refuses a second
  * request while one is pending, and checks that logout does not save the
  * previous account's bytes. A 401 leaves an unsaved note draft in place.
  *
@@ -256,7 +256,7 @@ try {
   await armDownloads(page);
   await page.goto(`${appUrl}/login`, { waitUntil: "domcontentloaded" });
   await page.evaluate((value) => localStorage.setItem("token", value), token(7));
-  await page.goto(`${appUrl}/notes`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${appUrl}/settings`, { waitUntil: "domcontentloaded" });
   const button = await page.waitForSelector('button[aria-label="Export your data"]');
   if (shotDir) await page.screenshot({ path: join(shotDir, "export-header.png") });
 
@@ -328,7 +328,7 @@ try {
   if (leaked.length) throw new Error("logout saved the previous account export");
 
   await page.evaluate((value) => localStorage.setItem("token", value), token(8));
-  await page.goto(`${appUrl}/notes`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${appUrl}/settings`, { waitUntil: "domcontentloaded" });
   await delay(400);
   const leakedAfterSwitch = await filesWith("user-7-private-should-not-download");
   if (leakedAfterSwitch.length) throw new Error("the next account received the previous export");
@@ -358,7 +358,7 @@ try {
   await page.click('button[aria-label="Log out"]');
   await page.waitForFunction(() => location.pathname === "/login");
   await page.evaluate((value) => localStorage.setItem("token", value), tokenB);
-  await page.goto(`${appUrl}/notes`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${appUrl}/settings`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('button[aria-label="Export your data"]');
   await held.shift().respond({ status: 401, headers: cors, body: "unauthorized" });
   await delay(700);
@@ -379,7 +379,7 @@ try {
   await page.click('button[aria-label="Log out"]');
   await page.waitForFunction(() => location.pathname === "/login");
   await page.evaluate((value) => localStorage.setItem("token", value), tokenC);
-  await page.goto(`${appUrl}/notes`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${appUrl}/settings`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('button[aria-label="Export your data"]');
   releaseExport401Body();
   await delay(700);
@@ -436,7 +436,7 @@ try {
     token(7),
     draft
   );
-  await expired.goto(`${appUrl}/notes`, { waitUntil: "domcontentloaded" });
+  await expired.goto(`${appUrl}/settings`, { waitUntil: "domcontentloaded" });
   await expired.click('button[aria-label="Export your data"]');
   await expired.waitForFunction(() => document.body.innerText.includes("Nothing was downloaded."));
   const retry = await expired.$("#export-data-status button");

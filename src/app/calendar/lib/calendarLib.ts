@@ -388,11 +388,15 @@ export function layoutWeekBars(
 
 // ----------------------------- Formatting -----------------------------
 
-/** "9:00 AM" from a stored "HH:MM:SS" local time. */
-export function formatClock(time?: string | null): string {
+/** "9:00 AM" or "21:00" from a stored "HH:MM:SS" local time. */
+export function formatClock(time?: string | null, clock: "12h" | "24h" = "12h"): string {
   if (!time) return "";
   const [hRaw, m] = time.split(":");
   let h = parseInt(hRaw, 10);
+  if (clock === "24h") {
+    if (!Number.isFinite(h)) return "";
+    return `${String(h).padStart(2, "0")}:${m ?? "00"}`;
+  }
   const period = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
   return `${h}:${m} ${period}`;

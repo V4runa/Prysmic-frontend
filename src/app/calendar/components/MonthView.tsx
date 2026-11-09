@@ -18,6 +18,7 @@ import {
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { resolveMoodVisual } from "../../lib/moodColors";
 import { localToday } from "../../lib/date";
+import { usePreferences } from "../../hooks/usePreferences";
 import DaySummary from "./DaySummary";
 import DayAura from "./DayAura";
 import HabitProgressRing from "./HabitProgressRing";
@@ -73,6 +74,7 @@ function DesktopMonth({
   onOpenEvent,
 }: InnerProps) {
   const today = localToday();
+  const { clockFormat } = usePreferences();
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -238,7 +240,7 @@ function DesktopMonth({
                     >
                       <span className="truncate">
                         {!seg.event.allDay && !seg.continuesLeft && seg.event.startTime
-                          ? `${formatClock(seg.event.startTime)} `
+                          ? `${formatClock(seg.event.startTime, clockFormat)} `
                           : ""}
                         {seg.event.title}
                       </span>
