@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import GlassPanel from "../components/GlassPanel";
 import { apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
 import { TextField, FormButton } from "../components/forms";
+import { applyAuthSession, readLoginNotice } from "../lib/storedSession";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,6 +18,11 @@ export default function LoginPage() {
   // The backend can be cold on the first hit after idle; surface that so a
   // multi-second wait never reads as a frozen/unresponsive button.
   const [slow, setSlow] = useState(false);
+  const notice = useSyncExternalStore(
+    () => () => {},
+    readLoginNotice,
+    () => null
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +32,7 @@ export default function LoginPage() {
     const slowTimer = setTimeout(() => setSlow(true), 3500);
 
     try {
-      const res = await apiFetch<{ access_token: string }>("/auth/login", {
+      const res = await apiFetch<{ access_token: string; emailVerified?: boolean }>("/auth/login", {
         method: "POST",
         body: JSON.stringify({
           identifier,
@@ -34,7 +40,7 @@ export default function LoginPage() {
         }),
       });
 
-      localStorage.setItem("token", res.access_token);
+      applyAuthSession({ token: res.access_token, emailVerified: res.emailVerified });
       clearTimeout(slowTimer);
       router.push("/notes");
     } catch (err: Error | unknown) {
@@ -57,6 +63,12 @@ export default function LoginPage() {
             Enter the Flow
           </h2>
 
+          {notice && (
+            <p role="status" aria-live="polite" className="text-cyan-100 text-sm mb-4 text-center leading-relaxed">
+              {notice}
+            </p>
+          )}
+
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <TextField
               type="text"
@@ -72,6 +84,11 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <div className="flex justify-end -mt-2">
+              <Link href="/forgot-password" className="tap-target inline-flex items-center text-sm text-cyan-300 hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <FormButton
               type="submit"
               variant="primary"
@@ -83,7 +100,7 @@ export default function LoginPage() {
           </form>
 
           {error && (
-            <p className="text-rose-400 text-sm mt-3 text-center">{error}</p>
+            <p role="alert" className="text-rose-400 text-sm mt-3 text-center">{error}</p>
           )}
 
           {slow && !error && (

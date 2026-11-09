@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   NotebookPen,
@@ -10,6 +10,8 @@ import {
   HeartPulse,
   Sparkles,
 } from "lucide-react";
+import { SIGNUP_EMAIL_NOTE } from "../lib/authMessages";
+import { readSignupEmailNote } from "../lib/storedSession";
 import { springSoft, tactile } from "../lib/motion";
 
 const PENDING_KEY = "prysmic_onboarding_pending";
@@ -82,6 +84,11 @@ const steps = [
 export default function OnboardingModal() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
+  const emailNote = useSyncExternalStore(
+    () => () => {},
+    readSignupEmailNote,
+    () => false
+  );
 
   useEffect(() => {
     try {
@@ -165,6 +172,11 @@ export default function OnboardingModal() {
                 <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
                   {current.body}
                 </p>
+                {step === 0 && emailNote && (
+                  <p className="mt-4 text-sm text-cyan-100/90 leading-relaxed">
+                    {SIGNUP_EMAIL_NOTE}
+                  </p>
+                )}
 
                 {step === 1 && (
                   <div className="mt-5 flex flex-col gap-3">

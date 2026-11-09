@@ -6,12 +6,12 @@ import AppShell from "./AppShell";
 import OnboardingModal from "./OnboardingModal";
 import PrismBackdrop from "./PrismBackdrop";
 import { SessionToastProvider, useSessionToast } from "./SessionToastContext";
+import { isPublicPath } from "../lib/publicPaths";
 import QueryProvider from "../providers/QueryProvider";
 
 function ClientShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const publicPaths = ["/", "/login", "/signup"];
-  const isPublic = publicPaths.includes(pathname);
+  const isPublic = isPublicPath(pathname);
   const toastTriggeredRef = useRef(false);
   const triggerToast = useSessionToast();
 

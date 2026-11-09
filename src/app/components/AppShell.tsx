@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import EmailVerificationPrompt from "./EmailVerificationPrompt";
 import ExportDataButton from "./ExportDataButton";
 import { syncPersonalCache } from "../lib/personalCache";
 import { bumpSessionEpoch } from "../lib/sessionBoundary";
@@ -145,6 +146,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="app-main relative z-10">
+        <EmailVerificationPrompt />
         {children}
       </main>
 

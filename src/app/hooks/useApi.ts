@@ -15,6 +15,48 @@ const getBaseUrl = () =>
 const getToken = () =>
   typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
+export class ApiError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+  readonly retryAfter: string | null;
+
+  constructor(
+    status: number,
+    statusText: string,
+    body: unknown,
+    retryAfter: string | null
+  ) {
+    const detail = typeof body === "string" ? body : JSON.stringify(body);
+    super(`API Error: ${status} ${statusText} - ${detail}`);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+    this.retryAfter = retryAfter;
+  }
+}
+
+type ApiInit = RequestInit & { auth?: boolean };
+
+function buildHeaders(token: string | null, headerInit?: HeadersInit): Headers {
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  });
+  if (headerInit) {
+    new Headers(headerInit).forEach((value, key) => {
+      headers.set(key, value);
+    });
+  }
+  return headers;
+}
+
+function readBody(res: Response): Promise<unknown> {
+  const ct = res.headers.get("content-type") || "";
+  return ct.includes("application/json")
+    ? res.json().catch(() => null)
+    : res.text().catch(() => "");
+}
+
 // A 401 means the session is gone; clear it and let the app react globally.
 function handleUnauthorized(msg: string): never {
   if (typeof window !== "undefined") {
@@ -26,18 +68,14 @@ function handleUnauthorized(msg: string): never {
 
 export async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: ApiInit = {}
 ): Promise<T> {
-  const token = getToken();
-
-  const headers = new Headers({
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
-  });
+  const { auth = true, headers: headerInit, ...request } = options;
+  const token = auth ? getToken() : null;
+  const headers = buildHeaders(token, headerInit);
 
   const res = await fetch(`${getBaseUrl()}${endpoint}`, {
-    ...options,
+    ...request,
     headers,
   });
 
@@ -49,16 +87,14 @@ export async function apiFetch<T>(
     return null as unknown as T;
   }
 
-  const ct = res.headers.get("content-type") || "";
-  const body = ct.includes("application/json")
-    ? await res.json().catch(() => null)
-    : await res.text().catch(() => "");
+  const body = await readBody(res);
 
   if (!res.ok) {
-    throw new Error(
-      `API Error: ${res.status} ${res.statusText} - ${
-        typeof body === "string" ? body : JSON.stringify(body)
-      }`
+    throw new ApiError(
+      res.status,
+      res.statusText,
+      body,
+      res.headers.get("retry-after")
     );
   }
 

@@ -17,6 +17,14 @@ for (const TZ of zones) {
   if (result.status !== 0) failed += 1;
 }
 
+console.log("\n=== account lifecycle ===\n");
+const account = spawnSync(
+  process.execPath,
+  ["--import", "tsx", "--test", "src/app/lib/authFlow.test.ts"],
+  { stdio: "inherit", env: process.env }
+);
+if (account.status !== 0) failed += 1;
+
 console.log("\n=== note writing safety ===\n");
 const notes = spawnSync(
   process.execPath,

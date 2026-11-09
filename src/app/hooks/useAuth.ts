@@ -20,3 +20,24 @@ export function getUserFromToken(): { userId: number } | null {
     return null;
   }
 }
+
+export function readSessionClaims(): {
+  userId: number;
+  username: string | null;
+  email: string | null;
+} | null {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  try {
+    const decoded = jwtDecode<JwtPayload>(token);
+    if (typeof decoded.sub !== "number") return null;
+    return {
+      userId: decoded.sub,
+      username: decoded.username ?? null,
+      email: decoded.email ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
