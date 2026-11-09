@@ -4,12 +4,30 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import ClientShellWrapper from "./components/ClientShellWrapper";
+import { SITE_DESCRIPTION, SITE_URL } from "@/marketing/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Prysmic",
-  description: "Prysmic is an extension to your cognition. A smoothly designed space to capture thoughts, track habits, and organize tasks.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Prysmic",
+    template: "%s · Prysmic",
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: "Prysmic",
+  openGraph: {
+    type: "website",
+    siteName: "Prysmic",
+    locale: "en_US",
+    title: "Prysmic",
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Prysmic",
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {
