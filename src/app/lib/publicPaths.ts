@@ -1,7 +1,7 @@
 /**
  * Routes that render outside the authenticated app shell.
  * Login and signup still land on /notes. These paths must never include
- * /notes, /calendar, /habits, /tasks, /moods, /tags, or /account.
+ * /notes, /calendar, /habits, /tasks, /moods, or /tags. The account screen stays private.
  */
 export const PUBLIC_PATHS = [
   "/",

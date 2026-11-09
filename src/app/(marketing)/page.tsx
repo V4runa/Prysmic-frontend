@@ -232,6 +232,7 @@ export default function HomePage() {
         <ul className="mt-8 max-w-2xl space-y-2 text-sm leading-relaxed text-slate-400">
           <li>Prysmic has no feeds, followers or sharing. What you write stays in your account.</li>
           <li>Download everything you&apos;ve written as a JSON file at any time.</li>
+          <li>Delete your account and everything in it from your Account page.</li>
           <li>Prysmic runs in your browser, on a computer or a phone.</li>
         </ul>
         <div className="mt-8 flex flex-wrap items-center gap-4">

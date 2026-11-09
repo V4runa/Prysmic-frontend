@@ -30,7 +30,7 @@ export default function TermsPage() {
           The service is offered as it stands during early access. It may change, and it may be unavailable at times. A JSON download is there so you can keep a copy of your writing. Attached file bytes are not part of that download.
         </p>
         <p>
-          You can stop using Prysmic at any time. Questions can go to{" "}
+          You can stop using Prysmic at any time, and you can delete your account from your Account page. Questions can go to{" "}
           <a href="mailto:hello@prysmic.me" className="text-cyan-200 underline decoration-cyan-300/30 underline-offset-4">
             hello@prysmic.me
           </a>

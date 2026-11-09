@@ -30,6 +30,9 @@ export default function PrivacyPage() {
           You can download what you have written as a JSON file. The file includes your notes, tags, tasks, contracts, check-ins, moods, and calendar events. Attached files are listed by name, type, and size. The file bytes themselves are not included in that download.
         </p>
         <p>
+          You can delete your account from your Account page. That permanently deletes your notes, tags, habits, tasks, and moods, and it cannot be undone.
+        </p>
+        <p>
           No analytics tool is running on this site. If one is turned on later, this page will name it before it starts.
         </p>
         <p>
