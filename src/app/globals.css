@@ -420,10 +420,6 @@ html:has(.marketing-root) body {
   background: transparent;
 }
 
-.font-display {
-  font-family: var(--font-display), "Iowan Old Style", Palatino, Georgia, serif;
-}
-
 .marketing-root :is(h1, h2, h3, p, li, blockquote, figcaption) {
   user-select: text;
   cursor: auto;

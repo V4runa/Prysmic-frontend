@@ -1,3 +1,8 @@
+/**
+ * Routes that render outside the authenticated app shell.
+ * Login and signup still land on /notes. These paths must never include
+ * /notes, /calendar, /habits, /tasks, /moods, /tags, or /account.
+ */
 export const PUBLIC_PATHS = [
   "/",
   "/login",

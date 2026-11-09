@@ -2,7 +2,13 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import type { Clip } from "../modules";
+
+export type Clip = {
+  mp4: string;
+  webm: string;
+  poster: string;
+  label: string;
+};
 
 /**
  * The still is always in the document, so the frame is never an empty box:

@@ -1,17 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { EnterIfSignedIn } from "@/marketing/components/EnterIfSignedIn";
-import { HeroStage } from "@/marketing/components/HeroStage";
-import { IllustrativeNotice } from "@/marketing/components/IllustrativeNotice";
 import { LoopClip } from "@/marketing/components/LoopClip";
 import { Shot } from "@/marketing/components/Shot";
-import { moduleMap } from "@/marketing/modules";
-import { btnGhost, btnPrimary, kickerClass, SITE_DESCRIPTION, SITE_URL } from "@/marketing/site";
+import { btnGhost, btnPrimary, kickerClass, SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/marketing/site";
 
 export const metadata: Metadata = {
-  title: "Prysmic",
+  title: { absolute: SITE_TITLE },
   description: SITE_DESCRIPTION,
   alternates: { canonical: "/" },
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 const jsonLd = {
@@ -23,32 +24,32 @@ const jsonLd = {
 };
 
 const frame =
-  "overflow-hidden rounded-2xl border border-white/10 bg-[#0c0e12] shadow-[0_24px_60px_-32px_rgba(0,0,0,0.85)]";
+  "overflow-hidden rounded-xl border border-white/10 bg-[#0c0e12]";
 
-const days = [
-  { name: "Mon", mark: "Clear", line: "Morning pages. The sentence I kept." },
-  { name: "Tue", mark: "Threshold", line: "A note for what the room was doing." },
-  { name: "Wed", mark: "River", line: "The color of the rain, and a task to revise it." },
-  { name: "Thu", mark: "Letter", line: "Written in full, and not sent." },
-  { name: "Fri", mark: "Held", line: "The evening sit. A margin, not a plan." },
-  { name: "Sat", mark: "Walk", line: "The long way, placed on the day." },
-  { name: "Sun", mark: "Practice", line: "On returning. The week is already the calendar." },
-];
+const section = "mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-24";
 
-function RoomLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="mt-5 inline-flex text-sm text-cyan-200 underline decoration-cyan-300/30 underline-offset-4 hover:decoration-cyan-200"
-    >
-      {children}
-    </Link>
-  );
-}
+const notesClip = {
+  mp4: "/marketing/clips/notes.mp4",
+  webm: "/marketing/clips/notes.webm",
+  poster: "/marketing/clips/notes.jpg",
+  label: "Choosing the novel tag filters the notes list.",
+};
+
+const habitClip = {
+  mp4: "/marketing/clips/habit.mp4",
+  webm: "/marketing/clips/habit.webm",
+  poster: "/marketing/clips/habit.jpg",
+  label: "Checking off the Evening pages contract.",
+};
+
+const calendarClip = {
+  mp4: "/marketing/clips/calendar.mp4",
+  webm: "/marketing/clips/calendar.webm",
+  poster: "/marketing/clips/calendar.jpg",
+  label: "Opening a day that holds a contract, a mood, a note, and a task.",
+};
 
 export default function HomePage() {
-  const calendarClip = moduleMap.calendar.clip;
-
   return (
     <>
       <EnterIfSignedIn />
@@ -57,246 +58,196 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <section className="overflow-x-clip px-5 pb-8 pt-14 sm:px-8 sm:pt-20 lg:pb-14">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-12">
+      <section className={section}>
+        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <div>
-            <p className={kickerClass}>An interface for cognition</p>
-            <h1 className="font-display mt-5 text-[clamp(3.25rem,6.4vw,5.75rem)] font-medium leading-[0.9] text-slate-50">
-              Between
-              <br />
-              <span className="italic text-slate-100/95">the mind</span>
-              <br />
-              and the world.
+            <h1 className="text-4xl font-semibold leading-tight text-slate-50 sm:text-5xl">
+              A calm place to keep your ideas and come back to them.
             </h1>
-            <p className="mt-6 max-w-md text-lg leading-relaxed text-slate-300">
-              A place to set a moment down and come back to it. Notes, moods, contracts, and tasks share one calendar.
+            <p className="mt-6 text-base leading-relaxed text-slate-300 sm:text-lg">
+              Prysmic is a private notebook for creative work and reflective practice. Write notes and organize them with tags you name. Write your habits as short contracts with yourself and check them off. Log how each day felt. The calendar puts it all together, day by day.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/signup" className={btnPrimary}>
-                Begin
+                Create account
               </Link>
               <Link href="/login" className={btnGhost}>
-                Enter
+                Sign in
               </Link>
             </div>
+            <p className="mt-4 text-sm text-slate-400">
+              Free while Prysmic is in early access.
+            </p>
           </div>
-          <HeroStage />
-        </div>
-      </section>
-
-      <section id="rooms" className="scroll-mt-20 overflow-x-clip px-5 py-12 sm:px-8 sm:py-16">
-        <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-2 lg:gap-14">
-          <div className="relative min-w-0 pb-8">
+          <figure>
             <div className={frame}>
               <Shot
                 src="/marketing/notes.webp"
-                alt="Eight fictional notes, tagged dawn, draft, river, and correspondence."
+                alt="The Notes page with the novel tag selected and the matching notes listed."
                 sizes="(min-width: 1024px) 560px, 100vw"
+                priority
                 className="aspect-[16/10]"
               />
             </div>
-            <div className={`${frame} absolute -bottom-6 right-3 w-[58%] rotate-[2.5deg] sm:right-6`}>
-              <Shot
-                src="/marketing/tags.webp"
-                alt="The tag codex: dawn, draft, threshold, river, correspondence, practice."
-                sizes="280px"
-                className="aspect-[16/9]"
-              />
-            </div>
-          </div>
-          <div className="pt-8 lg:pt-0">
-            <p className={kickerClass}>Notes and tags</p>
-            <h2 className="font-display mt-3 text-4xl font-medium text-slate-50 sm:text-5xl">
-              A sentence, and the mark that brings you back.
-            </h2>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-slate-300">
-              You write the moment and give it a tag you named. There is no text search. The way back is the word you chose.
-            </p>
-            <div className="flex flex-wrap gap-x-6">
-              <RoomLink href="/modules/notes">Notes</RoomLink>
-              <RoomLink href="/modules/tags">Tags</RoomLink>
-            </div>
-          </div>
+            <figcaption className="mt-3 text-sm text-slate-400">
+              The Notes page, filtered by one tag. Sample content.
+            </figcaption>
+          </figure>
         </div>
       </section>
 
-      <section className="px-5 py-12 sm:px-8 sm:py-16">
-        <div className="mx-auto max-w-6xl">
-          <p className={kickerClass}>The calendar, at the center</p>
-          <h2 className="font-display mt-3 max-w-3xl text-4xl font-medium text-slate-50 sm:text-5xl">
-            The other rooms arrive on the day.
-          </h2>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-300">
-            A note, a mood, a contract, and a task are not four tools. Open the day and they are already in it.
+      <section className={section}>
+        <p className={kickerClass}>Notes and tags</p>
+        <h2 className="mt-3 max-w-2xl text-3xl font-semibold text-slate-50 sm:text-4xl">
+          Organize your notes in your own words.
+        </h2>
+        <div className="mt-6 max-w-2xl space-y-4 text-base leading-relaxed text-slate-300">
+          <p>
+            Notes are rich text, with headings, lists, checklists and links. You can attach images, PDFs or text files to any note.
           </p>
-
-          <div className="mt-10 grid items-center gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.15fr)] lg:gap-10">
-            <ul className="grid grid-cols-2 gap-3">
-              {[
-                ["/marketing/note.webp", "Note", "The sentence I kept"],
-                ["/marketing/moods.webp", "Mood", "Clear, then Held"],
-                ["/marketing/habit.webp", "Contract", "Morning pages"],
-                ["/marketing/tasks.webp", "Task", "The river paragraph"],
-              ].map(([src, label, text]) => (
-                <li key={label} className={`${frame} p-2`}>
-                  <Shot src={src} alt="" sizes="240px" className="aspect-[16/10] rounded-lg" />
-                  <p className="px-1 pb-1 pt-2 text-[0.65rem] uppercase tracking-[0.18em] text-cyan-200/80">
-                    {label}
-                  </p>
-                  <p className="px-1 pb-1 text-sm text-slate-200">{text}</p>
-                </li>
-              ))}
-            </ul>
-            <div>
-              <div className={`${frame} relative aspect-[16/10]`}>
-                <Shot
-                  src="/marketing/calendar-day.webp"
-                  alt="Monday the 9th in folio: morning pages kept, the mood Clear, and the note The sentence I kept."
-                  sizes="(min-width: 1024px) 640px, 100vw"
-                  fill
-                />
-              </div>
-              <p className="mt-3 text-sm text-slate-400">
-                The same Monday, opened. Illustrative entries from folio.
-              </p>
-            </div>
-          </div>
-
-          {calendarClip && (
-            <div className="mt-8">
-              <div className={`${frame} relative aspect-[16/10]`}>
-                <LoopClip clip={calendarClip} sizes="(min-width: 1024px) 1100px, 100vw" />
-              </div>
-              <p className="mt-3 text-sm text-slate-400">{calendarClip.label}</p>
-            </div>
-          )}
-          <RoomLink href="/modules/calendar">The calendar</RoomLink>
+          <p>
+            Each note can carry tags that you create and color. A tag might be a project, a recurring theme, or a dream log. Choose a tag and every note under it is in front of you.
+          </p>
         </div>
-      </section>
-
-      <section className="px-5 py-12 sm:px-8 sm:py-16">
-        <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-2 lg:gap-14">
-          <div className="lg:order-2">
-            <div className={frame}>
-              <Shot
-                src="/marketing/habits.webp"
-                alt="Two fictional contracts, Evening sit and Morning pages, with their streaks."
-                sizes="(min-width: 1024px) 560px, 100vw"
-                className="aspect-[16/10]"
-              />
-            </div>
-            <div className={`${frame} mt-3`}>
-              <Shot
-                src="/marketing/habit.webp"
-                alt="The Morning pages contract, open to its intention and affirmation."
-                sizes="(min-width: 1024px) 560px, 100vw"
-                className="aspect-[16/9]"
-              />
-            </div>
+        <figure className="mt-10">
+          <div className={`${frame} relative aspect-[16/10]`}>
+            <LoopClip clip={notesClip} sizes="(min-width: 1024px) 960px, 100vw" />
           </div>
-          <div>
-            <p className={kickerClass}>Contracts</p>
-            <h2 className="font-display mt-3 text-4xl font-medium text-slate-50 sm:text-5xl">
-              A promise with a name, not a checkbox.
-            </h2>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-slate-300">
-              Intention, affirmation, color, icon, and a rhythm. The streak is the trace of returning.
-            </p>
-            <RoomLink href="/modules/habits">Habit contracts</RoomLink>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 py-12 sm:px-8 sm:py-16">
-        <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-2 lg:gap-14">
+          <figcaption className="mt-3 text-sm text-slate-400">{notesClip.label}</figcaption>
+        </figure>
+        <figure className="mt-8">
           <div className={frame}>
             <Shot
-              src="/marketing/moods.webp"
-              alt="A mood timeline in folio: Clear, Held, and Tender across recent days."
-              sizes="(min-width: 1024px) 560px, 100vw"
+              src="/marketing/note.webp"
+              alt="An open note titled Chapter 3: the train scene, with a heading, a paragraph, two tags, and an attached image."
+              sizes="(min-width: 1024px) 960px, 100vw"
               className="aspect-[16/10]"
             />
           </div>
-          <div>
-            <p className={kickerClass}>Moods</p>
-            <h2 className="font-display mt-3 text-4xl font-medium text-slate-50 sm:text-5xl">
-              The weather of a day, named by you.
-            </h2>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-slate-300">
-              Make the palette. Leave a short note, or none. The timeline keeps the noticing. It does not grade it.
-            </p>
-            <RoomLink href="/modules/moods">Moods</RoomLink>
-          </div>
-        </div>
+        </figure>
       </section>
 
-      <section className="px-5 py-12 sm:px-8 sm:py-16">
-        <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-2 lg:gap-14">
-          <div className={`${frame} lg:order-2`}>
-            <Shot
-              src="/marketing/tasks.webp"
-              alt="A short fictional task list, with due days and priorities."
-              sizes="(min-width: 1024px) 560px, 100vw"
-              className="aspect-[16/10]"
-            />
-          </div>
-          <div>
-            <p className={kickerClass}>Tasks</p>
-            <h2 className="font-display mt-3 text-4xl font-medium text-slate-50 sm:text-5xl">
-              What is asking, given a day.
-            </h2>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-slate-300">
-              A few things that want doing. They sit on the same calendar as the note and the mood.
-            </p>
-            <RoomLink href="/modules/tasks">Tasks</RoomLink>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 py-12 sm:px-8 sm:py-16">
-        <div className="mx-auto max-w-6xl">
-          <IllustrativeNotice compact />
-          <h2 className="font-display mt-8 text-4xl font-medium text-slate-50 sm:text-5xl">
-            One invented week, in the same rooms.
-          </h2>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-300">
-            A writer who does not exist, moving through folio. Not a customer, and not a result.
+      <section className={section}>
+        <p className={kickerClass}>Habit contracts</p>
+        <h2 className="mt-3 max-w-2xl text-3xl font-semibold text-slate-50 sm:text-4xl">
+          Write your habits as contracts with yourself.
+        </h2>
+        <div className="mt-6 max-w-2xl space-y-4 text-base leading-relaxed text-slate-300">
+          <p>
+            A contract has a name, an intent that says why it matters to you, and an affirmation you want to keep in mind. Set it as daily, weekly or monthly, and pick a color and an icon.
           </p>
-          <ol className="mt-8 flex gap-3 overflow-x-auto pb-2">
-            {days.map((day) => (
-              <li
-                key={day.name}
-                className="w-44 shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-              >
-                <p className="text-[0.65rem] uppercase tracking-[0.2em] text-cyan-200/80">
-                  {day.name}
-                </p>
-                <p className="mt-2 font-display text-2xl text-slate-50">{day.mark}</p>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">{day.line}</p>
-              </li>
-            ))}
-          </ol>
-          <RoomLink href="/stories/a-week-of-pages">Read the week</RoomLink>
+          <p>
+            When you&apos;ve done it, check it off. Prysmic keeps your current streak and your longest one, and you can undo a check-in made by mistake.
+          </p>
+        </div>
+        <figure className="mt-10">
+          <div className={frame}>
+            <Shot
+              src="/marketing/habit.webp"
+              alt="The Write 300 words contract, open to its daily frequency, intent, affirmation, and streak."
+              sizes="(min-width: 1024px) 960px, 100vw"
+              className="aspect-[16/10]"
+            />
+          </div>
+        </figure>
+        <figure className="mt-8">
+          <div className={`${frame} relative aspect-[16/10]`}>
+            <LoopClip clip={habitClip} sizes="(min-width: 1024px) 960px, 100vw" />
+          </div>
+          <figcaption className="mt-3 text-sm text-slate-400">{habitClip.label}</figcaption>
+        </figure>
+      </section>
+
+      <section className={section}>
+        <p className={kickerClass}>Moods and tasks</p>
+        <h2 className="mt-3 max-w-2xl text-3xl font-semibold text-slate-50 sm:text-4xl">
+          Note how the day felt and what still needs doing.
+        </h2>
+        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-xl border border-white/10 p-5 sm:p-6">
+            <h3 className="text-lg font-semibold text-slate-50">Moods</h3>
+            <p className="mt-3 text-base leading-relaxed text-slate-300">
+              Log one mood a day from a set you make yourself, each with a name and an emoji. Add a short reflection if you want one. Your recent days appear as a timeline.
+            </p>
+            <div className={`${frame} mt-5`}>
+              <Shot
+                src="/marketing/moods.webp"
+                alt="A mood timeline with Focused, Restless, and Calm."
+                sizes="(min-width: 1024px) 480px, 100vw"
+                className="aspect-[16/10]"
+              />
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 p-5 sm:p-6">
+            <h3 className="text-lg font-semibold text-slate-50">Tasks</h3>
+            <p className="mt-3 text-base leading-relaxed text-slate-300">
+              Add what needs doing with a priority and a due date. Each task appears on the calendar on its due date, and you can add one straight from any day.
+            </p>
+            <div className={`${frame} mt-5`}>
+              <Shot
+                src="/marketing/tasks.webp"
+                alt="A task list with due dates, including a revision due today."
+                sizes="(min-width: 1024px) 480px, 100vw"
+                className="aspect-[16/10]"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="border-t border-white/10 bg-white/[0.03]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-5 py-14 sm:px-8 sm:py-16 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className={kickerClass}>Early access</p>
-            <h2 className="font-display mt-3 max-w-xl text-4xl font-medium text-slate-50 sm:text-5xl">
-              Come in. There is no price list yet.
-            </h2>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/signup" className={btnPrimary}>
-              Begin
-            </Link>
-            <Link href="/pricing" className={btnGhost}>
-              Early access
-            </Link>
-          </div>
+      <section className={section}>
+        <p className={kickerClass}>Calendar</p>
+        <h2 className="mt-3 max-w-2xl text-3xl font-semibold text-slate-50 sm:text-4xl">
+          Everything you keep shows up on the calendar.
+        </h2>
+        <div className="mt-6 max-w-2xl space-y-4 text-base leading-relaxed text-slate-300">
+          <p>
+            Open any day to see what you wrote, which contracts you kept, how you felt and what was due. Switch between month, week and day views, and filter by type when you only want to see one kind of entry.
+          </p>
+          <p>
+            You can also add your own events and link them to a note, a task or a habit. Over time the calendar becomes a record you can look back through by date.
+          </p>
         </div>
+        <figure className="mt-10">
+          <div className={`${frame} relative aspect-[16/10]`}>
+            <LoopClip clip={calendarClip} sizes="(min-width: 1024px) 1024px, 100vw" />
+          </div>
+          <figcaption className="mt-3 text-sm text-slate-400">{calendarClip.label}</figcaption>
+        </figure>
+      </section>
+
+      <section className={section}>
+        <p className={kickerClass}>Getting started</p>
+        <h2 className="mt-3 max-w-2xl text-3xl font-semibold text-slate-50 sm:text-4xl">
+          Start with one note.
+        </h2>
+        <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300">
+          When you create an account, Prysmic adds a few sample notes, tags and contracts so you can see how things fit together. A Start Here note waits at the top of your Notes. Edit or delete the samples whenever you like.
+        </p>
+        <ol className="mt-8 max-w-2xl list-decimal space-y-2 pl-5 text-base leading-relaxed text-slate-300">
+          <li>Write a note and give it a tag of your own.</li>
+          <li>Write one contract and check it off.</li>
+          <li>Open the calendar and look at the day.</li>
+        </ol>
+        <ul className="mt-8 max-w-2xl space-y-2 text-sm leading-relaxed text-slate-400">
+          <li>Prysmic has no feeds, followers or sharing. What you write stays in your account.</li>
+          <li>Download everything you&apos;ve written as a JSON file at any time.</li>
+          <li>Prysmic runs in your browser, on a computer or a phone.</li>
+        </ul>
+        <div className="mt-8 flex flex-wrap items-center gap-4">
+          <Link href="/signup" className={btnPrimary}>
+            Create account
+          </Link>
+          <p className="text-sm text-slate-400">
+            Already have an account?{" "}
+            <Link href="/login" className="text-cyan-200 underline decoration-cyan-300/30 underline-offset-4">
+              Sign in
+            </Link>
+          </p>
+        </div>
+        <p className="mt-4 text-sm text-slate-400">
+          Free while Prysmic is in early access.
+        </p>
       </section>
     </>
   );
