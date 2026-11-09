@@ -6,10 +6,14 @@ import {
   bucketsForDay,
   dayStats,
   filterBuckets,
+  focusDayForView,
   indexFeed,
   itemDay,
+  visibleDayBuckets,
+  weekRange,
   type SourceFilter,
 } from "./calendarLib";
+import type { CalendarSource } from "../types";
 import type {
   CalendarEventItem,
   CalendarHabitItem,
@@ -160,10 +164,11 @@ test("week and day agenda titles follow the bucket; the month cell uses the coun
   }
 });
 
-test("the tasks filter hides the grid layer and leaves the unfiltered day bucket intact", () => {
+test("filtering returns a copy and does not mutate the day bucket", () => {
   const index = indexFeed(items);
   const agenda = bucketsForDay(index, "2026-11-06");
   assert.ok(agenda.tasks.length >= 2);
+  const before = agenda.tasks.map((t) => t.id);
 
   const hidden = filterBuckets(agenda, tasksOff);
   assert.equal(hidden.tasks.length, 0);
@@ -171,12 +176,82 @@ test("the tasks filter hides the grid layer and leaves the unfiltered day bucket
   assert.equal(hidden.moods.length, agenda.moods.length);
   assert.equal(hidden.habits.length, agenda.habits.length);
   assert.equal(hidden.events.length, agenda.events.length);
+  assert.deepEqual(
+    agenda.tasks.map((t) => t.id),
+    before
+  );
 
   const shown = filterBuckets(agenda, ALL_SOURCES_ON);
   assert.deepEqual(
     shown.tasks.map((t) => t.id),
-    agenda.tasks.map((t) => t.id)
+    before
   );
+});
+
+test("the agenda uses the same source lens as the grid, for every entry type", () => {
+  const index = indexFeed(items);
+  const day = "2026-11-06";
+  const noteDay = itemDay(note);
+
+  const keys = {
+    event: "events",
+    task: "tasks",
+    habit: "habits",
+    mood: "moods",
+    note: "notes",
+  } as const;
+
+  const lensDay = (source: CalendarSource) =>
+    source === "note" ? noteDay : day;
+
+  for (const source of Object.keys(keys) as CalendarSource[]) {
+    const on = visibleDayBuckets(index, lensDay(source), ALL_SOURCES_ON);
+    const off = visibleDayBuckets(index, lensDay(source), {
+      ...ALL_SOURCES_ON,
+      [source]: false,
+    });
+    const key = keys[source];
+    assert.ok(on[key].length > 0, `${source} is present before the filter`);
+    assert.equal(off[key].length, 0, `${source} is hidden when its filter is off`);
+  }
+
+  const shown = visibleDayBuckets(index, day, ALL_SOURCES_ON);
+  const done = shown.tasks.find((t) => t.id === completedTask.id);
+  assert.equal(done?.isComplete, true);
+  assert.ok(shown.tasks.some((t) => t.isComplete === false));
+
+  const tasksHidden = visibleDayBuckets(index, day, tasksOff);
+  assert.equal(
+    tasksHidden.tasks.some((t) => t.id === completedTask.id),
+    false
+  );
+  assert.ok(tasksHidden.events.length > 0);
+  assert.ok(tasksHidden.habits.length > 0);
+  assert.ok(tasksHidden.moods.length > 0);
+});
+
+test("switching views opens the selected day, or the start of the period", () => {
+  // November 2026's grid includes Oct 26–Dec 6. The 9th is a Monday.
+  assert.equal(focusDayForView("month", "2026-11-09", "2026-11-03"), "2026-11-03");
+  // A leading day from the previous month is a real selection, not today.
+  assert.equal(focusDayForView("month", "2026-11-09", "2026-10-28"), "2026-10-28");
+  // Today left behind while browsing October is not on that grid.
+  assert.equal(focusDayForView("month", "2026-10-09", "2026-11-09"), "2026-10-01");
+  // A trailing day of the next month stays selected.
+  assert.equal(focusDayForView("month", "2026-10-09", "2026-11-01"), "2026-11-01");
+  // The week of a selected day in the viewed month, not the navigation cursor.
+  assert.equal(focusDayForView("month", "2026-10-09", "2026-10-20"), "2026-10-20");
+  const octoberWeek = weekRange(focusDayForView("month", "2026-10-09", "2026-10-20"));
+  assert.equal(octoberWeek.from <= "2026-10-20" && octoberWeek.to >= "2026-10-20", true);
+
+  // Week of Nov 9–15. A click inside it wins; a click outside falls back to Monday.
+  assert.equal(focusDayForView("week", "2026-11-11", "2026-11-12"), "2026-11-12");
+  assert.equal(focusDayForView("week", "2026-11-11", "2026-11-03"), "2026-11-09");
+  assert.equal(focusDayForView("week", "2026-10-09", "2026-10-20"), "2026-10-05");
+
+  // Day view is already the day on screen.
+  assert.equal(focusDayForView("day", "2026-10-28", "2026-11-09"), "2026-10-28");
+  assert.equal(focusDayForView("month", "2026-10-09", null), "2026-10-01");
 });
 
 test("notes stay on the local instant; contracts, moods, and events stay on their calendar day", () => {
