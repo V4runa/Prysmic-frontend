@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { PRIVATE_PATH_PREFIXES } from "./src/app/lib/privatePaths";
 
 /**
  * Production: set NEXT_PUBLIC_API_BASE_URL to your deployed API (e.g. https://xxx.railway.app)
@@ -16,9 +17,15 @@ const nextConfig: NextConfig = {
       { key: "Referrer-Policy", value: "no-referrer" },
       { key: "X-Robots-Tag", value: "noindex, nofollow" },
     ];
+    const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+    const noindexPaths = [...PRIVATE_PATH_PREFIXES, "/forgot-password"];
     return [
       { source: "/verify-email", headers: privateLink },
       { source: "/reset-password", headers: privateLink },
+      ...noindexPaths.flatMap((path) => [
+        { source: path, headers: noindex },
+        { source: `${path}/:path*`, headers: noindex },
+      ]),
     ];
   },
   images: {

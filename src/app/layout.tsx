@@ -4,6 +4,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import ClientShellWrapper from "./components/ClientShellWrapper";
+import { WebAnalytics } from "./components/WebAnalytics";
 import { SITE_DESCRIPTION, SITE_URL } from "@/marketing/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -47,6 +48,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.variable}>
         <ClientShellWrapper>{children}</ClientShellWrapper>
+        <WebAnalytics />
       </body>
     </html>
   );

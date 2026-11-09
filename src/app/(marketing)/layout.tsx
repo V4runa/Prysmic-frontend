@@ -1,4 +1,3 @@
-import { AnalyticsHook } from "@/marketing/components/AnalyticsHook";
 import { SiteFooter } from "@/marketing/components/SiteFooter";
 import { SiteHeader } from "@/marketing/components/SiteHeader";
 
@@ -18,7 +17,6 @@ export default function MarketingLayout({
       <SiteHeader />
       <main id="content">{children}</main>
       <SiteFooter />
-      <AnalyticsHook />
     </div>
   );
 }

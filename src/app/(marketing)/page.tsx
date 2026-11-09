@@ -3,15 +3,27 @@ import type { Metadata } from "next";
 import { EnterIfSignedIn } from "@/marketing/components/EnterIfSignedIn";
 import { LoopClip } from "@/marketing/components/LoopClip";
 import { Shot } from "@/marketing/components/Shot";
-import { btnGhost, btnPrimary, kickerClass, SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/marketing/site";
+import { ogImage } from "@/marketing/og";
+import { btnGhost, btnPrimary, kickerClass, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/marketing/site";
 
 export const metadata: Metadata = {
   title: { absolute: SITE_TITLE },
   description: SITE_DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
+    type: "website",
+    url: "/",
+    siteName: SITE_NAME,
+    locale: "en_US",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
+    images: [ogImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [ogImage],
   },
 };
 
