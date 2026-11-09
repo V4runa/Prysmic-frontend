@@ -36,6 +36,9 @@ export default function PrivacyPage() {
           This site uses Vercel Web Analytics. It is cookieless. It counts anonymous page visits on the public site only. When you create an account, that is counted too, with none of your details attached. It does not see what you write.
         </p>
         <p>
+          Error reports are sent to Sentry for diagnostics only, and they do not include your notes, tasks, moods, email address, or password.
+        </p>
+        <p>
           Questions can go to{" "}
           <a href="mailto:hello@prysmic.me" className="text-cyan-200 underline decoration-cyan-300/30 underline-offset-4">
             hello@prysmic.me

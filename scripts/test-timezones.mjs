@@ -29,6 +29,7 @@ const account = spawnSync(
       "src/app/lib/accountDeletion.test.ts",
       "src/app/lib/webAnalytics.test.ts",
       "src/app/lib/seoRoutes.test.ts",
+      "src/app/lib/sentryScrub.test.ts",
     ],
   { stdio: "inherit", env: process.env }
 );
