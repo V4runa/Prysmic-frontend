@@ -136,11 +136,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex gap-2 sm:gap-4 items-center text-xs sm:text-sm min-w-0">
+          <span className="min-w-0 truncate italic text-slate-400">
+            {username ? `Wandering as ${username}` : "Account"}
+          </span>
           <Link
             href="/settings"
-            aria-label={username ? `Settings, ${username}` : "Settings"}
+            aria-label="Settings"
             aria-current={settingsActive ? "page" : undefined}
-            className={`tap-target inline-flex max-w-[46vw] items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs sm:max-w-none sm:px-3 sm:text-sm ${
+            className={`tap-target inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs sm:px-3 sm:text-sm ${
               settingsActive
                 ? "border-cyan-300/40 bg-white/15 text-cyan-50"
                 : "border-white/10 bg-white/10 text-slate-100 hover:bg-white/20"
@@ -148,8 +151,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           >
             <UserAvatar username={username} avatar={avatar} />
             <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="truncate sm:hidden">Settings</span>
-            <span className="hidden max-w-[9rem] truncate sm:inline">{username || "Settings"}</span>
+            <span>Settings</span>
           </Link>
           <button
             onClick={handleLogout}
