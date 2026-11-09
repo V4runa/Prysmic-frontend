@@ -18,11 +18,6 @@ export default function MarketingLayout({
 }) {
   return (
     <div className={`marketing-root ${display.variable} text-slate-100`}>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: "document.documentElement.classList.add('js')",
-        }}
-      />
       <a
         href="#content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[80] focus:rounded-md focus:bg-slate-100 focus:px-3 focus:py-2 focus:text-slate-900"

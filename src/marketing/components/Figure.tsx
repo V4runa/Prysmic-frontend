@@ -12,7 +12,7 @@ export function Figure({
 }) {
   return (
     <figure className="min-w-0">
-      <div className="glass-card relative aspect-[16/10] overflow-hidden rounded-2xl">
+      <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-white/10 bg-[#0c0e12]">
         <Image
           src={figure.src}
           alt={figure.alt}

@@ -21,6 +21,15 @@ const nextConfig: NextConfig = {
       { source: "/reset-password", headers: privateLink },
     ];
   },
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
+  // Journal MDX is read from disk. Include it in the server trace so a
+  // dynamically rendered post can still find its file after deploy.
+  outputFileTracingIncludes: {
+    "/blog": ["./src/content/journal/**/*"],
+    "/blog/[slug]": ["./src/content/journal/**/*"],
+  },
   async rewrites() {
     if (!apiProxyTarget) {
       return [];

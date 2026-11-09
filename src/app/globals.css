@@ -429,44 +429,6 @@ html:has(.marketing-root) body {
   cursor: auto;
 }
 
-@keyframes marketing-rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .marketing-rise {
-    animation: marketing-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  .marketing-rise-delay {
-    animation-delay: 0.12s;
-  }
-
-  /* Hidden only after JS marks the document, so no-JS readers still see copy. */
-  .js .reveal:not(.reveal-on) {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-
-  .js .reveal {
-    transition:
-      opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .js .reveal.reveal-on {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 /* Placeholder (empty editor) */
 .note-prose .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
