@@ -4,6 +4,15 @@ export const ogSize = { width: 1200, height: 630 };
 export const ogContentType = "image/png";
 export const ogAlt = "Prysmic. A calm place to keep your ideas and come back to them.";
 
+/** Absolute path of the generated /opengraph-image route. */
+export const ogImage = {
+  url: "/opengraph-image",
+  width: ogSize.width,
+  height: ogSize.height,
+  alt: ogAlt,
+  type: ogContentType,
+};
+
 export function OgImage() {
   return new ImageResponse(
     (

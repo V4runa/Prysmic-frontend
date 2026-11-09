@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           You can delete your account from your Account page. That permanently deletes your notes, tags, habits, tasks, and moods, and it cannot be undone.
         </p>
         <p>
-          No analytics tool is running on this site. If one is turned on later, this page will name it before it starts.
+          This site uses Vercel Web Analytics. It is cookieless. It counts anonymous page visits on the public site only. When you create an account, that is counted too, with none of your details attached. It does not see what you write.
         </p>
         <p>
           Questions can go to{" "}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { track } from "@vercel/analytics";
 import GlassPanel from "../components/GlassPanel";
 import { ApiError, apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
@@ -46,6 +47,7 @@ export default function SignupPage() {
         signedUp: res.emailVerified !== true,
       });
       markOnboardingPending();
+      track("signup");
       clearTimeout(slowTimer);
       router.push("/notes");
     } catch (err: Error | unknown) {
