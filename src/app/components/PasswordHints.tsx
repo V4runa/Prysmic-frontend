@@ -1,6 +1,7 @@
 import {
   PASSWORD_REQUIREMENTS,
   PASSWORD_STRENGTH_HINT,
+  PASSWORD_TOO_LONG_MESSAGE,
   assessPassword,
   type PasswordRuleState,
 } from "../lib/passwordPolicy";
@@ -51,6 +52,12 @@ export default function PasswordHints({
           <Requirement key={rule.id} state={assessment.rules[rule.id]} label={rule.label} />
         ))}
       </ul>
+      {assessment.rules.bytes === "unmet" ? (
+        <p className="text-rose-300">
+          <span className="sr-only">Not met. </span>
+          {PASSWORD_TOO_LONG_MESSAGE}
+        </p>
+      ) : null}
       {strength === "empty" ? null : (
         <p className="text-slate-500">
           <span className="text-slate-400">Strength: {strength}. </span>

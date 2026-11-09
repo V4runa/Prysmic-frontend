@@ -12,11 +12,13 @@ export interface PasswordIdentity {
   username?: string | null;
 }
 
-export const PASSWORD_REQUIREMENTS: { id: PasswordRuleId; label: string }[] = [
+/** Shown before typing. The 72-byte cap is an error only after it is crossed. */
+export const PASSWORD_REQUIREMENTS: { id: Exclude<PasswordRuleId, "bytes">; label: string }[] = [
   { id: "length", label: "At least 8 characters" },
-  { id: "bytes", label: "No more than 72 bytes" },
-  { id: "identity", label: "Not your email, the part before @, or your username" },
+  { id: "identity", label: "Not your username or email" },
 ];
+
+export const PASSWORD_TOO_LONG_MESSAGE = "That's too long. Use a shorter password.";
 
 export const PASSWORD_STRENGTH_HINT: Record<Exclude<PasswordStrength, "empty">, string> = {
   weak: "A light password. More length or a mix of characters would make it stronger.",
@@ -103,7 +105,7 @@ export function passwordBlockMessage(password: string, identity: PasswordIdentit
   const parts: string[] = [];
   if (password.length < PASSWORD_MIN_LENGTH) parts.push("Use at least 8 characters.");
   if (utf8ByteLength(password) > PASSWORD_MAX_BYTES) {
-    parts.push("That password is past 72 bytes.");
+    parts.push(PASSWORD_TOO_LONG_MESSAGE);
   }
   if (passwordMatchesIdentity(password, identity)) {
     parts.push("Choose a password that isn't your email or username.");

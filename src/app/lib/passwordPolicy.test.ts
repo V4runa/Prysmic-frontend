@@ -18,11 +18,7 @@ test("hard rules allow a light password and refuse length, bytes, and identity",
   assert.equal(PASSWORD_MAX_BYTES, 72);
   assert.deepEqual(
     PASSWORD_REQUIREMENTS.map((rule) => rule.label),
-    [
-      "At least 8 characters",
-      "No more than 72 bytes",
-      "Not your email, the part before @, or your username",
-    ]
+    ["At least 8 characters", "Not your username or email"]
   );
 
   assert.equal(passwordBlockMessage("abcdefgh"), null);
@@ -31,15 +27,17 @@ test("hard rules allow a light password and refuse length, bytes, and identity",
   assert.match(passwordBlockMessage("") ?? "", /8 characters/);
 
   assert.match(passwordBlockMessage("short") ?? "", /8 characters/);
-  assert.equal(passwordBlockMessage("short")?.includes("72"), false);
+  assert.equal(passwordBlockMessage("short")?.includes("too long"), false);
 
   const within = "é".repeat(36);
   const over = "é".repeat(37);
   assert.equal(utf8ByteLength(within), 72);
   assert.equal(utf8ByteLength(over), 74);
   assert.equal(passwordBlockMessage(within), null);
-  assert.match(passwordBlockMessage("a".repeat(73)) ?? "", /72 bytes/);
-  assert.match(passwordBlockMessage(over) ?? "", /72 bytes/);
+  assert.equal(passwordBlockMessage("a".repeat(73)), "That's too long. Use a shorter password.");
+  assert.equal(passwordBlockMessage(over), "That's too long. Use a shorter password.");
+  assert.equal(assessPassword(over).rules.length, "met");
+  assert.equal(assessPassword(over).rules.bytes, "unmet");
 
   const identity = { email: "Ada@Prysmic.test", username: "Wanderer" };
   assert.equal(passwordMatchesIdentity("ada@prysmic.test", identity), true);
@@ -113,4 +111,12 @@ test("signup and reset show the rules and no longer mention 6 characters", () =>
   assert.match(reset, /PasswordHints/);
   assert.match(reset, /id="new-password-rules"/);
   assert.equal(reset.includes('hint="At least'), false);
+
+  const hints = readFileSync(new URL("../components/PasswordHints.tsx", import.meta.url), "utf8");
+  assert.match(hints, /PASSWORD_TOO_LONG_MESSAGE/);
+  assert.equal(hints.includes("72"), false);
+  assert.equal(hints.includes("No more than"), false);
+  const policy = readFileSync(new URL("./passwordPolicy.ts", import.meta.url), "utf8");
+  assert.match(policy, /Not your username or email/);
+  assert.match(policy, /email\.slice\(0, at\)/);
 });
