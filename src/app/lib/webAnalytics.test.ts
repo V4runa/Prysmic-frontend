@@ -69,7 +69,11 @@ test("signup records a conversion with no properties, and the root layout mounts
 
   const privacy = readFileSync(new URL("../(marketing)/privacy/page.tsx", import.meta.url), "utf8");
   assert.match(privacy, /Vercel Web Analytics/);
-  assert.match(privacy, /cookieless/);
-  assert.match(privacy, /does not see what you write/);
+  assert.match(
+    privacy,
+    /the home page, sign-in, sign-up, password reset and email confirmation pages, and the privacy and terms pages/,
+  );
+  assert.match(privacy, /uses no cookies/);
+  assert.match(privacy, /never runs inside the app where you write/);
   assert.equal(privacy.includes("No analytics tool is running"), false);
 });

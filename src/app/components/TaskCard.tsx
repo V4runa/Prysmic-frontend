@@ -2,8 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Task, TaskPriority } from "../tasks/types/task";
 import { apiFetch } from "../hooks/useApi";
+import { rememberTaskCompletion } from "../hooks/taskCompletionSync";
 import {
   CheckCircle2,
   Circle,
@@ -42,6 +44,7 @@ const priorityMap = {
 };
 
 export default function TaskCard({ task, onUpdate }: TaskCardProps) {
+  const queryClient = useQueryClient();
   const [updating, setUpdating] = useState(false);
   const [editing, setEditing] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -98,6 +101,9 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
     try {
       const endpoint = task.isComplete ? "uncomplete" : "complete";
       await apiFetch(`/tasks/${task.id}/${endpoint}`, { method: "POST" });
+      // The list refresh waits for the animation. The calendar feed does not,
+      // or leaving this page still shows the previous check.
+      rememberTaskCompletion(queryClient, task.id, !task.isComplete, { tasks: false });
 
       if (!task.isComplete) {
         setAnimating(true);

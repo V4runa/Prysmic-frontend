@@ -43,7 +43,7 @@ test("sentry stays off without a DSN and names the Vercel environment", () => {
   assert.match(privacy, /Vercel Web Analytics/);
   assert.match(
     privacy,
-    /Error reports are sent to Sentry for diagnostics only, and they do not include your notes, tasks, moods, email address, or password\./,
+    /we remove note, task and mood text, email addresses, passwords, sign-in tokens, request bodies, form input and IP addresses/,
   );
 
   const globalError = readFileSync(new URL("../global-error.tsx", import.meta.url), "utf8");
