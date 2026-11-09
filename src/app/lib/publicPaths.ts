@@ -1,3 +1,8 @@
+/**
+ * Routes that render outside the authenticated app shell.
+ * Login and signup still land on /notes. These paths must never include
+ * /notes, /calendar, /habits, /tasks, /moods, or /tags. The account screen stays private.
+ */
 export const PUBLIC_PATHS = [
   "/",
   "/login",
@@ -5,6 +10,8 @@ export const PUBLIC_PATHS = [
   "/forgot-password",
   "/verify-email",
   "/reset-password",
+  "/privacy",
+  "/terms",
 ] as const;
 
 export function isPublicPath(pathname: string): boolean {

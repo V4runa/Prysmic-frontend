@@ -402,6 +402,29 @@ select.focus-band:focus-visible {
   }
 }
 
+/* Marketing pages are documents. The app shell keeps the viewport locked;
+   these routes opt back into document scroll without touching app pages. */
+html:has(.marketing-root),
+html:has(.marketing-root) body {
+  height: auto;
+  overflow: auto;
+  color-scheme: dark;
+  /* Keep the public site dark even when the OS prefers light. The app's own
+     light-scheme variables must not wash this document out. */
+  background: #07080c;
+  color: #e7eef4;
+}
+
+.marketing-root {
+  min-height: 100dvh;
+  background: transparent;
+}
+
+.marketing-root :is(h1, h2, h3, p, li, blockquote, figcaption) {
+  user-select: text;
+  cursor: auto;
+}
+
 /* Placeholder (empty editor) */
 .note-prose .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);

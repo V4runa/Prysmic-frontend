@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
       { source: "/reset-password", headers: privateLink },
     ];
   },
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
   async rewrites() {
     if (!apiProxyTarget) {
       return [];
