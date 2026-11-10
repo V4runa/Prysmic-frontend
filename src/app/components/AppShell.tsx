@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import EmailVerificationPrompt, { syncVerificationProfile } from "./EmailVerificationPrompt";
+import UpdatesSheet, { UpdateHighlightCard, UpdatesNavButton } from "./UpdatesPanel";
 import UserAvatar from "./UserAvatar";
+import { dismissProductHighlight, useUpdatesSeen, viewProductUpdates } from "../hooks/useUpdatesSeen";
 import { readSessionClaims, useSessionIdentity } from "../hooks/useAuth";
 import { apiFetch } from "../hooks/useApi";
 import { readSelf } from "../lib/accountProfile";
@@ -37,6 +39,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { username } = useSessionIdentity();
   const { avatar } = usePreferences();
+  const { unread: updatesUnread, highlight: updateHighlight } = useUpdatesSeen();
+  const [updatesOpen, setUpdatesOpen] = useState(false);
+  const updatesOpenerRef = useRef<HTMLElement | null>(null);
+
+  const openUpdates = useCallback((from?: HTMLElement | null) => {
+    if (from) updatesOpenerRef.current = from;
+    viewProductUpdates();
+    setUpdatesOpen(true);
+  }, []);
+
+  const closeUpdates = useCallback(() => {
+    setUpdatesOpen(false);
+  }, []);
 
   useEffect(() => {
     const claims = readSessionClaims();
@@ -77,14 +92,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     requestLogout({ queryClient, navigate: (href) => router.push(href) });
   };
 
-  const navItems: {
+  const navItems: ({
     label: string;
-    href: string;
     icon?: LucideIcon;
-    disabled?: boolean;
-    /** Kept off the mobile tab bar (5-icon ceiling) but shown in the header. */
+    /** Kept off the mobile tab bar but shown in the header. */
     desktopOnly?: boolean;
-  }[] = [
+  } & (
+    | { href: string; action?: undefined }
+    | { action: "updates"; href?: undefined }
+  ))[] = [
     { label: "Notes", href: "/notes", icon: StickyNote },
     { label: "Calendar", href: "/calendar", icon: CalendarDays },
     { label: "Habits", href: "/habits", icon: Flame },
@@ -92,13 +108,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { label: "Moods", href: "/moods", icon: Smile },
     // Tags is a supporting taxonomy reached from within Notes on mobile.
     { label: "Tags", href: "/tags", icon: TagIcon, desktopOnly: true },
-    { label: "Coming Soon...", href: "#", disabled: true },
+    { label: "Updates", action: "updates" },
   ];
 
-  // Bottom tab bar (mobile) only shows the real, phone-priority destinations.
-  const bottomNavItems = navItems.filter(
-    (item) => !item.disabled && !item.desktopOnly
-  );
+  // Phone tab bar: the primary destinations, plus Updates. The row scrolls
+  // if it is wider than the screen.
+  const bottomNavItems = navItems.filter((item) => !item.desktopOnly);
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
@@ -120,18 +135,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <h1 className="text-lg sm:text-xl font-bold tracking-wide cursor-default">Prysmic</h1>
           {/* Inline links: desktop / tablet only — phones use the bottom tab bar. */}
           <div className="hidden sm:flex gap-2 sm:gap-4 lg:gap-6 items-center">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`text-xs sm:text-sm hover:text-cyan-300 transition whitespace-nowrap ${
-                  isActive(item.href) && !item.disabled ? "text-cyan-300" : "text-slate-300"
-                } ${item.disabled ? "opacity-30 cursor-not-allowed" : ""}`}
-                onClick={(e) => item.disabled && e.preventDefault()}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map((item) =>
+              item.action === "updates" ? (
+                <UpdatesNavButton
+                  key={item.label}
+                  variant="desktop"
+                  open={updatesOpen}
+                  unread={updatesUnread}
+                  onOpen={openUpdates}
+                />
+              ) : (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={`text-xs sm:text-sm hover:text-cyan-300 transition whitespace-nowrap ${
+                    isActive(item.href) ? "text-cyan-300" : "text-slate-300"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              )
+            )}
           </div>
         </div>
 
@@ -170,19 +194,39 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
+      <UpdatesSheet open={updatesOpen} onClose={closeUpdates} returnFocusRef={updatesOpenerRef} />
+      {updateHighlight && !updatesOpen ? (
+        <UpdateHighlightCard
+          entry={updateHighlight}
+          onOpen={() => openUpdates(null)}
+          onDismiss={() => dismissProductHighlight(updateHighlight.id)}
+        />
+      ) : null}
+
       {/* Native-style Bottom Tab Bar (mobile only) */}
       <nav
-        className="app-bottom-nav sm:hidden fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg bg-[#0b0c0f]/80 border-t border-white/10 flex items-stretch select-none"
+        className="app-bottom-nav sm:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch select-none overflow-x-auto overscroll-x-contain scrollbar-hidden border-t border-white/10 bg-[#0b0c0f]/80 backdrop-blur-lg"
         aria-label="Primary"
       >
         {bottomNavItems.map((item) => {
+          if (item.action === "updates") {
+            return (
+              <UpdatesNavButton
+                key={item.label}
+                variant="mobile"
+                open={updatesOpen}
+                unread={updatesUnread}
+                onOpen={openUpdates}
+              />
+            );
+          }
           const Icon = item.icon!;
           const active = isActive(item.href);
           return (
             <Link
               key={item.label}
               href={item.href}
-              className="relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-1.5"
+              className="relative flex min-w-[3.25rem] flex-1 basis-0 flex-col items-center justify-center gap-0.5 pt-1.5"
             >
               {active && (
                 <motion.span
