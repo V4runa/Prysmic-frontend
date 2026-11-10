@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
@@ -22,6 +23,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Tag, Paperclip } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { noteHtmlToText } from "../lib/noteContent";
+import { tagActiveClasses, tagColorClasses, tagColorKey } from "../lib/tagColors";
+import { parseTagIds, tagFilterHref } from "../lib/tagQuery";
+import TagChip from "../components/TagChip";
 
 interface Note {
   id: number;
@@ -40,9 +44,25 @@ interface TagData {
 }
 
 export default function NotesOverviewPage() {
-  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
+  const activeTagIds = useMemo(() => parseTagIds(search), [search]);
   const [unsavedHref, setUnsavedHref] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const activeTagKey = activeTagIds.join(",");
+  const [pageState, setPageState] = useState({ key: activeTagKey, page: 1 });
+  if (pageState.key !== activeTagKey) {
+    setPageState({ key: activeTagKey, page: 1 });
+  }
+  const currentPage = pageState.key === activeTagKey ? pageState.page : 1;
+  const setCurrentPage = (update: number | ((page: number) => number)) => {
+    setPageState((prev) => {
+      const page = prev.key === activeTagKey ? prev.page : 1;
+      const next = typeof update === "function" ? update(page) : update;
+      return { key: activeTagKey, page: next };
+    });
+  };
   const [notesPerPage] = useState(8);
 
   const user = typeof window !== "undefined" ? getUserFromToken() : null;
@@ -80,10 +100,6 @@ export default function NotesOverviewPage() {
   }, [notes, tagList]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTags]);
-
-  useEffect(() => {
     const storage = noteDraftStorage();
     const owner = noteOwnerId(getUserFromToken()?.userId);
     if (storage && owner) clearDraftIfOtherUser(storage, owner);
@@ -91,20 +107,26 @@ export default function NotesOverviewPage() {
     setUnsavedHref(draft ? recoveryHref(draft) : null);
   }, []);
 
-  const toggleTag = (name: string) => {
-    setActiveTags((prev) =>
-      prev.includes(name) ? prev.filter((tag) => tag !== name) : [...prev, name]
+  const setActiveTagIds = (ids: number[]) => {
+    router.replace(tagFilterHref(pathname, search, ids), { scroll: false });
+  };
+
+  const toggleTag = (id: number) => {
+    setActiveTagIds(
+      activeTagIds.includes(id)
+        ? activeTagIds.filter((tagId) => tagId !== id)
+        : [...activeTagIds, id]
     );
   };
 
   const filteredNotes = useMemo(
     () =>
-      activeTags.length
+      activeTagIds.length
         ? notes.filter((note) =>
-            note.tags?.some((tag) => activeTags.includes(tag.name))
+            note.tags?.some((tag) => activeTagIds.includes(tag.id))
           )
         : notes,
-    [notes, activeTags]
+    [notes, activeTagIds]
   );
 
   const totalPages = Math.max(
@@ -124,24 +146,6 @@ export default function NotesOverviewPage() {
     }),
   };
 
-  const tagColorClasses: Record<string, string> = {
-    cyan: "text-cyan-300 border-cyan-300/30 shadow-cyan-300/10",
-    rose: "text-rose-300 border-rose-300/30 shadow-rose-300/10",
-    slate: "text-slate-300 border-slate-300/30 shadow-slate-300/10",
-    violet: "text-violet-300 border-violet-300/30 shadow-violet-300/10",
-    emerald: "text-emerald-300 border-emerald-300/30 shadow-emerald-300/10",
-    amber: "text-amber-300 border-amber-300/30 shadow-amber-300/10",
-  };
-
-  const tagActiveClasses: Record<string, string> = {
-    cyan: "ring ring-cyan-300 shadow-[0_0_10px] shadow-cyan-400/40 bg-cyan-500/10",
-    rose: "ring ring-rose-300 shadow-[0_0_10px] shadow-rose-400/40 bg-rose-500/10",
-    slate: "ring ring-slate-300 shadow-[0_0_10px] shadow-slate-400/40 bg-slate-500/10",
-    violet: "ring ring-violet-300 shadow-[0_0_10px] shadow-violet-400/40 bg-violet-500/10",
-    emerald: "ring ring-emerald-300 shadow-[0_0_10px] shadow-emerald-400/40 bg-emerald-500/10",
-    amber: "ring ring-amber-300 shadow-[0_0_10px] shadow-amber-400/40 bg-amber-500/10",
-  };
-
   return (
     <PageTransition>
     <div className="w-full app-page-h flex flex-col xl:flex-row px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
@@ -154,8 +158,8 @@ export default function NotesOverviewPage() {
             </div>
             <div className="flex flex-col gap-3 mt-1">
               {allTags.map((tag, i) => {
-                const isActive = activeTags.includes(tag.name);
-                const color = tag.color || "slate";
+                const isActive = activeTagIds.includes(tag.id);
+                const color = tagColorKey(tag.color);
                 const baseClasses = tagColorClasses[color];
                 const activeClasses = tagActiveClasses[color];
                 
@@ -168,11 +172,11 @@ export default function NotesOverviewPage() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05, type: "spring", stiffness: 180, damping: 18 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => toggleTag(tag.name)}
+                    onClick={() => toggleTag(tag.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        toggleTag(tag.name);
+                        toggleTag(tag.id);
                       }
                     }}
                     className={`interactive-chip card-lift px-4 py-2 flex items-center justify-between rounded-xl border backdrop-blur-lg relative ${
@@ -198,10 +202,10 @@ export default function NotesOverviewPage() {
                 );
               })}
             </div>
-            {activeTags.length > 0 && (
+            {activeTagIds.length > 0 && (
               <div className="flex justify-center pt-4">
                 <button
-                  onClick={() => setActiveTags([])}
+                  onClick={() => setActiveTagIds([])}
                   className="tap-target inline-flex items-center justify-center px-3 text-xs text-cyan-300 underline hover:text-cyan-200 transition"
                 >
                   Clear all tags
@@ -272,8 +276,8 @@ export default function NotesOverviewPage() {
           {allTags.length > 0 && (
             <div className="xl:hidden overflow-x-auto overscroll-x-contain scrollbar-hidden flex gap-2 py-3 px-1 -mx-1">
               {allTags.map((tag, i) => {
-                const isActive = activeTags.includes(tag.name);
-                const color = tag.color || "slate";
+                const isActive = activeTagIds.includes(tag.id);
+                const color = tagColorKey(tag.color);
                 const baseClasses = tagColorClasses[color];
                 
                 return (
@@ -284,7 +288,7 @@ export default function NotesOverviewPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => toggleTag(tag.name)}
+                    onClick={() => toggleTag(tag.id)}
                     className={`interactive-chip text-xs px-3 py-1 rounded-full border whitespace-nowrap transition-colors duration-200 ${
                       baseClasses
                     } ${isActive ? tagActiveClasses[color] : "hover:bg-white/10"}`}
@@ -293,13 +297,13 @@ export default function NotesOverviewPage() {
                   </motion.button>
                 );
               })}
-              {activeTags.length > 0 && (
+              {activeTagIds.length > 0 && (
                 <motion.button
                   type="button"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: allTags.length * 0.05 }}
-                  onClick={() => setActiveTags([])}
+                  onClick={() => setActiveTagIds([])}
                   className="interactive-chip text-xs text-cyan-300 underline ml-auto hover:text-cyan-200 transition-colors"
                 >
                   Clear
@@ -327,7 +331,7 @@ export default function NotesOverviewPage() {
               <div className="flex-1 overflow-y-auto app-scroll p-1">
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={currentPage + activeTags.join(",")}
+                    key={currentPage + activeTagKey}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -354,14 +358,7 @@ export default function NotesOverviewPage() {
                         {note.tags && note.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
                             {note.tags.map((tag) => (
-                              <span
-                                key={tag.id}
-                                className={`px-2 sm:px-3 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm ${
-                                  tagColorClasses[tag.color ?? "slate"]
-                                }`}
-                              >
-                                {tag.name}
-                              </span>
+                              <TagChip key={tag.id} tag={tag} />
                             ))}
                           </div>
                         )}

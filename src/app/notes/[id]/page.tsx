@@ -51,6 +51,8 @@ import {
   saveAudience,
 } from "../../lib/sessionBoundary";
 import { useWritingGuard } from "../useWritingGuard";
+import TagChip from "../../components/TagChip";
+import TagPicker from "../../components/TagPicker";
 
 // TipTap is heavy; load it only when the editor actually renders so it stays
 // out of the initial route bundle.
@@ -71,7 +73,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface Tag {
   id: number;
   name: string;
-  color?: string;
+  color?: string | null;
 }
 
 interface Note {
@@ -81,15 +83,6 @@ interface Note {
   updatedAt?: string | null;
   tags?: Tag[];
 }
-
-const tagColorClasses: Record<string, string> = {
-  cyan: "text-cyan-300 border-cyan-300/30 shadow-cyan-300/10",
-  rose: "text-rose-300 border-rose-300/30 shadow-rose-300/10",
-  slate: "text-slate-300 border-slate-300/30 shadow-slate-300/10",
-  violet: "text-violet-300 border-violet-300/30 shadow-violet-300/10",
-  emerald: "text-emerald-300 border-emerald-300/30 shadow-emerald-300/10",
-  amber: "text-amber-300 border-amber-300/30 shadow-amber-300/10",
-};
 
 export default function ViewNotePage() {
   const { id } = useParams();
@@ -374,13 +367,6 @@ export default function ViewNotePage() {
     setEditing(false);
   };
 
-  const toggleTag = (tagId: number) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-    );
-    setDirty(true);
-  };
-
   const clearThisDraft = () => {
     const owner = draftOwner();
     const storage = noteDraftStorage();
@@ -616,31 +602,25 @@ export default function ViewNotePage() {
                 max={CLIENT_MAX_ATTACHMENTS_PER_NOTE}
               />
             </div>
-            <div className="flex-shrink-0 flex flex-wrap gap-2 sm:gap-3 mt-4">
-              {(editing ? availableTags : note?.tags || []).map((tag, i) => {
-                const color = tag.color || "slate";
-                const active = selectedTagIds.includes(tag.id);
-                const base = tagColorClasses[color];
-                return (
-                  <motion.button
-                    key={tag.id}
-                    type="button"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.05 }}
-                    whileTap={editing ? { scale: 0.93 } : undefined}
-                    disabled={saving}
-                    onClick={() => editing && !saving && toggleTag(tag.id)}
-                    className={`${editing ? "interactive-chip" : ""} px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition-colors ${
-                      active
-                        ? `${base} ring-1 ring-white/20`
-                        : "text-slate-300 border-white/10 hover:bg-white/10"
-                    }`}
-                  >
-                    {tag.name}
-                  </motion.button>
-                );
-              })}
+            <div className="flex-shrink-0 mt-4">
+              {editing ? (
+                <TagPicker
+                  tags={availableTags}
+                  selectedIds={selectedTagIds}
+                  disabled={saving}
+                  allowCreate
+                  onChange={(ids) => {
+                    setSelectedTagIds(ids);
+                    setDirty(true);
+                  }}
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  {(note?.tags || []).map((tag) => (
+                    <TagChip key={tag.id} tag={tag} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

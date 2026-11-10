@@ -2,22 +2,26 @@
 
 import { Search, X } from "lucide-react";
 import { TaskPriority } from "../tasks/types/task";
+import type { Tag } from "../lib/tag";
 import { TextField, SelectField } from "./forms";
+import TagPicker from "./TagPicker";
 
 export interface TaskFilterState {
   search: string;
   // "all" = no priority constraint. Status is intentionally omitted — the
   // Active/Completed/Archived tabs already own that axis.
   priority: TaskPriority | "all";
+  tagId: number | null;
 }
 
 export const DEFAULT_TASK_FILTERS: TaskFilterState = {
   search: "",
   priority: "all",
+  tagId: null,
 };
 
 export const hasActiveFilters = (f: TaskFilterState) =>
-  f.search.trim() !== "" || f.priority !== "all";
+  f.search.trim() !== "" || f.priority !== "all" || f.tagId != null;
 
 const priorityOptions: { label: string; value: TaskPriority | "all" }[] = [
   { label: "All priorities", value: "all" },
@@ -28,14 +32,16 @@ const priorityOptions: { label: string; value: TaskPriority | "all" }[] = [
 
 interface TaskFiltersProps {
   filters: TaskFilterState;
+  tags?: Tag[];
   onChange: (filters: TaskFilterState) => void;
 }
 
-export default function TaskFilters({ filters, onChange }: TaskFiltersProps) {
+export default function TaskFilters({ filters, tags = [], onChange }: TaskFiltersProps) {
   const active = hasActiveFilters(filters);
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
       {/* Search — grows to fill available width */}
       <div className="relative flex-1 min-w-0">
         <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
@@ -82,6 +88,18 @@ export default function TaskFilters({ filters, onChange }: TaskFiltersProps) {
           </button>
         )}
       </div>
+      </div>
+
+      {tags.length > 0 && (
+        <TagPicker
+          tags={tags}
+          selectedIds={filters.tagId == null ? [] : [filters.tagId]}
+          appearance="filter"
+          selection="single"
+          groupLabel="Filter by tag"
+          onChange={(ids) => onChange({ ...filters, tagId: ids[0] ?? null })}
+        />
+      )}
     </div>
   );
 }

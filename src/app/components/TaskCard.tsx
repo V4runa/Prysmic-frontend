@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatTaskDueDate } from "../tasks/taskDueDate";
 import Sparkles from "./Sparkles";
 import TaskForm from "./TaskForm";
+import TagChip from "./TagChip";
 import { tactileSubtle } from "../lib/motion";
 
 interface TaskCardProps {
@@ -451,6 +452,14 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
             >
               {task.description}
             </p>
+          )}
+
+          {task.tags && task.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
+              {task.tags.map((tag) => (
+                <TagChip key={tag.id} tag={tag} />
+              ))}
+            </div>
           )}
 
           {task.dueDate && (

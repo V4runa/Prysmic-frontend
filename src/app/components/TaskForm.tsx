@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { Task, TaskPriority } from "../tasks/types/task";
 import { taskDueInputValue } from "../tasks/taskDueDate";
 import { apiFetch } from "../hooks/useApi";
+import { useTags } from "../hooks/useTags";
 import { Field, TextField, TextArea, SelectField, FormButton } from "./forms";
+import TagPicker from "./TagPicker";
 
 interface TaskFormProps {
   task?: Task; // if present = edit mode
@@ -18,8 +20,13 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
     task?.priority ?? TaskPriority.MEDIUM
   );
   const [dueDate, setDueDate] = useState<string>(taskDueInputValue(task?.dueDate));
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>(
+    task?.tags?.map((tag) => tag.id) ?? []
+  );
+  const [tagsTouched, setTagsTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { data: tags = [] } = useTags();
 
   useEffect(() => {
     if (task) {
@@ -27,6 +34,8 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       setDescription(task.description || "");
       setPriority(task.priority ?? TaskPriority.MEDIUM);
       setDueDate(taskDueInputValue(task.dueDate));
+      setSelectedTagIds(task.tags?.map((tag) => tag.id) ?? []);
+      setTagsTouched(false);
     }
   }, [task]);
 
@@ -36,7 +45,18 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
     setError("");
 
     try {
-      const payload = { title, description, priority, dueDate: dueDate || null };
+      const payload: {
+        title: string;
+        description: string;
+        priority: TaskPriority;
+        dueDate: string | null;
+        tagIds?: number[];
+      } = { title, description, priority, dueDate: dueDate || null };
+      // Send tagIds when this task already has a tags array, or the picker
+      // was used. A title-only edit elsewhere omits tagIds so tags stay put.
+      if (!task || Array.isArray(task.tags) || tagsTouched) {
+        payload.tagIds = selectedTagIds;
+      }
 
       if (task) {
         await apiFetch(`/tasks/${task.id}`, {
@@ -105,6 +125,19 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           />
         </Field>
       </div>
+
+      <Field label="Tags">
+        <TagPicker
+          tags={tags}
+          selectedIds={selectedTagIds}
+          disabled={loading}
+          allowCreate
+          onChange={(ids) => {
+            setSelectedTagIds(ids);
+            setTagsTouched(true);
+          }}
+        />
+      </Field>
 
       {error && <p className="text-rose-400 text-sm">{error}</p>}
 
