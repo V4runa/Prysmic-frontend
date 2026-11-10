@@ -1,3 +1,5 @@
+import type { Tag } from "../../lib/tag";
+
 export enum TaskPriority {
   LOW = 1,
   MEDIUM = 2,
@@ -15,7 +17,7 @@ export interface Task {
   dueDate?: string | null; // date-only YYYY-MM-DD, or ISO timestamp (date-only persists as UTC midnight)
   completedAt?: string | null;
   archivedAt?: string | null;
-  tags?: { id: number; name: string; color?: string }[];
+  tags?: Tag[];
   createdAt: string;
   updatedAt: string;
 }

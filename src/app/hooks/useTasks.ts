@@ -7,14 +7,16 @@ import { calendarQueryKey } from "./useCalendar";
 export const tasksQueryKey = ["tasks"] as const;
 
 /**
- * Fetches every task once and partitions client-side. This replaces the
- * previous three parallel requests (active/completed/archived) with a single
- * cached request that all task views derive from.
+ * One cached task list, partitioned into active, completed, and archived.
+ * Passing a tagId asks GET /tasks to filter and stores that result separately.
+ * Omitted tagIds on a later PATCH leave existing tags in place.
  */
-export function useTasks() {
+export function useTasks(tagId?: number | null) {
+  const filterId = typeof tagId === "number" && tagId > 0 ? tagId : null;
   const query = useQuery({
-    queryKey: tasksQueryKey,
-    queryFn: () => apiFetch<Task[]>("/tasks"),
+    queryKey: filterId == null ? tasksQueryKey : [...tasksQueryKey, "tag", filterId],
+    queryFn: () =>
+      apiFetch<Task[]>(filterId == null ? "/tasks" : `/tasks?tagId=${filterId}`),
   });
 
   const partitioned = useMemo(() => {

@@ -1,43 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, Trash2, Save, X } from "lucide-react";
 import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
+import TagColorChoices from "../components/TagColorChoices";
 import { apiFetch } from "../hooks/useApi";
 import { Tag, useTags, useInvalidateTags } from "../hooks/useTags";
 import { tactileSubtle } from "../lib/motion";
+import { tagColorClasses, tagColorKey } from "../lib/tagColors";
+import { notesTagHref, tagDeleteErrorMessage, tagUsageLabel, tasksTagHref } from "../lib/tagQuery";
 import { TextField, FormButton } from "../components/forms";
-
-const colorOptions = [
-  { name: "Astral", value: "cyan" },
-  { name: "Ember", value: "rose" },
-  { name: "Whisper", value: "slate" },
-  { name: "Pulse", value: "violet" },
-  { name: "Verdant", value: "emerald" },
-  { name: "Sunwake", value: "amber" },
-];
-
-const tagColorClasses: Record<string, string> = {
-  cyan: "text-cyan-300 border-cyan-300/30 shadow-cyan-300/10",
-  rose: "text-rose-300 border-rose-300/30 shadow-rose-300/10",
-  slate: "text-slate-300 border-slate-300/30 shadow-slate-300/10",
-  violet: "text-violet-300 border-violet-300/30 shadow-violet-300/10",
-  emerald: "text-emerald-300 border-emerald-300/30 shadow-emerald-300/10",
-  amber: "text-amber-300 border-amber-300/30 shadow-amber-300/10",
-};
-
-// Fully-spelled classes for the selected color swatch (Tailwind v4 can't see
-// `ring-${value}-300`, so these must be literal strings).
-const selectedColorClasses: Record<string, string> = {
-  cyan: "ring-2 ring-cyan-300 text-cyan-200 border-cyan-300",
-  rose: "ring-2 ring-rose-300 text-rose-200 border-rose-300",
-  slate: "ring-2 ring-slate-300 text-slate-200 border-slate-300",
-  violet: "ring-2 ring-violet-300 text-violet-200 border-violet-300",
-  emerald: "ring-2 ring-emerald-300 text-emerald-200 border-emerald-300",
-  amber: "ring-2 ring-amber-300 text-amber-200 border-amber-300",
-};
 
 export default function TagsPage() {
   const { data: tags = [], isError, isLoading } = useTags();
@@ -51,6 +26,7 @@ export default function TagsPage() {
 
   const handleCreate = async () => {
     if (!newTagName.trim()) return;
+    setError("");
     try {
       await apiFetch<Tag>("/tags", {
         method: "POST",
@@ -64,16 +40,18 @@ export default function TagsPage() {
   };
 
   const handleDelete = async (id: number) => {
+    setError("");
     try {
       await apiFetch(`/tags/${id}`, { method: "DELETE" });
       await invalidateTags();
-    } catch {
-      setError("Failed to delete tag");
+    } catch (err) {
+      setError(tagDeleteErrorMessage(err));
     }
   };
 
   const handleSaveEdit = async (id: number) => {
     if (!editedName.trim()) return;
+    setError("");
     try {
       await apiFetch<Tag>(`/tags/${id}`, {
         method: "PUT",
@@ -119,34 +97,17 @@ export default function TagsPage() {
           </FormButton>
         </div>
 
-        {/* Color options */}
-        <div className="flex flex-wrap gap-2 sm:gap-3">
-          {colorOptions.map((c) => (
-            <motion.button
-              key={c.value}
-              type="button"
-              whileTap={{ scale: 0.92 }}
-              onClick={() => setNewTagColor(c.value)}
-              className={`interactive-chip px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm rounded-full border backdrop-blur-md transition-colors ${
-                newTagColor === c.value
-                  ? `${tagColorClasses[c.value]} ${selectedColorClasses[c.value]}`
-                  : `border-white/10 text-slate-400 hover:text-white hover:border-white/20`
-              }`}
-            >
-              {c.name}
-            </motion.button>
-          ))}
-        </div>
+        <TagColorChoices value={newTagColor} onChange={setNewTagColor} />
 
         {/* Tags Grid */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto app-scroll p-1">
             {isLoading && tags.length === 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-12 rounded-xl bg-white/5 border border-white/10 animate-pulse"
+                    className="h-20 rounded-xl bg-white/5 border border-white/10 animate-pulse"
                   />
                 ))}
               </div>
@@ -157,10 +118,10 @@ export default function TagsPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4 }}
-                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6"
+                className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6"
               >
                 {tags.map((tag, i) => {
-                const colorClass = tagColorClasses[tag.color || "cyan"];
+                const colorClass = tagColorClasses[tagColorKey(tag.color, "cyan")];
                 return (
                   <motion.div
                     key={tag.id}
@@ -169,7 +130,7 @@ export default function TagsPage() {
                     initial="hidden"
                     animate="visible"
                     whileTap={{ scale: 0.99 }}
-                    className={`card-lift rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/10 bg-white/5 flex items-center justify-between shadow-md ${colorClass}`}
+                    className={`card-lift rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/10 bg-white/5 flex items-start justify-between gap-2 shadow-md ${colorClass}`}
                   >
                     {editingId === tag.id ? (
                       <div className="flex flex-col gap-2 w-full">
@@ -177,23 +138,7 @@ export default function TagsPage() {
                           value={editedName}
                           onChange={(e) => setEditedName(e.target.value)}
                         />
-                        <div className="flex gap-1 sm:gap-2 flex-wrap">
-                          {colorOptions.map((c) => (
-                            <motion.button
-                              key={c.value}
-                              type="button"
-                              whileTap={{ scale: 0.92 }}
-                              onClick={() => setEditedColor(c.value)}
-                              className={`interactive-chip px-2 sm:px-3 py-1 text-xs rounded-full border backdrop-blur-md transition-colors ${
-                                editedColor === c.value
-                                  ? `${tagColorClasses[c.value]} ${selectedColorClasses[c.value]}`
-                                  : `border-white/10 text-slate-400 hover:text-white hover:border-white/20`
-                              }`}
-                            >
-                              {c.name}
-                            </motion.button>
-                          ))}
-                        </div>
+                        <TagColorChoices value={editedColor} onChange={setEditedColor} />
                         <div className="flex gap-2 mt-2">
                           <motion.button
                             {...tactileSubtle}
@@ -215,9 +160,25 @@ export default function TagsPage() {
                       </div>
                     ) : (
                       <>
-                        <span className="flex-1 min-w-0 text-xs sm:text-sm font-medium truncate">
-                          {tag.name}
-                        </span>
+                        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                          <span className="text-xs sm:text-sm font-medium truncate">
+                            {tag.name}
+                          </span>
+                          <div className="flex flex-col items-start gap-0.5 text-[11px] sm:text-xs font-medium leading-tight">
+                            <Link
+                              href={notesTagHref(tag.id)}
+                              className="inline-flex min-h-8 items-center py-1 underline-offset-2 hover:underline"
+                            >
+                              {tagUsageLabel(tag.noteCount, "note", "notes")}
+                            </Link>
+                            <Link
+                              href={tasksTagHref(tag.id)}
+                              className="inline-flex min-h-8 items-center py-1 underline-offset-2 hover:underline"
+                            >
+                              {tagUsageLabel(tag.taskCount, "task", "tasks")}
+                            </Link>
+                          </div>
+                        </div>
                         <div className="flex gap-1 sm:gap-2 shrink-0">
                           <motion.button
                             {...tactileSubtle}
@@ -251,7 +212,11 @@ export default function TagsPage() {
           </div>
         </div>
 
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+        {error && (
+          <p role="alert" className="text-red-400 text-sm break-words">
+            {error}
+          </p>
+        )}
       </GlassPanel>
       </div>
     </PageTransition>

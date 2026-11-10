@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
 import TaskCard from "../components/TaskCard";
@@ -9,17 +10,28 @@ import Spinner from "../components/Spinner";
 import TaskFilters, {
   DEFAULT_TASK_FILTERS,
   hasActiveFilters,
+  type TaskFilterState,
 } from "../components/TaskFilters";
 import { useTasks, useInvalidateTasks } from "../hooks/useTasks";
+import { useTags } from "../hooks/useTags";
+import { parseTagIds, tagFilterHref, taskMatchesTag } from "../lib/tagQuery";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function TasksPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
+  const tagId = parseTagIds(search)[0] ?? null;
+  const allTasks = useTasks();
+  const taggedTasks = useTasks(tagId);
+  const taskSource = tagId == null ? allTasks : taggedTasks;
   const {
     active: tasks,
     completed: completedTasks,
     archived: archivedTasks,
     isLoading: loading,
-  } = useTasks();
+  } = taskSource;
   const invalidateTasks = useInvalidateTasks();
   const fetchTasks = () => {
     invalidateTasks();
@@ -27,7 +39,25 @@ export default function TasksPage() {
   const [activeTab, setActiveTab] = useState<
     "active" | "completed" | "archived"
   >("active");
-  const [filters, setFilters] = useState(DEFAULT_TASK_FILTERS);
+  const [draft, setDraft] = useState({
+    search: DEFAULT_TASK_FILTERS.search,
+    priority: DEFAULT_TASK_FILTERS.priority,
+  });
+  const filters = useMemo<TaskFilterState>(
+    () => ({ ...draft, tagId }),
+    [draft, tagId]
+  );
+  const { data: tags = [] } = useTags();
+
+  const setFilters = (next: TaskFilterState) => {
+    setDraft({ search: next.search, priority: next.priority });
+    if (next.tagId !== tagId) {
+      router.replace(
+        tagFilterHref(pathname, search, next.tagId == null ? [] : [next.tagId]),
+        { scroll: false }
+      );
+    }
+  };
 
   const tabTasks =
     activeTab === "active"
@@ -46,7 +76,7 @@ export default function TasksPage() {
         !q ||
         t.title.toLowerCase().includes(q) ||
         (t.description?.toLowerCase().includes(q) ?? false);
-      return matchesPriority && matchesSearch;
+      return matchesPriority && matchesSearch && taskMatchesTag(t, filters.tagId);
     });
   }, [tabTasks, filters]);
 
@@ -56,7 +86,7 @@ export default function TasksPage() {
   return (
     <PageTransition>
       <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
-        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
+        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0 max-sm:overflow-y-auto max-sm:app-scroll">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <h1 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
@@ -64,12 +94,12 @@ export default function TasksPage() {
               </h1>
               {activeTab === "active" && (
                 <div className="flex items-center gap-2 text-sm text-white/60">
-                  <span>{tasks.length} active</span>
-                  {completedTasks.length > 0 && (
+                  <span>{allTasks.active.length} active</span>
+                  {allTasks.completed.length > 0 && (
                     <>
                       <span>•</span>
                       <span className="text-green-400">
-                        {completedTasks.length} completed
+                        {allTasks.completed.length} completed
                       </span>
                     </>
                   )}
@@ -111,7 +141,7 @@ export default function TasksPage() {
             <QuickTaskInput onTaskCreated={fetchTasks} />
           )}
 
-          <TaskFilters filters={filters} onChange={setFilters} />
+          <TaskFilters filters={filters} tags={tags} onChange={setFilters} />
           {filtering && (
             <p className="-mt-2 text-xs text-white/40">
               {visibleTasks.length}{" "}
@@ -124,7 +154,7 @@ export default function TasksPage() {
               <Spinner label="Gathering your tasks..." />
             </div>
           ) : (
-            <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex flex-1 flex-col min-h-0 max-sm:flex-none">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
@@ -132,7 +162,7 @@ export default function TasksPage() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex-1 overflow-y-auto app-scroll p-1"
+                  className="flex-1 overflow-y-auto app-scroll p-1 max-sm:flex-none max-sm:overflow-visible"
                 >
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleTasks.map((task, i) => (

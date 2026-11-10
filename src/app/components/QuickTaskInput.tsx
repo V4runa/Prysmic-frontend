@@ -8,6 +8,9 @@ import { ChevronDown, ChevronUp, Plus, Check } from "lucide-react";
 import { tactile } from "../lib/motion";
 import clsx from "clsx";
 import { Field, TextField, TextArea, SelectField } from "./forms";
+import TagPicker from "./TagPicker";
+import TagChip from "./TagChip";
+import { useTags } from "../hooks/useTags";
 
 interface QuickTaskInputProps {
   onTaskCreated?: () => void;
@@ -18,7 +21,9 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
   const [dueDate, setDueDate] = useState("");
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [expanded, setExpanded] = useState(false);
+  const { data: tags = [] } = useTags();
   const [loading, setLoading] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +46,7 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
         description: description.trim() || null,
         priority,
         dueDate: dueDate || null,
+        tagIds: selectedTagIds,
       };
 
       await apiFetch("/tasks", {
@@ -53,6 +59,7 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
       setDescription("");
       setPriority(TaskPriority.MEDIUM);
       setDueDate("");
+      setSelectedTagIds([]);
       setExpanded(false);
       setJustAdded(true);
       setTimeout(() => setJustAdded(false), 1100);
@@ -193,10 +200,30 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
                   placeholder="Optional task details..."
                 />
               </Field>
+
+              <Field label="Tags">
+                <TagPicker
+                  tags={tags}
+                  selectedIds={selectedTagIds}
+                  disabled={loading}
+                  allowCreate
+                  onChange={setSelectedTagIds}
+                />
+              </Field>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {!expanded && selectedTagIds.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {tags
+            .filter((tag) => selectedTagIds.includes(tag.id))
+            .map((tag) => (
+              <TagChip key={tag.id} tag={tag} />
+            ))}
+        </div>
+      )}
 
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
