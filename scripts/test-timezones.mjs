@@ -52,6 +52,7 @@ const notes = spawnSync(
     "src/app/lib/sessionBoundary.test.ts",
     "src/app/lib/dataExport.test.ts",
     "src/app/lib/tagQuery.test.ts",
+    "src/app/lib/updatesSeen.test.ts",
   ],
   { stdio: "inherit", env: process.env }
 );
