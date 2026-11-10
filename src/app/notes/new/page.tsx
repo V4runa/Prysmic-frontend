@@ -61,23 +61,15 @@ const RichTextEditor = dynamic(
     ),
   }
 );
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { TextField, FormButton } from "../../components/forms";
+import TagPicker from "../../components/TagPicker";
 
 interface StagedFile {
   id: string;
   file: File;
   url: string;
 }
-
-const tagColorClasses: Record<string, string> = {
-  cyan: "text-cyan-300 border-cyan-300/30 shadow-cyan-300/10",
-  rose: "text-rose-300 border-rose-300/30 shadow-rose-300/10",
-  slate: "text-slate-300 border-slate-300/30 shadow-slate-300/10",
-  violet: "text-violet-300 border-violet-300/30 shadow-violet-300/10",
-  emerald: "text-emerald-300 border-emerald-300/30 shadow-emerald-300/10",
-  amber: "text-amber-300 border-amber-300/30 shadow-amber-300/10",
-};
 
 export default function CreateNotePage() {
   const router = useRouter();
@@ -250,12 +242,6 @@ export default function CreateNotePage() {
       if (target) URL.revokeObjectURL(target.url);
       return prev.filter((s) => s.id !== item.key);
     });
-  };
-
-  const toggleTag = (tagId: number) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-    );
   };
 
   const handleEditorKeyDown = (e: React.KeyboardEvent) => {
@@ -444,32 +430,13 @@ export default function CreateNotePage() {
                 <h4 className="text-slate-300 text-sm uppercase tracking-wider">
                   Attach tags (optional)
                 </h4>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
-                  <AnimatePresence>
-                    {tags.map((tag, i) => (
-                      <motion.button
-                        key={tag.id}
-                        type="button"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ delay: i * 0.05 }}
-                        whileTap={{ scale: 0.93 }}
-                        disabled={saving}
-                        onClick={() => {
-                          if (!saving) toggleTag(tag.id);
-                        }}
-                        className={`interactive-chip px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition-colors ${
-                          selectedTagIds.includes(tag.id)
-                            ? `${tagColorClasses[tag.color ?? "cyan"]} ring-1 ring-inset ring-white/20`
-                            : `text-slate-300 border-white/10 hover:bg-white/10`
-                        }`}
-                      >
-                        {tag.name}
-                      </motion.button>
-                    ))}
-                  </AnimatePresence>
-                </div>
+                <TagPicker
+                  tags={tags}
+                  selectedIds={selectedTagIds}
+                  disabled={saving}
+                  allowCreate
+                  onChange={setSelectedTagIds}
+                />
               </div>
             </motion.div>
 

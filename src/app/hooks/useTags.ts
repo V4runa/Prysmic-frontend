@@ -1,18 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./useApi";
+import type { Tag } from "../lib/tag";
 
-export interface Tag {
-  id: number;
-  name: string;
-  color?: string;
-}
+export type { Tag };
 
 export const tagsQueryKey = ["tags"] as const;
 
 /**
- * Shared tags query. Because /tags is requested from the tags page, the notes
- * list, the note editor, and the new-note page, sharing one cache key means it
- * is fetched once and reused across all of them instead of refetched per page.
+ * Shared tags query. Notes, tasks, and the tags page all read this cache, so
+ * /tags is fetched once and reused instead of refetched per page.
  */
 export function useTags(enabled = true) {
   return useQuery({
