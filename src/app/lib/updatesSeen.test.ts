@@ -159,7 +159,9 @@ test("a removed last-seen id falls back to its date", () => {
 
 test("the published changelog is newest first and ready for a public page", () => {
   const source = readFileSync(new URL("../../content/updates.ts", import.meta.url), "utf8");
-  assert.match(source, /TODO\(Eddy\)/);
+  assert.equal(source.includes("TODO(Eddy)"), false);
+  assert.equal(source.includes("header-identity"), false);
+  assert.equal(source.includes("Search notes"), false);
 
   const updates = publishedUpdates();
   const changelog = toPublicChangelog();
@@ -171,6 +173,11 @@ test("the published changelog is newest first and ready for a public page", () =
   assert.equal(changelog.updates[0]?.highlight, true);
   assert.equal(changelog.updates[0]?.date, "2026-11-10");
   assert.equal(changelog.updates[1]?.id, "updates-view");
+  assert.equal(
+    changelog.updates.find((entry) => entry.id === "plain-first-run-copy")?.title,
+    "A clearer welcome and plainer starter notes"
+  );
+  assert.equal(changelog.updates.some((entry) => entry.id === "header-identity"), false);
   assert.equal(formatUpdateDate("2026-11-10"), "Nov 10, 2026");
   assert.equal(formatUpdateDate("2026-11-09"), "Nov 9, 2026");
 
@@ -181,7 +188,7 @@ test("the published changelog is newest first and ready for a public page", () =
   }
   assert.deepEqual(
     changelog.comingSoon.map((item) => item.id),
-    ["note-into-contract", "calendar-day-links", "search-notes"]
+    ["note-into-contract", "calendar-day-links"]
   );
   assert.equal(
     changelog.updates.some((entry) => entry.kind === "new"),

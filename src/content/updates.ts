@@ -8,9 +8,6 @@
  * The marketing site can import `toPublicChangelog()` later. That returns
  * plain data for the shipped list and the planned list, with no React and
  * no browser storage.
- *
- * Coming soon items are TODO(Eddy): confirm or replace them before treating
- * the list as final.
  */
 
 export const UPDATE_KINDS = ["new", "improved", "fixed"] as const;
@@ -63,17 +60,9 @@ export const productUpdates = [
     id: "plain-first-run-copy",
     date: "2026-11-09",
     kind: "improved",
-    title: "A clearer first-run welcome",
+    title: "A clearer welcome and plainer starter notes",
     summary:
-      "The first-run welcome is clearer and written in plain language, including how it describes your sample notes and the Start Here note.",
-  },
-  {
-    id: "header-identity",
-    date: "2026-11-09",
-    kind: "improved",
-    title: "Your name in the header",
-    summary:
-      'The header shows "Wandering as {username}" again, and Settings is its own button.',
+      "The first-run welcome is clearer, and the Start Here note and sample notes, contracts, and tasks are rewritten in plain language.",
   },
   {
     id: "settings-page",
@@ -101,13 +90,6 @@ export const productUpdates = [
   },
 ] as const satisfies readonly ProductUpdate[];
 
-/**
- * TODO(Eddy): confirm or replace these before treating them as final.
- * They are plausible next steps, and they need your sign-off:
- * - Turn a note into a contract
- * - Calendar day links
- * - Search notes
- */
 export const comingSoon = [
   {
     id: "note-into-contract",
@@ -118,11 +100,6 @@ export const comingSoon = [
     id: "calendar-day-links",
     title: "Calendar day links",
     summary: "Open the matching calendar day from a task, habit, or mood.",
-  },
-  {
-    id: "search-notes",
-    title: "Search notes",
-    summary: "Find a note by the words in it.",
   },
 ] as const satisfies readonly PlannedUpdate[];
 
