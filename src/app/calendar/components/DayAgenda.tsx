@@ -23,7 +23,9 @@ import {
   filterBuckets,
   formatClock,
   SourceFilter,
+  taskChipKey,
   taskDoneToggleLabel,
+  taskSectionTitle,
 } from "../lib/calendarLib";
 import { CalendarHabitItem } from "../types";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
@@ -195,10 +197,10 @@ export default function DayAgenda({
         {/* Tasks */}
         {tasks.length > 0 && (
           <section className="flex flex-col gap-1.5">
-            <span className={sectionTitle}>Tasks due</span>
+            <span className={sectionTitle}>{taskSectionTitle(tasks)}</span>
             {tasks.map((t) => (
               <motion.div
-                key={`task-${t.id}`}
+                key={taskChipKey(t, day)}
                 {...tactileRow}
                 className={clsx(
                   "flex items-center gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110 hover:shadow-lg hover:shadow-black/25",

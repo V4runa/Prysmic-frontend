@@ -11,6 +11,7 @@ import {
   formatClock,
   parseDayKey,
   SourceFilter,
+  taskChipKey,
   taskDoneToggleLabel,
   visibleDayBuckets,
   weekDays,
@@ -151,7 +152,7 @@ export default function WeekView({
 
               {b.tasks.map((t) => (
                 <button
-                  key={`task-${t.id}`}
+                  key={taskChipKey(t, cell.key)}
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();

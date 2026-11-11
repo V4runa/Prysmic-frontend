@@ -20,9 +20,17 @@ import {
   CalendarNoteItem,
   CalendarSource,
   CalendarTaskItem,
+  CalendarTaskReason,
   CalendarView,
 } from "../types";
 import { localDateKey, taskDueDayKey } from "../../lib/date";
+
+/** Which local day a task chip is drawn on. One task can be due on one day and finished on another. */
+export type CalendarTaskChipRole = "due" | "completed";
+
+export interface CalendarTaskChip extends CalendarTaskItem {
+  chip: CalendarTaskChipRole;
+}
 
 // Monday-start weeks (locked product decision).
 const WEEK_OPTS = { weekStartsOn: 1 as const };
@@ -88,13 +96,72 @@ export function weekDays(anchor: string): MonthCell[] {
 
 // --------------------------- Item placement ---------------------------
 
+function isCalendarTaskReason(value: string | undefined): value is CalendarTaskReason {
+  return value === "due" || value === "completed" || value === "both";
+}
+
+/**
+ * Local days a task chip should occupy.
+ *
+ * The current production feed has no `calendarReason`. Those tasks stay on
+ * the due day only, which is what the calendar did before finish-day placement.
+ *
+ * The newer feed sends one row per task. `both` means the due instant and the
+ * completion instant both fall in the window; the client fans that row out.
+ * One chip per local day: when both instants land on the same local day, the
+ * due chip wins and the finish chip is not added again.
+ * A `completed` row whose `dueDate` equals `completedAt` has no real due date
+ * (the backend repeats the timestamp so older clients still receive a string).
+ * Completion uses the same local-day rule as notes, not the due-date rule.
+ */
+export function taskPlacements(
+  task: CalendarTaskItem,
+): { day: string; reason: CalendarTaskChipRole }[] {
+  if (!isCalendarTaskReason(task.calendarReason)) {
+    return [{ day: taskDueDayKey(task.dueDate), reason: "due" }];
+  }
+
+  const places: { day: string; reason: CalendarTaskChipRole }[] = [];
+  const noDueDate =
+    task.calendarReason === "completed" && task.dueDate === task.completedAt;
+
+  if ((task.calendarReason === "due" || task.calendarReason === "both") && !noDueDate) {
+    places.push({ day: taskDueDayKey(task.dueDate), reason: "due" });
+  }
+  if (
+    (task.calendarReason === "completed" || task.calendarReason === "both") &&
+    task.completedAt
+  ) {
+    const day = localDateKey(task.completedAt);
+    if (!places.some((place) => place.day === day)) {
+      places.push({ day, reason: "completed" });
+    }
+  }
+  return places;
+}
+
+/** React key for a task chip. The same task id can appear on two different days. */
+export function taskChipKey(task: { id: number; chip: CalendarTaskChipRole }, day: string): string {
+  return `task-${task.id}-${day}-${task.chip}`;
+}
+
+/**
+ * Agenda heading for a day's task chips.
+ * "Tasks due" stays when every chip is a due-day placement, including the
+ * current production feed. A finish-day chip is not due that day.
+ */
+export function taskSectionTitle(tasks: { chip: CalendarTaskChipRole }[]): string {
+  return tasks.every((task) => task.chip === "due") ? "Tasks due" : "Tasks";
+}
+
 /** Local day a single-placement item belongs to. */
 export function itemDay(item: CalendarItem): string {
   switch (item.source) {
-    case "task":
-      // Date-only due dates are calendar days (UTC midnight on the wire),
-      // not instants. Notes keep localDateKey below.
-      return taskDueDayKey(item.dueDate);
+    case "task": {
+      // Multi-day tasks report the due day here. indexFeed draws every placement.
+      const [first] = taskPlacements(item);
+      return first?.day ?? taskDueDayKey(item.dueDate);
+    }
     case "note":
       return localDateKey(item.createdAt);
     case "habit":
@@ -111,7 +178,7 @@ export function eventCoversDay(ev: CalendarEventItem, day: string): boolean {
 
 export interface DayBuckets {
   events: CalendarEventItem[];
-  tasks: CalendarTaskItem[];
+  tasks: CalendarTaskChip[];
   habits: CalendarHabitItem[];
   moods: CalendarMoodItem[];
   notes: CalendarNoteItem[];
@@ -122,9 +189,10 @@ function emptyBuckets(): DayBuckets {
 }
 
 /**
- * Pre-index a feed so each grid cell is O(1) to populate. Single-placement
- * items are grouped by their local day; events stay in a flat list because they
- * can span multiple days.
+ * Pre-index a feed so each grid cell is O(1) to populate. Notes, habits, and
+ * moods belong to one local day. A task can sit on its due day and, when that
+ * day differs, the day it was finished. Events stay in a flat list because
+ * they can span multiple days.
  */
 export interface CalendarIndex {
   byDay: Map<string, DayBuckets>;
@@ -149,10 +217,15 @@ export function indexFeed(items: CalendarItem[]): CalendarIndex {
       events.push(item);
       continue;
     }
+    if (item.source === "task") {
+      for (const place of taskPlacements(item)) {
+        bucket(place.day).tasks.push({ ...item, chip: place.reason });
+      }
+      continue;
+    }
     const day = itemDay(item);
     const b = bucket(day);
-    if (item.source === "task") b.tasks.push(item);
-    else if (item.source === "habit") b.habits.push(item);
+    if (item.source === "habit") b.habits.push(item);
     else if (item.source === "mood") b.moods.push(item);
     else if (item.source === "note") b.notes.push(item);
   }
