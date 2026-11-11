@@ -126,6 +126,58 @@ export function readOriginatedContracts(value: unknown): OriginRef[] {
   });
 }
 
+export interface OriginatedTaskRef extends OriginRef {
+  /** The task's completed column. */
+  isComplete: boolean;
+}
+
+/**
+ * Tasks a note says it started. The flag is `isComplete`.
+ * A missing flag counts as not done.
+ */
+export function readOriginatedTasks(value: unknown): OriginatedTaskRef[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const ref = readOriginNote(item);
+    if (!ref || !item || typeof item !== "object") return [];
+    const completed = (item as { isComplete?: unknown }).isComplete === true;
+    return [{ ...ref, isComplete: completed }];
+  });
+}
+
+/** Drop originNoteId so a create can be retried before the server accepts it. */
+export function withoutOriginNoteId(
+  body: Record<string, unknown>
+): Record<string, unknown> {
+  if (!Object.prototype.hasOwnProperty.call(body, "originNoteId")) return body;
+  const next = { ...body };
+  delete next.originNoteId;
+  return next;
+}
+
+/**
+ * Create a task that may point at a note.
+ * A server that has not shipped originNoteId yet rejects the field; save
+ * without it so the task is not lost. A 404 "Note not found" is reported
+ * back so the caller can drop the link.
+ */
+export async function postTaskKeepingOrigin(
+  post: (body: Record<string, unknown>) => Promise<unknown>,
+  body: Record<string, unknown>
+): Promise<"saved" | "note-not-found"> {
+  try {
+    await post(body);
+    return "saved";
+  } catch (err) {
+    if (body.originNoteId != null && apiErrorMentionsField(err, "originNoteId")) {
+      await post(withoutOriginNoteId(body));
+      return "saved";
+    }
+    if (isNoteNotFound(err)) return "note-not-found";
+    throw err;
+  }
+}
+
 function errorText(err: unknown): string {
   if (!(err instanceof ApiError)) return "";
   return typeof err.body === "string" ? err.body : JSON.stringify(err.body ?? "");

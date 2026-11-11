@@ -11,7 +11,10 @@ import {
   parseOriginNoteId,
   patchNoteFlags,
   readOriginatedContracts,
+  readOriginatedTasks,
+  postTaskKeepingOrigin,
   readOriginNote,
+  withoutOriginNoteId,
 } from "./noteMenu";
 
 test("pin and archive always send the current tags and both flags", () => {
@@ -83,7 +86,7 @@ test("a note becomes an all-day calendar event linked to that note", () => {
   assert.equal(noteCalendarEvent({ id: 1, title: "   " }, "2026-01-02").title, "Note");
 });
 
-test("origin links and unknown-field errors degrade when the shape is old", () => {
+test("origin links and unknown-field errors degrade when the shape is old", async () => {
   assert.equal(parseOriginNoteId("15"), 15);
   assert.equal(parseOriginNoteId("0"), null);
   assert.equal(parseOriginNoteId("nope"), null);
@@ -102,6 +105,54 @@ test("origin links and unknown-field errors degrade when the shape is old", () =
     [{ id: 8, title: "Water" }]
   );
   assert.deepEqual(readOriginatedContracts(undefined), []);
+  assert.deepEqual(
+    readOriginatedTasks([
+      { id: 4, title: "Water", isComplete: false },
+      { id: 5, title: "Weed", isComplete: true },
+      { id: 6, title: "Plain" },
+      { id: 7, title: "Old flag", isCompleted: true },
+      { id: "no", title: "Skip", isComplete: false },
+      null,
+    ]),
+    [
+      { id: 4, title: "Water", isComplete: false },
+      { id: 5, title: "Weed", isComplete: true },
+      { id: 6, title: "Plain", isComplete: false },
+      { id: 7, title: "Old flag", isComplete: false },
+    ]
+  );
+  assert.deepEqual(readOriginatedTasks(undefined), []);
+  assert.deepEqual(
+    withoutOriginNoteId({ title: "Water", originNoteId: 4, tagIds: [1] }),
+    { title: "Water", tagIds: [1] }
+  );
+  assert.deepEqual(withoutOriginNoteId({ title: "Water" }), { title: "Water" });
+
+  const calls: Record<string, unknown>[] = [];
+  const unknownField = new ApiError(
+    400,
+    "Bad Request",
+    { message: ["property originNoteId should not exist"] },
+    null
+  );
+  const retried = await postTaskKeepingOrigin(async (body) => {
+    calls.push(body);
+    if ("originNoteId" in body) throw unknownField;
+  }, { title: "Water", originNoteId: 4, tagIds: [] });
+  assert.equal(retried, "saved");
+  assert.deepEqual(calls, [
+    { title: "Water", originNoteId: 4, tagIds: [] },
+    { title: "Water", tagIds: [] },
+  ]);
+  const missingNote = await postTaskKeepingOrigin(async () => {
+    throw new ApiError(404, "Not Found", { message: "Note not found" }, null);
+  }, { title: "Water", originNoteId: 9 });
+  assert.equal(missingNote, "note-not-found");
+  await assert.rejects(
+    postTaskKeepingOrigin(async () => {
+      throw new ApiError(500, "Error", { message: "down" }, null);
+    }, { title: "Water" })
+  );
 
   const unknown = new ApiError(
     400,
@@ -129,14 +180,32 @@ test("the note surfaces wire the menu without moving delete into it", () => {
   const habit = readFileSync(new URL("../habits/[id]/page.tsx", import.meta.url), "utf8");
   const create = readFileSync(new URL("../habits/new/page.tsx", import.meta.url), "utf8");
   const calendar = readFileSync(new URL("../calendar/page.tsx", import.meta.url), "utf8");
+  const tasks = readFileSync(new URL("../tasks/page.tsx", import.meta.url), "utf8");
+  const quick = readFileSync(
+    new URL("../components/QuickTaskInput.tsx", import.meta.url),
+    "utf8"
+  );
+  const card = readFileSync(new URL("../components/TaskCard.tsx", import.meta.url), "utf8");
 
   assert.match(list, /NoteActionsMenu/);
   assert.match(list, /archived=true/);
   assert.match(list, /notesForList/);
   assert.match(note, /NoteActionsMenu/);
   assert.match(note, /Contracts from this note/);
+  assert.match(note, /Tasks from this note/);
+  assert.match(note, /taskHref/);
+  assert.match(note, /task\.isComplete/);
+  assert.doesNotMatch(note, /isCompleted/);
+  assert.match(note, /Done/);
+  assert.match(list, /originatedTasks/);
   assert.match(note, /window\.print\(\)/);
   assert.match(menu, /stopPropagation/);
+  assert.match(menu, /Make a task/);
+  assert.match(menu, /\/tasks\?originNoteId=/);
+  const contractAt = menu.indexOf("Turn into a contract");
+  const taskAt = menu.indexOf("Make a task");
+  const dayAt = menu.indexOf("Add to a calendar day", contractAt);
+  assert.ok(contractAt !== -1 && taskAt > contractAt && dayAt > taskAt);
   assert.match(menu, /originNoteId/);
   assert.match(menu, /noteFlagPayload/);
   assert.match(menu, /createCalendarEvent/);
@@ -145,6 +214,17 @@ test("the note surfaces wire the menu without moving delete into it", () => {
   assert.match(note, /Are you sure you want to delete this note/);
   assert.match(habit, /From note:/);
   assert.match(create, /originNoteId/);
+  assert.match(quick, /originNoteId/);
+  assert.match(quick, /postTaskKeepingOrigin/);
+  assert.match(quick, /From note:/);
+  assert.match(tasks, /originNoteId/);
+  assert.match(tasks, /originTitle/);
+  assert.match(card, /From note:/);
+  assert.match(card, /readOriginNote/);
+  assert.match(card, /withoutOriginNoteId\(\{ title:/);
+  const form = readFileSync(new URL("../components/TaskForm.tsx", import.meta.url), "utf8");
+  const patchAt = form.indexOf('method: "PATCH"');
+  assert.ok(patchAt !== -1 && form.indexOf("withoutOriginNoteId", patchAt) > patchAt);
   assert.match(menu, /calendarDayHref/);
   assert.match(calendar, /calendarDayFromSearch/);
 });

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Task, TaskPriority } from "../tasks/types/task";
 import { taskDueInputValue } from "../tasks/taskDueDate";
 import { apiFetch } from "../hooks/useApi";
+import { withoutOriginNoteId } from "../notes/noteMenu";
 import { useTags } from "../hooks/useTags";
 import { Field, TextField, TextArea, SelectField, FormButton } from "./forms";
 import TagPicker from "./TagPicker";
@@ -62,7 +63,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         await apiFetch(`/tasks/${task.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(withoutOriginNoteId(payload)),
         });
       } else {
         await apiFetch("/tasks", {

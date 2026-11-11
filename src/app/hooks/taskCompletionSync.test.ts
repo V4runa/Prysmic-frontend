@@ -36,6 +36,8 @@ function taskRow(item: Extract<CalendarItem, { source: "task" }>, isComplete = i
     dueDate: item.dueDate,
     createdAt: "2026-11-06T00:00:00.000Z",
     updatedAt: "2026-11-06T00:00:00.000Z",
+    originNoteId: null,
+    originNote: null,
   };
 }
 

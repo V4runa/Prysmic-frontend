@@ -54,7 +54,12 @@ import { useWritingGuard } from "../useWritingGuard";
 import TagChip from "../../components/TagChip";
 import TagPicker from "../../components/TagPicker";
 import NoteActionsMenu from "../../components/NoteActionsMenu";
-import { readOriginatedContracts } from "../noteMenu";
+import { taskHref } from "../../lib/calendarDay";
+import {
+  readOriginatedContracts,
+  readOriginatedTasks,
+  type OriginatedTaskRef,
+} from "../noteMenu";
 
 // TipTap is heavy; load it only when the editor actually renders so it stays
 // out of the initial route bundle.
@@ -88,6 +93,7 @@ interface Note {
   isPinned?: boolean;
   isArchived?: boolean;
   originatedContracts?: { id: number; title: string }[];
+  originatedTasks: OriginatedTaskRef[];
 }
 
 function formatNoteDate(value: string | null | undefined): string | null {
@@ -160,6 +166,7 @@ export default function ViewNotePage() {
   const showEditor = shouldShowNoteEditor(loading, loadFailed);
   const noteReady = !!note;
   const contracts = readOriginatedContracts(note?.originatedContracts);
+  const tasksFromNote = readOriginatedTasks(note?.originatedTasks);
   const printedDate = formatNoteDate(note?.createdAt);
 
   useEffect(() => {
@@ -595,21 +602,49 @@ export default function ViewNotePage() {
                       {printedDate && (
                         <p className="note-print-only text-sm text-slate-500">{printedDate}</p>
                       )}
-                      {contracts.length > 0 && (
-                        <div className="flex flex-col gap-1">
-                          <p className="text-xs text-slate-500">Contracts from this note</p>
-                          <ul className="flex flex-col gap-0.5">
-                            {contracts.map((contract) => (
-                              <li key={contract.id}>
-                                <Link
-                                  href={`/habits/${contract.id}`}
-                                  className="text-sm text-cyan-300/90 hover:underline"
-                                >
-                                  {contract.title || "Untitled"}
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
+                      {(contracts.length > 0 || tasksFromNote.length > 0) && (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-10 sm:gap-y-3">
+                          {contracts.length > 0 && (
+                            <div className="flex min-w-0 flex-col gap-1">
+                              <p className="text-xs text-slate-500">Contracts from this note</p>
+                              <ul className="flex flex-col gap-0.5">
+                                {contracts.map((contract) => (
+                                  <li key={contract.id}>
+                                    <Link
+                                      href={`/habits/${contract.id}`}
+                                      className="text-sm text-cyan-300/90 hover:underline"
+                                    >
+                                      {contract.title || "Untitled"}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {tasksFromNote.length > 0 && (
+                            <div className="flex min-w-0 flex-col gap-1">
+                              <p className="text-xs text-slate-500">Tasks from this note</p>
+                              <ul className="flex flex-col gap-0.5">
+                                {tasksFromNote.map((task) => (
+                                  <li key={task.id} className="flex flex-wrap items-baseline gap-x-2">
+                                    <Link
+                                      href={taskHref(task.id)}
+                                      className={
+                                        task.isComplete
+                                          ? "text-sm text-slate-400 line-through decoration-slate-500 hover:underline"
+                                          : "text-sm text-cyan-300/90 hover:underline"
+                                      }
+                                    >
+                                      {task.title || "Untitled"}
+                                    </Link>
+                                    {task.isComplete && (
+                                      <span className="text-xs text-slate-500">Done</span>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       )}
                     </>

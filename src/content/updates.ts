@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "note-into-task",
+    date: "2026-11-11",
+    kind: "new",
+    title: "Make a task from a note",
+    summary:
+      "You can make a task from a note you already wrote. It starts with the note's title, the task links back to the note, and the note lists the tasks that came from it.",
+  },
+  {
     id: "note-actions",
     date: "2026-11-11",
     kind: "new",

@@ -29,7 +29,7 @@ import { tagActiveClasses, tagColorClasses, tagColorKey } from "../lib/tagColors
 import { parseTagIds, tagFilterHref } from "../lib/tagQuery";
 import TagChip from "../components/TagChip";
 import NoteActionsMenu from "../components/NoteActionsMenu";
-import { notesForList } from "./noteMenu";
+import { notesForList, type OriginatedTaskRef } from "./noteMenu";
 
 interface Note {
   id: number;
@@ -40,6 +40,7 @@ interface Note {
   attachmentCount?: number;
   isPinned?: boolean;
   isArchived?: boolean;
+  originatedTasks: OriginatedTaskRef[];
 }
 
 interface TagData {
