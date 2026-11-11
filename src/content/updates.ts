@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "calendar-day-links",
+    date: "2026-11-11",
+    kind: "new",
+    title: "Calendar day links",
+    summary:
+      "A day on the calendar opens the note, task, contract, or mood it shows. The date on a note, task, mood, or contract opens that day.",
+  },
+  {
     id: "calendar-finished-tasks",
     date: "2026-11-11",
     kind: "improved",
@@ -103,11 +111,6 @@ export const comingSoon = [
     id: "note-into-contract",
     title: "Turn a note into a contract",
     summary: "Start a habit contract from a note you already wrote.",
-  },
-  {
-    id: "calendar-day-links",
-    title: "Calendar day links",
-    summary: "Open the matching calendar day from a task, habit, or mood.",
   },
 ] as const satisfies readonly PlannedUpdate[];
 

@@ -22,6 +22,8 @@ import { tactile } from "../lib/motion";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tag, Paperclip } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { calendarDayHref } from "../lib/calendarDay";
+import { localDateKey } from "../lib/date";
 import { noteHtmlToText } from "../lib/noteContent";
 import { tagActiveClasses, tagColorClasses, tagColorKey } from "../lib/tagColors";
 import { parseTagIds, tagFilterHref } from "../lib/tagQuery";
@@ -363,14 +365,15 @@ export default function NotesOverviewPage() {
                           </div>
                         )}
                         <div className="mt-3 sm:mt-4 flex items-center justify-between gap-2">
-                          <span
-                            className="text-xs text-slate-400"
+                          <Link
+                            href={calendarDayHref(localDateKey(note.createdAt))}
                             title={new Date(note.createdAt).toLocaleString()}
+                            className="relative z-20 text-xs text-slate-400 hover:text-cyan-300 hover:underline"
                           >
                             {formatDistanceToNow(new Date(note.createdAt), {
                               addSuffix: true,
                             })}
-                          </span>
+                          </Link>
                           {!!note.attachmentCount && note.attachmentCount > 0 && (
                             <span
                               className="flex items-center gap-1 text-xs text-slate-400 tabular-nums"

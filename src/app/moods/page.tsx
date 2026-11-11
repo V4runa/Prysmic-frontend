@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../hooks/useApi";
 import GlassPanel from "../components/GlassPanel";
@@ -9,6 +10,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import MoodPicker from "../components/MoodPicker";
 import MoodReflection from "../components/MoodReflection";
 import MoodTimeline from "../components/MoodTimeline";
+import { calendarDayFromSearch } from "../lib/calendarDay";
 import { localDateKey } from "../lib/date";
 import { useLogicalToday } from "../hooks/usePreferences";
 import { calendarQueryKey } from "../hooks/useCalendar";
@@ -53,6 +55,8 @@ const normalizeMoods = (moods: MoodEntry[]): MoodEntry[] =>
 
 export default function MoodPage() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const focusDay = calendarDayFromSearch(searchParams.toString());
   const [phase, setPhase] = useState<MoodPhase>(MoodPhase.PICK);
   const [selectedMood, setSelectedMood] = useState<MoodOption | null>(null);
 
@@ -79,6 +83,11 @@ export default function MoodPage() {
   useEffect(() => {
     if (loading) return;
 
+    if (focusDay && timeline.some((mood) => localDateKey(mood.date) === focusDay)) {
+      setPhase(MoodPhase.TIMELINE);
+      return;
+    }
+
     if (timeline.length === 0) {
       setPhase(MoodPhase.PICK);
       return;
@@ -92,7 +101,7 @@ export default function MoodPage() {
       const lastSaved = localStorage.getItem("lastMoodDate");
       if (lastSaved !== todayKey) setPhase(MoodPhase.PICK);
     }
-  }, [loading, timeline, todayKey]);
+  }, [loading, timeline, todayKey, focusDay]);
 
   // 🎭 When a mood is picked
   const handleMoodSelect = (mood: MoodOption) => {
@@ -199,7 +208,7 @@ export default function MoodPage() {
                 transition={{ duration: 1.0, ease: "easeOut" }}
                 className="w-full h-full flex-1"
               >
-                <MoodTimeline timeline={timeline} />
+                <MoodTimeline timeline={timeline} focusDay={focusDay} />
               </motion.div>
             )}
           </AnimatePresence>

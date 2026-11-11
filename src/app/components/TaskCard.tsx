@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Task, TaskPriority } from "../tasks/types/task";
@@ -19,6 +20,8 @@ import {
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatTaskDueDate } from "../tasks/taskDueDate";
+import { calendarDayHref } from "../lib/calendarDay";
+import { taskDueDayKey } from "../lib/date";
 import Sparkles from "./Sparkles";
 import TaskForm from "./TaskForm";
 import TagChip from "./TagChip";
@@ -469,7 +472,14 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
                 task.isComplete ? "text-green-300/40" : "text-white/40"
               )}
             >
-              Due: {formatTaskDueDate(task.dueDate)}
+              Due:{" "}
+              <Link
+                href={calendarDayHref(taskDueDayKey(task.dueDate))}
+                title="Open this day on the calendar"
+                className="hover:text-cyan-300 hover:underline"
+              >
+                {formatTaskDueDate(task.dueDate)}
+              </Link>
             </p>
           )}
         </div>
