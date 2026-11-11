@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
@@ -9,6 +10,7 @@ import { apiFetch } from "../../hooks/useApi";
 import { useMoodOptions } from "../../hooks/useMoodOptions";
 import { calendarQueryKey } from "../../hooks/useCalendar";
 import { resolveMoodVisual, moodColor } from "../../lib/moodColors";
+import { moodHref } from "../../lib/calendarDay";
 import { localToday } from "../../lib/date";
 import { useLogicalToday } from "../../hooks/usePreferences";
 import { tactileSubtle } from "../../lib/motion";
@@ -36,13 +38,6 @@ export default function DayMoodEditor({ day, mood }: DayMoodEditorProps) {
   const [note, setNote] = useState(mood?.note ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
-  // Keep the note field in sync when the selected day (and thus its mood) changes.
-  useEffect(() => {
-    setNote(mood?.note ?? "");
-    setOpen(false);
-    setError("");
-  }, [day, mood?.id, mood?.note]);
 
   const isFuture = day > localToday();
   const logicalDay = useLogicalToday();
@@ -121,10 +116,16 @@ export default function DayMoodEditor({ day, mood }: DayMoodEditorProps) {
             "border-white/10 bg-white/5"
           )}
         >
-          <span className="text-lg leading-none">{current.emoji}</span>
-          <span className={clsx("text-sm flex-1 truncate", current.classes.label)}>
-            {current.label}
-          </span>
+          <Link
+            href={moodHref(day)}
+            title="Open in Moods"
+            className="flex min-w-0 flex-1 items-center gap-2.5"
+          >
+            <span className="text-lg leading-none">{current.emoji}</span>
+            <span className={clsx("text-sm truncate hover:underline", current.classes.label)}>
+              {current.label}
+            </span>
+          </Link>
           <motion.button
             {...tactileSubtle}
             onClick={() => setOpen((o) => !o)}

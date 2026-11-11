@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import clsx from "clsx";
@@ -37,6 +37,7 @@ import { TextField } from "../../components/forms";
 import HabitProgressRing from "./HabitProgressRing";
 import DayMoodEditor from "./DayMoodEditor";
 import { usePreferences } from "../../hooks/usePreferences";
+import { habitHref, linkedItemHref, noteHref, taskHref } from "../../lib/calendarDay";
 
 interface DayAgendaProps {
   day: string;
@@ -56,7 +57,6 @@ export default function DayAgenda({
   onOpenEvent,
   onCreateEvent,
 }: DayAgendaProps) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { clockFormat } = usePreferences();
   const [taskTitle, setTaskTitle] = useState("");
@@ -155,40 +155,48 @@ export default function DayAgenda({
             {events.map((ev) => {
               const c = getEventColor(ev.color);
               return (
-                <motion.button
+                <motion.div
                   key={ev.key}
                   {...tactileRow}
-                  onClick={() => onOpenEvent(ev.id)}
                   className={clsx(
-                    "text-left flex items-start gap-2.5 rounded-lg border px-3 py-2 transition hover:brightness-110 hover:shadow-lg hover:shadow-black/25",
+                    "rounded-lg border px-3 py-2 transition hover:brightness-110 hover:shadow-lg hover:shadow-black/25",
                     c.chip
                   )}
                 >
-                  <CalendarClock className={clsx("h-4 w-4 mt-0.5 shrink-0", c.text)} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-slate-100 truncate">
-                      {ev.title}
-                    </span>
-                    <span className="block text-xs text-slate-400">
-                      {ev.allDay
-                        ? "All day"
-                        : `${formatClock(ev.startTime, clockFormat)}${
-                            ev.endTime ? ` – ${formatClock(ev.endTime, clockFormat)}` : ""
-                          }`}
-                      {ev.recurrence !== "none" && " · repeats"}
-                    </span>
-                    {ev.location && (
-                      <span className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
-                        <MapPin className="h-3 w-3" /> {ev.location}
+                  <button
+                    type="button"
+                    onClick={() => onOpenEvent(ev.id)}
+                    className="flex w-full items-start gap-2.5 text-left"
+                  >
+                    <CalendarClock className={clsx("h-4 w-4 mt-0.5 shrink-0", c.text)} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-slate-100 truncate">
+                        {ev.title}
                       </span>
-                    )}
-                    {ev.linked && (
-                      <span className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
-                        <Link2 className="h-3 w-3" /> {ev.linked.title}
+                      <span className="block text-xs text-slate-400">
+                        {ev.allDay
+                          ? "All day"
+                          : `${formatClock(ev.startTime, clockFormat)}${
+                              ev.endTime ? ` – ${formatClock(ev.endTime, clockFormat)}` : ""
+                            }`}
+                        {ev.recurrence !== "none" && " · repeats"}
                       </span>
-                    )}
-                  </span>
-                </motion.button>
+                      {ev.location && (
+                        <span className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
+                          <MapPin className="h-3 w-3" /> {ev.location}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  {ev.linked && (
+                    <Link
+                      href={linkedItemHref(ev.linked.type, ev.linked.id, day)}
+                      className="mt-0.5 flex items-center gap-1 pl-6.5 text-xs text-slate-400 hover:text-cyan-300 hover:underline"
+                    >
+                      <Link2 className="h-3 w-3" /> {ev.linked.title}
+                    </Link>
+                  )}
+                </motion.div>
               );
             })}
           </section>
@@ -223,9 +231,8 @@ export default function DayAgenda({
                     <Square className="h-4 w-4 text-sky-300" aria-hidden="true" />
                   )}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => router.push("/tasks")}
+                <Link
+                  href={taskHref(t.id)}
                   className="flex min-w-0 flex-1 items-center gap-2 text-left"
                 >
                   <span className="min-w-0 flex-1">
@@ -249,7 +256,7 @@ export default function DayAgenda({
                       Completed
                     </span>
                   )}
-                </button>
+                </Link>
               </motion.div>
             ))}
           </section>
@@ -261,46 +268,65 @@ export default function DayAgenda({
             <span className={sectionTitle}>Habits</span>
             {habits.map((h) => {
               const Icon = habitIconMap[(h.icon as IconKey) ?? "flame"] ?? habitIconMap.flame;
+              const toggleHabit = () => {
+                if (pendingHabit === h.id) return;
+                void handleToggleHabit(h);
+              };
               return (
-                <motion.button
+                <motion.div
                   key={h.key}
                   {...tactileRow}
-                  onClick={() => handleToggleHabit(h)}
-                  disabled={pendingHabit === h.id}
                   className={clsx(
-                    "text-left flex items-center gap-2.5 rounded-lg border px-3 py-2 transition disabled:opacity-60 hover:shadow-lg hover:shadow-black/25",
+                    "flex items-center gap-2.5 rounded-lg border px-3 py-2 transition hover:shadow-lg hover:shadow-black/25",
+                    pendingHabit === h.id && "opacity-60",
                     h.checked
                       ? "bg-amber-500/15 border-amber-400/40"
                       : "bg-white/5 border-white/10 hover:bg-white/10"
                   )}
                 >
-                  <span
-                    className={clsx(
-                      "flex items-center justify-center h-6 w-6 rounded-full border shrink-0 transition",
-                      h.checked
-                        ? "bg-amber-400/30 border-amber-300/60"
-                        : "border-amber-300/30"
-                    )}
+                  <button
+                    type="button"
+                    onClick={toggleHabit}
+                    disabled={pendingHabit === h.id}
+                    aria-pressed={h.checked}
+                    aria-label={h.checked ? `Mark ${h.title} not done` : `Mark ${h.title} done`}
+                    className="tap-target flex shrink-0 items-center justify-center rounded-sm disabled:opacity-50"
                   >
-                    <Icon
+                    <span
                       className={clsx(
-                        "h-3.5 w-3.5",
-                        h.checked ? "text-amber-200" : "text-amber-300/70"
+                        "flex items-center justify-center h-6 w-6 rounded-full border shrink-0 transition",
+                        h.checked
+                          ? "bg-amber-400/30 border-amber-300/60"
+                          : "border-amber-300/30"
                       )}
-                    />
-                  </span>
-                  <span
+                    >
+                      <Icon
+                        className={clsx(
+                          "h-3.5 w-3.5",
+                          h.checked ? "text-amber-200" : "text-amber-300/70"
+                        )}
+                      />
+                    </span>
+                  </button>
+                  <Link
+                    href={habitHref(h.id, day)}
                     className={clsx(
                       "text-sm truncate flex-1",
                       h.checked ? "text-amber-100" : "text-slate-200"
                     )}
                   >
                     {h.title}
-                  </span>
-                  <span className="text-[11px] text-slate-500">
+                  </Link>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={toggleHabit}
+                    disabled={pendingHabit === h.id}
+                    className="text-[11px] text-slate-500 disabled:opacity-50"
+                  >
                     {h.checked ? "Done" : "Tap to check"}
-                  </span>
-                </motion.button>
+                  </button>
+                </motion.div>
               );
             })}
           </section>
@@ -308,22 +334,33 @@ export default function DayAgenda({
 
         {/* Mood — inline editor so moods can be logged/updated retroactively.
             Hidden with the rest of the mood layer when that filter is off. */}
-        {sources.mood && <DayMoodEditor day={day} mood={moods[0]} />}
+        {sources.mood && (
+          // Remount when the day or its saved mood changes so a draft does not carry over.
+          <DayMoodEditor
+            key={`${day}:${moods[0]?.id ?? "none"}:${moods[0]?.note ?? ""}`}
+            day={day}
+            mood={moods[0]}
+          />
+        )}
 
         {/* Notes */}
         {notes.length > 0 && (
           <section className="flex flex-col gap-1.5">
             <span className={sectionTitle}>Notes</span>
             {notes.map((n) => (
-              <motion.button
+              <motion.div
                 key={`note-${n.id}`}
                 {...tactileRow}
-                onClick={() => router.push(`/notes/${n.id}`)}
-                className="text-left flex items-center gap-2.5 rounded-lg border border-violet-400/20 bg-violet-500/5 px-3 py-2 hover:bg-violet-500/10 transition hover:shadow-lg hover:shadow-black/25"
+                className="rounded-lg border border-violet-400/20 bg-violet-500/5 hover:bg-violet-500/10 transition hover:shadow-lg hover:shadow-black/25"
               >
-                <StickyNote className="h-4 w-4 shrink-0 text-violet-300" />
-                <span className="text-sm text-slate-200 truncate">{n.title}</span>
-              </motion.button>
+                <Link
+                  href={noteHref(n.id)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-left"
+                >
+                  <StickyNote className="h-4 w-4 shrink-0 text-violet-300" />
+                  <span className="text-sm text-slate-200 truncate">{n.title}</span>
+                </Link>
+              </motion.div>
             ))}
           </section>
         )}
