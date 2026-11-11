@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
@@ -14,6 +14,7 @@ import TaskFilters, {
 } from "../components/TaskFilters";
 import { useTasks, useInvalidateTasks } from "../hooks/useTasks";
 import { useTags } from "../hooks/useTags";
+import { parseTaskFocus } from "../lib/calendarDay";
 import { parseTagIds, tagFilterHref, taskMatchesTag } from "../lib/tagQuery";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,6 +24,9 @@ export default function TasksPage() {
   const searchParams = useSearchParams();
   const search = searchParams.toString();
   const tagId = parseTagIds(search)[0] ?? null;
+  const focusTaskId = parseTaskFocus(search);
+  const [appliedFocusId, setAppliedFocusId] = useState<number | null>(null);
+  const scrolledFocus = useRef<number | null>(null);
   const allTasks = useTasks();
   const taggedTasks = useTasks(tagId);
   const taskSource = tagId == null ? allTasks : taggedTasks;
@@ -48,6 +52,13 @@ export default function TasksPage() {
     [draft, tagId]
   );
   const { data: tags = [] } = useTags();
+
+  if (focusTaskId != null && !allTasks.isLoading && focusTaskId !== appliedFocusId) {
+    setAppliedFocusId(focusTaskId);
+    if (allTasks.active.some((task) => task.id === focusTaskId)) setActiveTab("active");
+    else if (allTasks.completed.some((task) => task.id === focusTaskId)) setActiveTab("completed");
+    else if (allTasks.archived.some((task) => task.id === focusTaskId)) setActiveTab("archived");
+  }
 
   const setFilters = (next: TaskFilterState) => {
     setDraft({ search: next.search, priority: next.priority });
@@ -82,6 +93,20 @@ export default function TasksPage() {
 
   const filtering = hasActiveFilters(filters);
 
+  useEffect(() => {
+    if (focusTaskId == null || scrolledFocus.current === focusTaskId) return;
+    if (!visibleTasks.some((task) => task.id === focusTaskId)) return;
+    const scrollToTask = () => {
+      const node = document.getElementById(`task-${focusTaskId}`);
+      if (!node) return false;
+      node.scrollIntoView({ block: "nearest" });
+      scrolledFocus.current = focusTaskId;
+      return true;
+    };
+    if (scrollToTask()) return;
+    const timer = window.setTimeout(scrollToTask, 400);
+    return () => window.clearTimeout(timer);
+  }, [focusTaskId, visibleTasks]);
 
   return (
     <PageTransition>
@@ -168,10 +193,13 @@ export default function TasksPage() {
                     {visibleTasks.map((task, i) => (
                       <motion.div
                         key={task.id}
+                        id={`task-${task.id}`}
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.02, duration: 0.22 }}
-                        className="h-full min-w-0"
+                        className={`h-full min-w-0 scroll-mt-4 rounded-xl ${
+                          task.id === focusTaskId ? "ring-1 ring-cyan-300/60" : ""
+                        }`}
                       >
                         <TaskCard task={task} onUpdate={fetchTasks} />
                       </motion.div>

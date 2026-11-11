@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
@@ -25,8 +25,8 @@ import {
   weekRange,
 } from "./lib/calendarLib";
 import { CalendarView } from "./types";
+import { calendarDayFromSearch, isCalendarDayKey } from "../lib/calendarDay";
 import { localToday } from "../lib/date";
-import { isCalendarDateKey } from "../notes/noteMenu";
 import { tactile } from "../lib/motion";
 import { useSwipe } from "../hooks/useSwipe";
 import MonthView from "./components/MonthView";
@@ -39,14 +39,17 @@ import CalendarFilters from "./components/CalendarFilters";
 const SOURCES_STORAGE_KEY = "prysmic.calendarSources";
 
 export default function CalendarPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const dateQuery = searchParams.get("date");
-  const requestedDay = dateQuery && isCalendarDateKey(dateQuery) ? dateQuery : null;
-  const [view, setView] = useState<CalendarView>("month");
-  const [anchor, setAnchor] = useState(() => requestedDay ?? localToday());
-  const [selectedDay, setSelectedDay] = useState(() => requestedDay ?? localToday());
-  const [sheetOpen, setSheetOpen] = useState(() => requestedDay != null);
-  const [appliedDay, setAppliedDay] = useState<string | null>(requestedDay);
+  const linkedDay = calendarDayFromSearch(searchParams.toString());
+  // The day we just wrote into the URL. Cleared when that param arrives, so
+  // choosing a day does not also jump the month to it.
+  const [echoDay, setEchoDay] = useState<string | null>(null);
+  const [trackedUrlDay, setTrackedUrlDay] = useState(linkedDay);
+  const [view, setView] = useState<CalendarView>(() => (linkedDay ? "day" : "month"));
+  const [anchor, setAnchor] = useState(() => linkedDay ?? localToday());
+  const [selectedDay, setSelectedDay] = useState(() => linkedDay ?? localToday());
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [modal, setModal] = useState<{
     open: boolean;
     eventId: number | null;
@@ -56,14 +59,31 @@ export default function CalendarPage() {
   const [isNarrow, setIsNarrow] = useState(false);
   const [isXl, setIsXl] = useState(false);
   const [sources, setSources] = useState<SourceFilter>(ALL_SOURCES_ON);
-  if (requestedDay !== appliedDay) {
-    setAppliedDay(requestedDay);
-    if (requestedDay) {
-      setAnchor(requestedDay);
-      setSelectedDay(requestedDay);
-      setSheetOpen(true);
+
+  // A shared or pasted `?date=` opens that day. A day chosen here writes the
+  // same param, and that write is ignored so paging the month stays put.
+  if (linkedDay !== trackedUrlDay) {
+    setTrackedUrlDay(linkedDay);
+    if (linkedDay && linkedDay === echoDay) {
+      setEchoDay(null);
+    } else if (linkedDay) {
+      setAnchor(linkedDay);
+      setSelectedDay(linkedDay);
+      setView("day");
     }
   }
+
+  const writeDay = useCallback(
+    (day: string) => {
+      if (!isCalendarDayKey(day)) return;
+      const next = new URLSearchParams(searchParams.toString());
+      if (next.get("date") === day) return;
+      next.set("date", day);
+      setEchoDay(day);
+      router.replace(`/calendar?${next.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
 
   const invalidateCalendar = useInvalidateCalendar();
 
@@ -110,8 +130,9 @@ export default function CalendarPage() {
     const focus = focusDayForView(view, anchor, selectedDay);
     setAnchor(focus);
     setSelectedDay(focus);
+    writeDay(focus);
     setView("day");
-  }, [isNarrow, view, anchor, selectedDay]);
+  }, [isNarrow, view, anchor, selectedDay, writeDay]);
 
   const availableViews: CalendarView[] = isNarrow
     ? ["month", "day"]
@@ -122,6 +143,7 @@ export default function CalendarPage() {
     const focus = focusDayForView(view, anchor, selectedDay);
     setAnchor(focus);
     setSelectedDay(focus);
+    writeDay(focus);
     setView(next);
   };
 
@@ -138,18 +160,29 @@ export default function CalendarPage() {
   const title =
     view === "month" ? monthLabel(anchor) : view === "week" ? weekLabel(anchor) : dayLabel(anchor);
 
-  const goPrev = () =>
-    setAnchor((a) =>
-      view === "month" ? shiftMonth(a, -1) : view === "week" ? shiftWeek(a, -1) : shiftDay(a, -1)
-    );
-  const goNext = () =>
-    setAnchor((a) =>
-      view === "month" ? shiftMonth(a, 1) : view === "week" ? shiftWeek(a, 1) : shiftDay(a, 1)
-    );
+  const goPrev = () => {
+    const next =
+      view === "month" ? shiftMonth(anchor, -1) : view === "week" ? shiftWeek(anchor, -1) : shiftDay(anchor, -1);
+    setAnchor(next);
+    if (view === "day") {
+      setSelectedDay(next);
+      writeDay(next);
+    }
+  };
+  const goNext = () => {
+    const next =
+      view === "month" ? shiftMonth(anchor, 1) : view === "week" ? shiftWeek(anchor, 1) : shiftDay(anchor, 1);
+    setAnchor(next);
+    if (view === "day") {
+      setSelectedDay(next);
+      writeDay(next);
+    }
+  };
   const goToday = () => {
     const t = localToday();
     setAnchor(t);
     setSelectedDay(t);
+    writeDay(t);
   };
 
   // Swipe left → next period, swipe right → previous, view-aware (month/week/
@@ -158,6 +191,7 @@ export default function CalendarPage() {
 
   const handleSelectDay = (day: string) => {
     setSelectedDay(day);
+    writeDay(day);
     if (!isXl) setSheetOpen(true);
   };
 

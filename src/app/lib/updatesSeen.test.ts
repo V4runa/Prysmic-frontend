@@ -174,13 +174,18 @@ test("the published changelog is newest first and ready for a public page", () =
   assert.equal(changelog.updates[0]?.kind, "new");
   assert.equal(changelog.updates[0]?.date, "2026-11-11");
   assert.equal(changelog.updates[0]?.title, "More you can do with a note");
-  assert.equal(changelog.updates[1]?.id, "calendar-finished-tasks");
+  assert.equal(changelog.updates[1]?.id, "calendar-day-links");
   assert.equal(changelog.updates[1]?.highlight, false);
-  assert.equal(changelog.updates[1]?.kind, "improved");
-  assert.equal(changelog.updates[2]?.id, "shared-tags-notes-tasks");
-  assert.equal(changelog.updates[2]?.highlight, true);
-  assert.equal(changelog.updates[2]?.date, "2026-11-10");
-  assert.equal(changelog.updates[3]?.id, "updates-view");
+  assert.equal(changelog.updates[1]?.kind, "new");
+  assert.equal(changelog.updates[1]?.date, "2026-11-11");
+  assert.equal(changelog.updates[2]?.id, "calendar-finished-tasks");
+  assert.equal(changelog.updates[2]?.highlight, false);
+  assert.equal(changelog.updates[2]?.kind, "improved");
+  assert.equal(changelog.updates[2]?.date, "2026-11-11");
+  assert.equal(changelog.updates[3]?.id, "shared-tags-notes-tasks");
+  assert.equal(changelog.updates[3]?.highlight, true);
+  assert.equal(changelog.updates[3]?.date, "2026-11-10");
+  assert.equal(changelog.updates[4]?.id, "updates-view");
   assert.equal(
     changelog.updates.find((entry) => entry.id === "plain-first-run-copy")?.title,
     "A clearer welcome and plainer starter notes"
@@ -196,7 +201,7 @@ test("the published changelog is newest first and ready for a public page", () =
   }
   assert.deepEqual(
     changelog.comingSoon.map((item) => item.id),
-    ["calendar-day-links"]
+    []
   );
   assert.equal(
     changelog.updates.some((entry) => entry.kind === "new"),

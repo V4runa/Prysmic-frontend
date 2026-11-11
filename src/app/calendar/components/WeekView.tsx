@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import clsx from "clsx";
 import { format } from "date-fns";
@@ -19,6 +20,7 @@ import {
 import { useToggleCalendarTask } from "../../hooks/taskCompletionSync";
 import { getEventColor, SOURCE_ACCENT } from "../../lib/calendarColors";
 import { resolveMoodVisual } from "../../lib/moodColors";
+import { moodHref, noteHref, taskHref } from "../../lib/calendarDay";
 import { localToday } from "../../lib/date";
 import { usePreferences } from "../../hooks/usePreferences";
 import DayAura from "./DayAura";
@@ -151,39 +153,46 @@ export default function WeekView({
               })}
 
               {b.tasks.map((t) => (
-                <button
+                <div
                   key={taskChipKey(t, cell.key)}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void toggleTask(t);
-                  }}
-                  disabled={pendingTask === t.id}
-                  aria-pressed={t.isComplete}
-                  aria-label={taskDoneToggleLabel(t.title, t.isComplete)}
-                  title={t.isComplete ? `Completed: ${t.title}` : t.title}
                   className={clsx(
-                    "tap-target flex items-center gap-1 rounded border px-1.5 py-1 text-left text-[11px] disabled:opacity-50",
+                    "flex items-center gap-1 rounded border px-1.5 py-1 text-[11px]",
+                    pendingTask === t.id && "opacity-50",
                     t.isComplete
                       ? "border-green-400/30 bg-green-500/10 text-green-300/70"
                       : SOURCE_ACCENT.task.chip
                   )}
                 >
-                  {t.isComplete ? (
-                    <CheckCircle2 className="h-3 w-3 shrink-0 text-green-400" aria-hidden="true" />
-                  ) : (
-                    <Square className="h-3 w-3 shrink-0 text-sky-300" aria-hidden="true" />
-                  )}
-                  <span
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void toggleTask(t);
+                    }}
+                    disabled={pendingTask === t.id}
+                    aria-pressed={t.isComplete}
+                    aria-label={taskDoneToggleLabel(t.title, t.isComplete)}
+                    className="tap-target flex shrink-0 items-center disabled:opacity-50"
+                  >
+                    {t.isComplete ? (
+                      <CheckCircle2 className="h-3 w-3 shrink-0 text-green-400" aria-hidden="true" />
+                    ) : (
+                      <Square className="h-3 w-3 shrink-0 text-sky-300" aria-hidden="true" />
+                    )}
+                  </button>
+                  <Link
+                    href={taskHref(t.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    title={t.isComplete ? `Completed: ${t.title}` : t.title}
                     className={clsx(
-                      "min-w-0 truncate",
+                      "min-w-0 truncate text-left",
                       t.isComplete && "line-through decoration-green-400"
                     )}
                   >
                     {t.title}
-                  </span>
-                  {t.isComplete && <span className="sr-only">Completed</span>}
-                </button>
+                    {t.isComplete && <span className="sr-only"> Completed</span>}
+                  </Link>
+                </div>
               ))}
 
               {/* Habits are intentionally not listed here — the header ring
@@ -197,24 +206,28 @@ export default function WeekView({
                   color: m.color ?? undefined,
                 });
                 return (
-                  <div
+                  <Link
                     key={`mood-${m.id}`}
+                    href={moodHref(cell.key)}
+                    onClick={(e) => e.stopPropagation()}
                     className="flex items-center gap-1 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[11px]"
                   >
                     <span className="leading-none">{v.emoji}</span>
                     <span className={clsx("truncate", v.classes.label)}>{v.label}</span>
-                  </div>
+                  </Link>
                 );
               })}
 
               {b.notes.map((n) => (
-                <div
+                <Link
                   key={`note-${n.id}`}
-                  className="flex items-center gap-1 rounded border border-violet-400/20 bg-violet-500/5 px-1.5 py-1 text-[11px] text-violet-200 truncate"
+                  href={noteHref(n.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 rounded border border-violet-400/20 bg-violet-500/5 px-1.5 py-1 text-[11px] text-violet-200"
                 >
                   <StickyNote className="h-3 w-3 shrink-0 text-violet-300" />
                   <span className="truncate">{n.title}</span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

@@ -234,21 +234,25 @@ function UpdatesDialog({
               Coming soon
             </h3>
             <p className="mt-1 text-sm leading-relaxed text-slate-400">Prysmic is still growing.</p>
-            <div className="mt-3 flex flex-col gap-4">
-              {comingSoon.map((item) => (
-                <article key={item.id} className="border-b border-white/10 pb-4 last:border-b-0">
-                  <span className="inline-flex items-center rounded-full border border-white/15 px-2 py-0.5 text-xs text-slate-300">
-                    Planned
-                  </span>
-                  <h4 className="selectable-text mt-1.5 text-sm font-medium text-slate-100">
-                    {item.title}
-                  </h4>
-                  <p className="selectable-text mt-1 text-sm leading-relaxed text-slate-300">
-                    {item.summary}
-                  </p>
-                </article>
-              ))}
-            </div>
+            {comingSoon.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-400">Nothing planned right now.</p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-4">
+                {comingSoon.map((item) => (
+                  <article key={item.id} className="border-b border-white/10 pb-4 last:border-b-0">
+                    <span className="inline-flex items-center rounded-full border border-white/15 px-2 py-0.5 text-xs text-slate-300">
+                      Planned
+                    </span>
+                    <h4 className="selectable-text mt-1.5 text-sm font-medium text-slate-100">
+                      {item.title}
+                    </h4>
+                    <p className="selectable-text mt-1 text-sm leading-relaxed text-slate-300">
+                      {item.summary}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </motion.div>

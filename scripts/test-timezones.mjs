@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 const zones = ["America/New_York", "UTC", "Asia/Tokyo"];
 const files = [
   "src/app/lib/date.test.ts",
+  "src/app/lib/calendarDay.test.ts",
   "src/app/calendar/lib/calendarPlacement.test.ts",
   "src/app/hooks/taskCompletionSync.test.ts",
 ];

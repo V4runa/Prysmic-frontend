@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
@@ -21,6 +21,7 @@ import {
 import { habitIconMap as iconMap, IconKey } from "../../components/habitIcons";
 import { getHabitColor } from "../../lib/habitColors";
 import { useLogicalToday } from "../../hooks/usePreferences";
+import { calendarDayFromSearch, calendarDayHref, formatCalendarDay } from "../../lib/calendarDay";
 import { calendarQueryKey } from "../../hooks/useCalendar";
 import { tactile, tactileSubtle } from "../../lib/motion";
 import Sparkles from "../../components/Sparkles";
@@ -62,8 +63,11 @@ export default function HabitDetailPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const today = useLogicalToday();
+  const fromDay = calendarDayFromSearch(searchParams.toString());
+  const calendarDay = fromDay ?? today;
   const seenDay = useRef<string | null>(null);
   const [habit, setHabit] = useState<Habit | null>(null);
   const [edit, setEdit] = useState(false);
@@ -333,9 +337,18 @@ export default function HabitDetailPage() {
                           <IconComponent className={`h-6 w-6 ${c.icon}`} />
                         </span>
                       )}
-                      <h3 className="min-w-0 text-lg sm:text-xl font-semibold text-slate-100 truncate">
-                        {habit.name}
-                      </h3>
+                      <div className="min-w-0">
+                        <h3 className="min-w-0 text-lg sm:text-xl font-semibold text-slate-100 truncate">
+                          {habit.name}
+                        </h3>
+                        <Link
+                          href={calendarDayHref(calendarDay)}
+                          title="Open this day on the calendar"
+                          className="text-xs text-slate-400 hover:text-cyan-300 hover:underline"
+                        >
+                          {formatCalendarDay(calendarDay)}
+                        </Link>
+                      </div>
                       {habit.frequency && (
                         <span className={clsx(
                           "shrink-0 text-xs px-2 py-1 rounded-md font-medium tracking-wide",

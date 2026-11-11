@@ -98,47 +98,6 @@ export function noteCalendarEvent(
   };
 }
 
-const CALENDAR_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const;
-
-export function isCalendarDateKey(value: string | null | undefined): value is string {
-  if (!value) return false;
-  const match = CALENDAR_DAY.exec(value);
-  if (!match) return false;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (month < 1 || month > 12) return false;
-  const date = new Date(year, month - 1, day);
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
-  );
-}
-
-/** `2026-11-11` → `Nov 11, 2026`, without reading it as a UTC instant. */
-export function formatCalendarDay(key: string): string {
-  const match = CALENDAR_DAY.exec(key);
-  if (!match || !isCalendarDateKey(key)) return key;
-  const month = MONTHS[Number(match[2]) - 1];
-  return `${month} ${Number(match[3])}, ${match[1]}`;
-}
-
 export function parseOriginNoteId(value: string | null | undefined): number | null {
   if (!value || !/^\d+$/.test(value)) return null;
   const id = Number(value);

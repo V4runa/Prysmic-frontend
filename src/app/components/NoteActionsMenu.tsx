@@ -10,6 +10,7 @@ import {
   createCalendarEvent,
   useInvalidateCalendar,
 } from "../hooks/useCalendar";
+import { calendarDayHref, formatCalendarDay, isCalendarDayKey } from "../lib/calendarDay";
 import { localToday } from "../lib/date";
 import {
   noteClipboardMarkdown,
@@ -17,8 +18,6 @@ import {
 } from "../lib/noteMarkdown";
 import { TextField } from "./forms";
 import {
-  formatCalendarDay,
-  isCalendarDateKey,
   noteCalendarEvent,
   noteFlagPayload,
   patchNoteFlags,
@@ -238,7 +237,7 @@ export default function NoteActionsMenu({
 
   const addToDay = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!isCalendarDateKey(day)) {
+    if (!isCalendarDayKey(day)) {
       setError("Pick a day.");
       return;
     }
@@ -385,7 +384,7 @@ export default function NoteActionsMenu({
               <div className="flex flex-col gap-1 p-3 text-sm text-slate-300">
                 <p>Added to the calendar.</p>
                 <Link
-                  href={`/calendar?date=${addedDate}`}
+                  href={calendarDayHref(addedDate)}
                   className="text-cyan-300 hover:underline"
                 >
                   Open {formatCalendarDay(addedDate)}

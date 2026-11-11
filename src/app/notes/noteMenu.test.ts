@@ -4,8 +4,6 @@ import test from "node:test";
 import { ApiError } from "../hooks/useApi";
 import {
   apiErrorMentionsField,
-  formatCalendarDay,
-  isCalendarDateKey,
   isNoteNotFound,
   noteCalendarEvent,
   noteFlagPayload,
@@ -83,10 +81,6 @@ test("a note becomes an all-day calendar event linked to that note", () => {
     linkedId: 12,
   });
   assert.equal(noteCalendarEvent({ id: 1, title: "   " }, "2026-01-02").title, "Note");
-  assert.equal(isCalendarDateKey("2026-11-11"), true);
-  assert.equal(isCalendarDateKey("2026-02-31"), false);
-  assert.equal(isCalendarDateKey("11/11/2026"), false);
-  assert.equal(formatCalendarDay("2026-11-11"), "Nov 11, 2026");
 });
 
 test("origin links and unknown-field errors degrade when the shape is old", () => {
@@ -151,5 +145,6 @@ test("the note surfaces wire the menu without moving delete into it", () => {
   assert.match(note, /Are you sure you want to delete this note/);
   assert.match(habit, /From note:/);
   assert.match(create, /originNoteId/);
-  assert.match(calendar, /isCalendarDateKey/);
+  assert.match(menu, /calendarDayHref/);
+  assert.match(calendar, /calendarDayFromSearch/);
 });

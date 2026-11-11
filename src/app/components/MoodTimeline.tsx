@@ -1,7 +1,11 @@
 "use client";
 
+import Link from "next/link";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
+import clsx from "clsx";
+import { calendarDayHref } from "../lib/calendarDay";
 import { localDateKey, prevDayKey } from "../lib/date";
 import { useLogicalToday } from "../hooks/usePreferences";
 import { resolveMoodVisual } from "../lib/moodColors";
@@ -19,9 +23,11 @@ interface MoodEntry {
 
 interface MoodTimelineProps {
   timeline?: MoodEntry[];
+  /** YYYY-MM-DD to bring into view when opening a mood from the calendar. */
+  focusDay?: string | null;
 }
 
-export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
+export default function MoodTimeline({ timeline = [], focusDay = null }: MoodTimelineProps) {
   const today = useLogicalToday();
   // Count consecutive logical days that have at least one *organically logged*
   // mood entry, walking backwards from the current logical day.
@@ -44,6 +50,13 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
       cursor = prevDayKey(cursor);
     }
   }
+
+  useEffect(() => {
+    if (!focusDay) return;
+    const match = timeline.find((mood) => localDateKey(mood.date) === focusDay);
+    if (!match) return;
+    document.getElementById(`mood-${match.id}`)?.scrollIntoView({ block: "center" });
+  }, [focusDay, timeline]);
 
   return (
     <div className="app-scroll relative w-full h-full min-h-0 flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 sm:pt-32 pb-24 sm:pb-20 px-2 sm:px-0">
@@ -90,18 +103,26 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
               if (diff > 1.5) isBreak = true;
             }
 
+            const dayKey = localDateKey(mood.date);
+            const focused = focusDay === dayKey;
+
             return (
               <motion.div
                 key={mood.id}
+                id={`mood-${mood.id}`}
                 initial={{ opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ delay: i * 0.05 }}
                 className="relative flex items-center gap-4 sm:gap-6 mb-8 sm:mb-12"
               >
-                <div className="text-right text-slate-400 text-xs sm:text-sm w-[3.25rem] sm:w-16 shrink-0">
+                <Link
+                  href={calendarDayHref(dayKey)}
+                  title="Open this day on the calendar"
+                  className="text-right text-slate-400 text-xs sm:text-sm w-[3.25rem] sm:w-16 shrink-0 hover:text-cyan-300 hover:underline"
+                >
                   {format(new Date(mood.date), "MMM d")}
-                </div>
+                </Link>
 
                 <div className="relative w-5 h-full flex items-center justify-center">
                   <motion.div
@@ -126,7 +147,11 @@ export default function MoodTimeline({ timeline = [] }: MoodTimelineProps) {
                 </div>
 
                 <motion.div
-                  className={`min-w-0 flex-1 bg-white/[0.05] border border-white/10 rounded-2xl p-4 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] ${cc.cardHover} transition-all duration-300`}
+                  className={clsx(
+                    "min-w-0 flex-1 bg-white/[0.05] border border-white/10 rounded-2xl p-4 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-all duration-300",
+                    cc.cardHover,
+                    focused && "ring-1 ring-cyan-300/50"
+                  )}
                   whileHover={{ scale: 1.02, y: -2 }}
                 >
                   <div className="flex items-center gap-3 mb-2">

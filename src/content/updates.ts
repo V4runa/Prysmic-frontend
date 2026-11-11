@@ -49,6 +49,14 @@ export const productUpdates = [
       "A note has a quiet menu: turn it into a contract, put it on a calendar day, pin or archive it, copy it as text or Markdown, or print it.",
   },
   {
+    id: "calendar-day-links",
+    date: "2026-11-11",
+    kind: "new",
+    title: "Calendar day links",
+    summary:
+      "A day on the calendar opens the note, task, contract, or mood it shows. The date on a note, task, mood, or contract opens that day.",
+  },
+  {
     id: "calendar-finished-tasks",
     date: "2026-11-11",
     kind: "improved",
@@ -106,13 +114,7 @@ export const productUpdates = [
   },
 ] as const satisfies readonly ProductUpdate[];
 
-export const comingSoon = [
-  {
-    id: "calendar-day-links",
-    title: "Calendar day links",
-    summary: "Open the matching calendar day from a task, habit, or mood.",
-  },
-] as const satisfies readonly PlannedUpdate[];
+export const comingSoon: readonly PlannedUpdate[] = [];
 
 const MONTHS = [
   "Jan",
