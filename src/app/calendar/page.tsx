@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
@@ -25,6 +26,7 @@ import {
 } from "./lib/calendarLib";
 import { CalendarView } from "./types";
 import { localToday } from "../lib/date";
+import { isCalendarDateKey } from "../notes/noteMenu";
 import { tactile } from "../lib/motion";
 import { useSwipe } from "../hooks/useSwipe";
 import MonthView from "./components/MonthView";
@@ -37,10 +39,14 @@ import CalendarFilters from "./components/CalendarFilters";
 const SOURCES_STORAGE_KEY = "prysmic.calendarSources";
 
 export default function CalendarPage() {
+  const searchParams = useSearchParams();
+  const dateQuery = searchParams.get("date");
+  const requestedDay = dateQuery && isCalendarDateKey(dateQuery) ? dateQuery : null;
   const [view, setView] = useState<CalendarView>("month");
-  const [anchor, setAnchor] = useState(() => localToday());
-  const [selectedDay, setSelectedDay] = useState(() => localToday());
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [anchor, setAnchor] = useState(() => requestedDay ?? localToday());
+  const [selectedDay, setSelectedDay] = useState(() => requestedDay ?? localToday());
+  const [sheetOpen, setSheetOpen] = useState(() => requestedDay != null);
+  const [appliedDay, setAppliedDay] = useState<string | null>(requestedDay);
   const [modal, setModal] = useState<{
     open: boolean;
     eventId: number | null;
@@ -50,6 +56,14 @@ export default function CalendarPage() {
   const [isNarrow, setIsNarrow] = useState(false);
   const [isXl, setIsXl] = useState(false);
   const [sources, setSources] = useState<SourceFilter>(ALL_SOURCES_ON);
+  if (requestedDay !== appliedDay) {
+    setAppliedDay(requestedDay);
+    if (requestedDay) {
+      setAnchor(requestedDay);
+      setSelectedDay(requestedDay);
+      setSheetOpen(true);
+    }
+  }
 
   const invalidateCalendar = useInvalidateCalendar();
 

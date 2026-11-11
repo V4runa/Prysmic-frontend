@@ -197,7 +197,7 @@ export default function EmailVerificationPrompt() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.25 }}
-          className="px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3"
+          className="no-print px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3"
         >
           <div
             role="region"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
@@ -28,6 +29,7 @@ import { HabitFrequency } from "../../enums/habit-frequency.enum";
 import { Field, TextField, TextArea, SelectField, FormButton } from "../../components/forms";
 import HabitColorPicker from "../../components/HabitColorPicker";
 import HabitIconPicker from "../../components/HabitIconPicker";
+import { readOriginNote } from "../../notes/noteMenu";
 
 const bgPanelMap: Record<string, string> = {
   cyan: "bg-cyan-500/5",
@@ -52,6 +54,8 @@ interface Habit {
   currentStreak: number;
   longestStreak: number;
   createdAt: string;
+  originNoteId?: number | null;
+  originNote?: { id: number; title: string } | null;
 }
 
 export default function HabitDetailPage() {
@@ -107,6 +111,7 @@ export default function HabitDetailPage() {
   const [justChecked, setJustChecked] = useState(false);
   const iconKey = (form.icon || habit?.icon || "star") as IconKey;
   const IconComponent = iconMap[iconKey];
+  const origin = readOriginNote(habit?.originNote);
 
   const toggleCheck = async () => {
     if (!habit) return;
@@ -227,6 +232,15 @@ export default function HabitDetailPage() {
               <ArrowLeft className="h-5 w-5 text-slate-300" />
             </motion.button>
           </div>
+
+          {origin && (
+            <p className="text-sm text-slate-400">
+              From note:{" "}
+              <Link href={`/notes/${origin.id}`} className="text-cyan-300 hover:underline">
+                {origin.title || "Untitled"}
+              </Link>
+            </p>
+          )}
 
           <div className="flex-1 flex flex-col min-h-0">
             <AnimatePresence mode="wait">
