@@ -169,10 +169,14 @@ test("the published changelog is newest first and ready for a public page", () =
     changelog.updates.map((entry) => entry.id),
     updates.map((entry) => entry.id)
   );
-  assert.equal(changelog.updates[0]?.id, "shared-tags-notes-tasks");
-  assert.equal(changelog.updates[0]?.highlight, true);
-  assert.equal(changelog.updates[0]?.date, "2026-11-10");
-  assert.equal(changelog.updates[1]?.id, "updates-view");
+  assert.equal(changelog.updates[0]?.id, "calendar-finished-tasks");
+  assert.equal(changelog.updates[0]?.highlight, false);
+  assert.equal(changelog.updates[0]?.kind, "improved");
+  assert.equal(changelog.updates[0]?.date, "2026-11-11");
+  assert.equal(changelog.updates[1]?.id, "shared-tags-notes-tasks");
+  assert.equal(changelog.updates[1]?.highlight, true);
+  assert.equal(changelog.updates[1]?.date, "2026-11-10");
+  assert.equal(changelog.updates[2]?.id, "updates-view");
   assert.equal(
     changelog.updates.find((entry) => entry.id === "plain-first-run-copy")?.title,
     "A clearer welcome and plainer starter notes"

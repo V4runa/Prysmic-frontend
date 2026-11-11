@@ -10,7 +10,10 @@ import {
   indexFeed,
   itemDay,
   monthTaskMark,
+  taskChipKey,
   taskDoneToggleLabel,
+  taskPlacements,
+  taskSectionTitle,
   visibleDayBuckets,
   weekRange,
   withTaskCompletion,
@@ -355,4 +358,202 @@ test("a timed task follows the local day and does not drag contracts with it", (
   } else if (process.env.TZ === "UTC" || process.env.TZ === "Asia/Tokyo") {
     assert.equal(day, "2026-11-06");
   }
+});
+
+function chipsOn(items: CalendarItem[], day: string) {
+  return bucketsForDay(indexFeed(items), day).tasks;
+}
+
+test("a feed without the new task fields still places each task on its due day only", () => {
+  const index = indexFeed(items);
+  const nov6 = bucketsForDay(index, "2026-11-06");
+  assert.ok(nov6.tasks.length >= 2);
+  for (const task of nov6.tasks) {
+    assert.equal(task.chip, "due");
+    assert.equal(task.calendarReason, undefined);
+    assert.equal(task.completedAt, undefined);
+  }
+  assert.equal(taskSectionTitle(nov6.tasks), "Tasks due");
+  assert.equal(itemDay(completedTask), "2026-11-06");
+  assert.deepEqual(taskPlacements(completedTask), [
+    { day: "2026-11-06", reason: "due" },
+  ]);
+
+  const keys = nov6.tasks.map((task) => taskChipKey(task, "2026-11-06"));
+  assert.equal(new Set(keys).size, keys.length);
+});
+
+test("a task finished with no due date sits on the finish day and is not presented as due", () => {
+  // The backend repeats completedAt into dueDate so older clients still get a string.
+  const completedAt = "2026-11-06T00:00:00.000Z";
+  const task: CalendarTaskItem = {
+    source: "task",
+    id: 21,
+    title: "Put the tools away",
+    priority: 1,
+    isComplete: true,
+    dueDate: completedAt,
+    completedAt,
+    calendarReason: "completed",
+  };
+
+  const finish = localDateKey(completedAt);
+  assert.deepEqual(taskPlacements(task), [{ day: finish, reason: "completed" }]);
+  assert.equal(itemDay(task), finish);
+
+  const day = chipsOn([task], finish);
+  assert.equal(day.length, 1);
+  assert.equal(day[0]?.id, task.id);
+  assert.equal(day[0]?.chip, "completed");
+  assert.equal(day[0]?.isComplete, true);
+  assert.equal(taskSectionTitle(day), "Tasks");
+  assert.equal(monthTaskMark(day).checked, true);
+  assert.equal(monthTaskMark(day).label, "1 completed task");
+  assert.equal(taskChipKey(day[0]!, finish), `task-${task.id}-${finish}-completed`);
+  assert.equal("chip" in task, false);
+
+  const dueDay = "2026-11-06";
+  if (finish !== dueDay) {
+    assert.equal(chipsOn([task], dueDay).length, 0);
+  }
+  if (process.env.TZ === "America/New_York") {
+    assert.equal(finish, "2026-11-05");
+    assert.equal(dueDay, "2026-11-06");
+  } else if (process.env.TZ === "UTC" || process.env.TZ === "Asia/Tokyo") {
+    assert.equal(finish, "2026-11-06");
+  }
+});
+
+test("a finished task with a due date outside this window is not also drawn on that due day", () => {
+  const completedAt = "2026-11-08T12:00:00.000Z";
+  const task: CalendarTaskItem = {
+    source: "task",
+    id: 22,
+    title: "Stack the pots",
+    priority: 2,
+    isComplete: true,
+    dueDate: "2026-11-01T00:00:00.000Z",
+    completedAt,
+    calendarReason: "completed",
+  };
+
+  const finish = localDateKey(completedAt);
+  assert.equal(finish, "2026-11-08");
+  assert.deepEqual(taskPlacements(task), [{ day: finish, reason: "completed" }]);
+  assert.equal(chipsOn([task], "2026-11-01").length, 0);
+  const day = chipsOn([task], finish);
+  assert.equal(day.length, 1);
+  assert.equal(day[0]?.isComplete, true);
+  assert.equal(day[0]?.chip, "completed");
+  assert.equal(taskSectionTitle(day), "Tasks");
+});
+
+test("a task due and finished on the same local day is one done chip", () => {
+  // Noon UTC is still November 6 in New York, UTC, and Tokyo.
+  const completedAt = "2026-11-06T12:00:00.000Z";
+  const task: CalendarTaskItem = {
+    source: "task",
+    id: 23,
+    title: "Close the gate",
+    priority: 2,
+    isComplete: true,
+    dueDate: "2026-11-06T00:00:00.000Z",
+    completedAt,
+    calendarReason: "both",
+  };
+
+  assert.equal(localDateKey(completedAt), "2026-11-06");
+  assert.deepEqual(taskPlacements(task), [{ day: "2026-11-06", reason: "due" }]);
+
+  const day = chipsOn([task, activeTask], "2026-11-06");
+  const copies = day.filter((item) => item.id === task.id);
+  assert.equal(copies.length, 1);
+  assert.equal(copies[0]?.chip, "due");
+  assert.equal(copies[0]?.isComplete, true);
+  assert.equal(taskSectionTitle(day), "Tasks due");
+  assert.equal(monthTaskMark(day).checked, false);
+  assert.equal(taskChipKey(copies[0]!, "2026-11-06"), "task-23-2026-11-06-due");
+});
+
+test("a task due one day and finished on another shows once on each day, marked done", () => {
+  const completedAt = "2026-11-08T12:00:00.000Z";
+  const task: CalendarTaskItem = {
+    source: "task",
+    id: 24,
+    title: "Turn the beds",
+    priority: 3,
+    isComplete: true,
+    dueDate: "2026-11-06T00:00:00.000Z",
+    completedAt,
+    calendarReason: "both",
+  };
+
+  const finish = localDateKey(completedAt);
+  assert.equal(finish, "2026-11-08");
+  assert.deepEqual(taskPlacements(task), [
+    { day: "2026-11-06", reason: "due" },
+    { day: finish, reason: "completed" },
+  ]);
+
+  const index = indexFeed([task, activeTask]);
+  const due = bucketsForDay(index, "2026-11-06").tasks.filter((item) => item.id === task.id);
+  const done = bucketsForDay(index, finish).tasks.filter((item) => item.id === task.id);
+  assert.equal(due.length, 1);
+  assert.equal(done.length, 1);
+  assert.equal(due[0]?.chip, "due");
+  assert.equal(done[0]?.chip, "completed");
+  assert.equal(due[0]?.isComplete, true);
+  assert.equal(done[0]?.isComplete, true);
+  assert.equal(taskSectionTitle(bucketsForDay(index, "2026-11-06").tasks), "Tasks due");
+  assert.equal(taskSectionTitle(bucketsForDay(index, finish).tasks), "Tasks");
+  assert.equal(monthTaskMark(bucketsForDay(index, finish).tasks).checked, true);
+
+  const dueKey = taskChipKey(due[0]!, "2026-11-06");
+  const doneKey = taskChipKey(done[0]!, finish);
+  assert.equal(dueKey, "task-24-2026-11-06-due");
+  assert.equal(doneKey, `task-24-${finish}-completed`);
+  assert.notEqual(dueKey, doneKey);
+
+  assert.equal(bucketsForDay(index, "2026-11-07").tasks.some((item) => item.id === task.id), false);
+});
+
+test("a due-day row does not also draw a finish day outside this window", () => {
+  const task: CalendarTaskItem = {
+    source: "task",
+    id: 25,
+    title: "Rake the path",
+    priority: 1,
+    isComplete: true,
+    dueDate: "2026-11-06T00:00:00.000Z",
+    completedAt: "2026-11-02T12:00:00.000Z",
+    calendarReason: "due",
+  };
+
+  assert.deepEqual(taskPlacements(task), [{ day: "2026-11-06", reason: "due" }]);
+  const day = chipsOn([task], "2026-11-06");
+  assert.equal(day.length, 1);
+  assert.equal(day[0]?.isComplete, true);
+  assert.equal(day[0]?.chip, "due");
+  assert.equal(chipsOn([task], "2026-11-02").length, 0);
+  assert.equal(taskSectionTitle(day), "Tasks due");
+  assert.equal(monthTaskMark(day).checked, true);
+});
+
+test("a completed task with no stored completion time stays on its due day", () => {
+  const task: CalendarTaskItem = {
+    source: "task",
+    id: 26,
+    title: "Oil the shears",
+    priority: 1,
+    isComplete: true,
+    dueDate: "2026-11-06T00:00:00.000Z",
+    completedAt: null,
+    calendarReason: "due",
+  };
+
+  assert.deepEqual(taskPlacements(task), [{ day: "2026-11-06", reason: "due" }]);
+  const day = chipsOn([task], "2026-11-06");
+  assert.equal(day[0]?.isComplete, true);
+  assert.equal(day[0]?.chip, "due");
+  assert.equal(monthTaskMark(day).label, "1 completed task");
 });

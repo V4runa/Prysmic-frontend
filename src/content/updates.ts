@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "calendar-finished-tasks",
+    date: "2026-11-11",
+    kind: "improved",
+    title: "Finished tasks on the day you finish them",
+    summary:
+      "Finished tasks now show on the calendar on the day you finish them, marked done. A task that was also due on another day still shows on that day, marked done too.",
+  },
+  {
     id: "shared-tags-notes-tasks",
     date: "2026-11-10",
     kind: "new",

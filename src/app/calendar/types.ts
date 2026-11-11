@@ -31,6 +31,9 @@ export interface CalendarEventItem {
   linked?: CalendarLinkRef;
 }
 
+/** Why a task row is in a calendar window. Omitted by the current production feed. */
+export type CalendarTaskReason = "due" | "completed" | "both";
+
 export interface CalendarTaskItem {
   source: "task";
   id: number;
@@ -38,6 +41,20 @@ export interface CalendarTaskItem {
   priority: number;
   isComplete: boolean;
   dueDate: string; // ISO timestamp; a date-only due date is UTC midnight of that day
+  /**
+   * When the task was finished. Omitted by the current production feed.
+   * Null when the task is done but the completion time was never stored.
+   */
+  completedAt?: string | null;
+  /**
+   * Why this row is in the window. Omitted by the current production feed,
+   * which only includes tasks whose due date falls in range.
+   * `due` — place on the due day only.
+   * `completed` — place on the local finish day only. When `dueDate` equals
+   * `completedAt`, the task has no real due date.
+   * `both` — due day and, when that local day differs, the finish day too.
+   */
+  calendarReason?: CalendarTaskReason;
 }
 
 export interface CalendarHabitItem {
