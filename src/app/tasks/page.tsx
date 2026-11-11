@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
 import TaskCard from "../components/TaskCard";
@@ -12,9 +13,11 @@ import TaskFilters, {
   hasActiveFilters,
   type TaskFilterState,
 } from "../components/TaskFilters";
+import { apiFetch } from "../hooks/useApi";
 import { useTasks, useInvalidateTasks } from "../hooks/useTasks";
 import { useTags } from "../hooks/useTags";
 import { parseTaskFocus } from "../lib/calendarDay";
+import { isNoteNotFound, parseOriginNoteId } from "../notes/noteMenu";
 import { parseTagIds, tagFilterHref, taskMatchesTag } from "../lib/tagQuery";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -25,6 +28,15 @@ export default function TasksPage() {
   const search = searchParams.toString();
   const tagId = parseTagIds(search)[0] ?? null;
   const focusTaskId = parseTaskFocus(search);
+  const originNoteId = parseOriginNoteId(searchParams.get("originNoteId"));
+  const [originTitle, setOriginTitle] = useState("");
+  const [originError, setOriginError] = useState("");
+  const fetchedOrigin = useRef<number | null>(null);
+  const searchRef = useRef(search);
+  searchRef.current = search;
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
+  const queryClient = useQueryClient();
   const [appliedFocusId, setAppliedFocusId] = useState<number | null>(null);
   const scrolledFocus = useRef<number | null>(null);
   const allTasks = useTasks();
@@ -43,6 +55,57 @@ export default function TasksPage() {
   const [activeTab, setActiveTab] = useState<
     "active" | "completed" | "archived"
   >("active");
+
+  const clearOriginParam = () => {
+    const params = new URLSearchParams(searchRef.current);
+    if (!params.has("originNoteId")) return;
+    params.delete("originNoteId");
+    const next = params.toString();
+    router.replace(next ? `${pathnameRef.current}?${next}` : pathnameRef.current, {
+      scroll: false,
+    });
+  };
+
+  useEffect(() => {
+    if (originNoteId == null) {
+      fetchedOrigin.current = null;
+      setOriginTitle("");
+      return;
+    }
+    setActiveTab("active");
+    if (fetchedOrigin.current === originNoteId) return;
+    let cancelled = false;
+    setOriginError("");
+    apiFetch<{ title?: string }>(`/notes/${originNoteId}`)
+      .then((note) => {
+        if (cancelled) return;
+        fetchedOrigin.current = originNoteId;
+        setOriginTitle((note.title ?? "").trim());
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        fetchedOrigin.current = originNoteId;
+        setOriginTitle("");
+        if (!isNoteNotFound(err)) return;
+        setOriginError("Note not found.");
+        clearOriginParam();
+      });
+    return () => {
+      cancelled = true;
+    };
+    // clearOriginParam reads the latest search from a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [originNoteId]);
+
+  const handleTaskCreated = () => {
+    setOriginError("");
+    fetchTasks();
+    if (originNoteId != null) {
+      void queryClient.invalidateQueries({ queryKey: ["notes"] });
+      void queryClient.invalidateQueries({ queryKey: ["note", String(originNoteId)] });
+      clearOriginParam();
+    }
+  };
   const [draft, setDraft] = useState({
     search: DEFAULT_TASK_FILTERS.search,
     priority: DEFAULT_TASK_FILTERS.priority,
@@ -163,7 +226,19 @@ export default function TasksPage() {
           </div>
 
           {activeTab === "active" && (
-            <QuickTaskInput onTaskCreated={fetchTasks} />
+            <>
+              {originError && (
+                <p role="alert" className="text-sm text-red-400">
+                  {originError}
+                </p>
+              )}
+              <QuickTaskInput
+                originNoteId={originNoteId}
+                originTitle={originTitle}
+                onTaskCreated={handleTaskCreated}
+                onNoteNotFound={clearOriginParam}
+              />
+            </>
           )}
 
           <TaskFilters filters={filters} tags={tags} onChange={setFilters} />

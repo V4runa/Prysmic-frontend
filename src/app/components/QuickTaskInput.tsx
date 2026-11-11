@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { apiFetch } from "../hooks/useApi";
 import { motion, AnimatePresence } from "framer-motion";
 import { TaskPriority } from "../tasks/types/task";
 import { ChevronDown, ChevronUp, Plus, Check } from "lucide-react";
 import { tactile } from "../lib/motion";
 import clsx from "clsx";
+import { noteHref } from "../lib/calendarDay";
+import { postTaskKeepingOrigin } from "../notes/noteMenu";
 import { Field, TextField, TextArea, SelectField } from "./forms";
 import TagPicker from "./TagPicker";
 import TagChip from "./TagChip";
@@ -14,10 +17,28 @@ import { useTags } from "../hooks/useTags";
 
 interface QuickTaskInputProps {
   onTaskCreated?: () => void;
+  originNoteId?: number | null;
+  originTitle?: string;
+  onNoteNotFound?: () => void;
 }
 
-export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
+export default function QuickTaskInput({
+  onTaskCreated,
+  originNoteId = null,
+  originTitle = "",
+  onNoteNotFound,
+}: QuickTaskInputProps) {
   const [title, setTitle] = useState("");
+  const appliedTitle = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (originNoteId == null || !originTitle) return;
+    setTitle((current) => {
+      if (current.trim() && current !== appliedTitle.current) return current;
+      appliedTitle.current = originTitle;
+      return originTitle;
+    });
+  }, [originNoteId, originTitle]);
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
   const [dueDate, setDueDate] = useState("");
@@ -40,21 +61,24 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
     setLoading(true);
     setError("");
 
-    try {
-      const payload = {
-        title,
-        description: description.trim() || null,
-        priority,
-        dueDate: dueDate || null,
-        tagIds: selectedTagIds,
-      };
+    const payload: Record<string, unknown> = {
+      title,
+      description: description.trim() || null,
+      priority,
+      dueDate: dueDate || null,
+      tagIds: selectedTagIds,
+    };
+    if (originNoteId != null) payload.originNoteId = originNoteId;
 
-      await apiFetch("/tasks", {
+    const postTask = (body: Record<string, unknown>) =>
+      apiFetch("/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
 
+    const finishCreated = () => {
+      appliedTitle.current = null;
       setTitle("");
       setDescription("");
       setPriority(TaskPriority.MEDIUM);
@@ -65,6 +89,16 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
       setTimeout(() => setJustAdded(false), 1100);
       titleRef.current?.focus();
       onTaskCreated?.();
+    };
+
+    try {
+      const outcome = await postTaskKeepingOrigin(postTask, payload);
+      if (outcome === "note-not-found") {
+        onNoteNotFound?.();
+        setError("Note not found.");
+        return;
+      }
+      finishCreated();
     } catch (err) {
       console.error("Failed to create task", err);
       setError("Could not create task");
@@ -138,6 +172,14 @@ export default function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
+      {originTitle && originNoteId != null && (
+        <p className="text-sm text-slate-400">
+          From note:{" "}
+          <Link href={noteHref(originNoteId)} className="text-cyan-300 hover:underline">
+            {originTitle}
+          </Link>
+        </p>
+      )}
       {/* Title row — inline actions on desktop, stacked compose on mobile */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <TextField

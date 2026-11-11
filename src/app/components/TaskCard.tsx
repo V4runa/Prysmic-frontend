@@ -20,7 +20,8 @@ import {
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatTaskDueDate } from "../tasks/taskDueDate";
-import { calendarDayHref } from "../lib/calendarDay";
+import { calendarDayHref, noteHref } from "../lib/calendarDay";
+import { readOriginNote, withoutOriginNoteId, type OriginRef } from "../notes/noteMenu";
 import { taskDueDayKey } from "../lib/date";
 import Sparkles from "./Sparkles";
 import TaskForm from "./TaskForm";
@@ -146,6 +147,8 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
     onUpdate?.();
   };
 
+  const origin = readOriginNote(task.originNote);
+
   const saveTitle = async () => {
     if (!title.trim() || title.trim() === task.title) {
       setTitle(task.title);
@@ -158,7 +161,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
       await apiFetch(`/tasks/${task.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim() }),
+        body: JSON.stringify(withoutOriginNoteId({ title: title.trim() })),
       });
       onUpdate?.();
     } finally {
@@ -457,6 +460,10 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
             </p>
           )}
 
+          {origin && (
+            <TaskOriginNote origin={origin} className="mt-1 text-xs text-slate-400" />
+          )}
+
           {task.tags && task.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
               {task.tags.map((tag) => (
@@ -601,6 +608,9 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
                       <X className="h-5 w-5" />
                     </button>
                   </div>
+                  {origin && (
+                    <TaskOriginNote origin={origin} className="mb-4 text-sm text-slate-400" />
+                  )}
                   <TaskForm task={task} onSuccess={handleEditSuccess} />
                 </motion.div>
               </motion.div>
@@ -609,5 +619,22 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
           document.body
         )}
     </motion.div>
+  );
+}
+
+function TaskOriginNote({
+  origin,
+  className,
+}: {
+  origin: OriginRef;
+  className?: string;
+}) {
+  return (
+    <p className={className ?? "text-sm text-slate-400"}>
+      From note:{" "}
+      <Link href={noteHref(origin.id)} className="text-cyan-300 hover:underline">
+        {origin.title || "Untitled"}
+      </Link>
+    </p>
   );
 }

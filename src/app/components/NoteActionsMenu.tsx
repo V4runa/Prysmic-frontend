@@ -273,6 +273,10 @@ export default function NoteActionsMenu({
     router.push(`/habits/new?originNoteId=${note.id}`);
   };
 
+  const makeTask = () => {
+    router.push(`/tasks?originNoteId=${note.id}`);
+  };
+
   const onMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (panel !== "actions") return;
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Home" && event.key !== "End") {
@@ -325,6 +329,9 @@ export default function NoteActionsMenu({
               <div className="py-1">
                 <button type="button" role="menuitem" disabled={pending} onClick={turnIntoContract} className={menuItemClass}>
                   Turn into a contract
+                </button>
+                <button type="button" role="menuitem" disabled={pending} onClick={makeTask} className={menuItemClass}>
+                  Make a task
                 </button>
                 <button type="button" role="menuitem" disabled={pending} onClick={openDate} className={menuItemClass}>
                   Add to a calendar day

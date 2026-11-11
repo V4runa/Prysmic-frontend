@@ -1,4 +1,5 @@
 import type { Tag } from "../../lib/tag";
+import type { OriginRef } from "../../notes/noteMenu";
 
 export enum TaskPriority {
   LOW = 1,
@@ -20,4 +21,10 @@ export interface Task {
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;
+  /**
+   * Present on every task read. Null when the task did not come from a note.
+   * PATCH /tasks/:id rejects this field, so updates must not send it.
+   */
+  originNoteId: number | null;
+  originNote: OriginRef | null;
 }
