@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
@@ -53,6 +53,8 @@ import {
 import { useWritingGuard } from "../useWritingGuard";
 import TagChip from "../../components/TagChip";
 import TagPicker from "../../components/TagPicker";
+import NoteActionsMenu from "../../components/NoteActionsMenu";
+import { readOriginatedContracts } from "../noteMenu";
 
 // TipTap is heavy; load it only when the editor actually renders so it stays
 // out of the initial route bundle.
@@ -81,13 +83,31 @@ interface Note {
   title: string;
   content: string;
   updatedAt?: string | null;
+  createdAt?: string | null;
   tags?: Tag[];
+  isPinned?: boolean;
+  isArchived?: boolean;
+  originatedContracts?: { id: number; title: string }[];
+}
+
+function formatNoteDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
 }
 
 export default function ViewNotePage() {
   const { id } = useParams();
   const noteId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const printRequested = searchParams.get("print") === "1";
+  const printedRef = useRef(false);
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -138,6 +158,20 @@ export default function ViewNotePage() {
 
   const loadFailed = isError && !note;
   const showEditor = shouldShowNoteEditor(loading, loadFailed);
+  const noteReady = !!note;
+  const contracts = readOriginatedContracts(note?.originatedContracts);
+  const printedDate = formatNoteDate(note?.createdAt);
+
+  useEffect(() => {
+    if (!printRequested || !noteReady || printedRef.current) return;
+    const timeout = window.setTimeout(() => {
+      if (printedRef.current) return;
+      printedRef.current = true;
+      window.print();
+      router.replace(`/notes/${noteId}`, { scroll: false });
+    }, 500);
+    return () => window.clearTimeout(timeout);
+  }, [printRequested, noteReady, noteId, router]);
   useWritingGuard(showEditor && editing && dirty, persisted);
 
   // Seed from the server once. A later refetch must not wipe unsaved writing.
@@ -444,15 +478,28 @@ export default function ViewNotePage() {
 
   return (
     <PageTransition>
-      <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
-        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
-        <div className="flex justify-between items-center gap-3">
+      <div className="note-print-root w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
+        <GlassPanel className="note-print-sheet w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
+        <div className="no-print flex justify-between items-center gap-3">
           <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide truncate">
             {editing ? "Editing Note" : "Viewing Note"}
           </h2>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {!editing ? (
               <>
+                {note && noteId && Number.isFinite(Number(noteId)) && (
+                  <NoteActionsMenu
+                    variant="page"
+                    note={{
+                      id: Number(noteId),
+                      title: note.title,
+                      content: note.content,
+                      tags: note.tags,
+                      isPinned: note.isPinned,
+                      isArchived: note.isArchived,
+                    }}
+                  />
+                )}
                 <motion.button {...tactile} className="tap-target flex items-center justify-center p-2 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-md border border-cyan-300/20" onClick={() => setEditing(true)} title="Edit">
                   <Pencil className="h-5 w-5 text-cyan-300" />
                 </motion.button>
@@ -543,7 +590,29 @@ export default function ViewNotePage() {
                       className="text-xl sm:text-2xl font-semibold"
                     />
                   ) : (
-                    <h3 className="text-slate-100 text-xl sm:text-2xl font-bold">{note?.title}</h3>
+                    <>
+                      <h3 className="text-slate-100 text-xl sm:text-2xl font-bold">{note?.title}</h3>
+                      {printedDate && (
+                        <p className="note-print-only text-sm text-slate-500">{printedDate}</p>
+                      )}
+                      {contracts.length > 0 && (
+                        <div className="flex flex-col gap-1">
+                          <p className="text-xs text-slate-500">Contracts from this note</p>
+                          <ul className="flex flex-col gap-0.5">
+                            {contracts.map((contract) => (
+                              <li key={contract.id}>
+                                <Link
+                                  href={`/habits/${contract.id}`}
+                                  className="text-sm text-cyan-300/90 hover:underline"
+                                >
+                                  {contract.title || "Untitled"}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
                   )}
                   {editing ? (
                     <>
@@ -587,6 +656,7 @@ export default function ViewNotePage() {
                 </motion.div>
               </AnimatePresence>
 
+              <div className="no-print">
               <AttachmentZone
                 items={attachmentItems}
                 editable={attachmentsEditable}
@@ -601,6 +671,7 @@ export default function ViewNotePage() {
                 }
                 max={CLIENT_MAX_ATTACHMENTS_PER_NOTE}
               />
+              </div>
             </div>
             <div className="flex-shrink-0 mt-4">
               {editing ? (
@@ -615,7 +686,7 @@ export default function ViewNotePage() {
                   }}
                 />
               ) : (
-                <div className="flex flex-wrap gap-2 sm:gap-3">
+                <div className="note-print-tags flex flex-wrap gap-2 sm:gap-3">
                   {(note?.tags || []).map((tag) => (
                     <TagChip key={tag.id} tag={tag} />
                   ))}

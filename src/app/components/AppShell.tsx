@@ -124,13 +124,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Scrim over the app-wide prism backdrop (rendered once in
           ClientShellWrapper). Darkens and vignettes the living prism so it
           recedes into ambience behind dense content while still breathing. */}
-      <div className="fixed inset-0 -z-10 pointer-events-none">
+      <div className="no-print fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute inset-0 bg-[#06070a]/55" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,7,10,0)_35%,rgba(6,7,10,0.72)_100%)]" />
       </div>
 
       {/* Top Navigation Bar */}
-      <div className="app-header fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/5 border-b border-white/10 px-4 flex justify-between items-center shadow-sm select-none">
+      <div className="app-header no-print fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/5 border-b border-white/10 px-4 flex justify-between items-center shadow-sm select-none">
         <div className="flex gap-2 sm:gap-4 lg:gap-6 items-center min-w-0">
           <h1 className="text-lg sm:text-xl font-bold tracking-wide cursor-default">Prysmic</h1>
           {/* Inline links: desktop / tablet only — phones use the bottom tab bar. */}
@@ -205,7 +205,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Native-style Bottom Tab Bar (mobile only) */}
       <nav
-        className="app-bottom-nav sm:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch select-none overflow-x-auto overscroll-x-contain scrollbar-hidden border-t border-white/10 bg-[#0b0c0f]/80 backdrop-blur-lg"
+        className="app-bottom-nav no-print sm:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch select-none overflow-x-auto overscroll-x-contain scrollbar-hidden border-t border-white/10 bg-[#0b0c0f]/80 backdrop-blur-lg"
         aria-label="Primary"
       >
         {bottomNavItems.map((item) => {

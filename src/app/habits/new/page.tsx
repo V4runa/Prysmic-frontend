@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
+import { contractDescriptionFromNote } from "../../lib/noteMarkdown";
+import {
+  apiErrorMentionsField,
+  isNoteNotFound,
+  parseOriginNoteId,
+} from "../../notes/noteMenu";
 import { HabitFrequency } from "../../enums/habit-frequency.enum";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
@@ -15,7 +22,13 @@ import HabitIconPicker from "../../components/HabitIconPicker";
 
 export default function NewHabitPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const [originNoteId, setOriginNoteId] = useState<number | null>(() =>
+    parseOriginNoteId(searchParams.get("originNoteId"))
+  );
+  const [originTitle, setOriginTitle] = useState("");
+  const appliedOrigin = useRef(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -29,20 +42,71 @@ export default function NewHabitPage() {
 
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (originNoteId == null || appliedOrigin.current) return;
+    let cancelled = false;
+    apiFetch<{ title?: string; content?: string | null }>(`/notes/${originNoteId}`)
+      .then((note) => {
+        if (cancelled) return;
+        appliedOrigin.current = true;
+        const title = (note.title ?? "").trim();
+        setOriginTitle(title);
+        setForm((prev) => ({
+          ...prev,
+          name: prev.name.trim() ? prev.name : title,
+          description: prev.description.trim()
+            ? prev.description
+            : contractDescriptionFromNote(note.content),
+        }));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        appliedOrigin.current = true;
+        if (isNoteNotFound(err)) setOriginNoteId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [originNoteId]);
+
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const finishCreate = async (payload: Record<string, unknown>) => {
+    await apiFetch("/habits", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    queryClient.invalidateQueries({ queryKey: ["habits"] });
+    if (originNoteId != null) {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["note", String(originNoteId)] });
+    }
+    router.push("/habits");
+  };
+
   const handleSubmit = async () => {
     if (!form.name.trim()) return setError("Name is required");
+    const payload: Record<string, unknown> = { ...form };
+    if (originNoteId != null) payload.originNoteId = originNoteId;
     try {
-      await apiFetch("/habits", {
-        method: "POST",
-        body: JSON.stringify(form),
-      });
-      queryClient.invalidateQueries({ queryKey: ["habits"] });
-      router.push("/habits");
-    } catch {
+      await finishCreate(payload);
+    } catch (err) {
+      if (originNoteId != null && apiErrorMentionsField(err, "originNoteId")) {
+        try {
+          await finishCreate({ ...form });
+          return;
+        } catch {
+          setError("Something went wrong while forging your contract.");
+          return;
+        }
+      }
+      if (isNoteNotFound(err)) {
+        setOriginNoteId(null);
+        setError("Note not found.");
+        return;
+      }
       setError("Something went wrong while forging your contract.");
     }
   };
@@ -55,6 +119,14 @@ export default function NewHabitPage() {
             <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Forge a New Contract</h2>
             <p className="text-slate-400 text-sm sm:text-base">Name the habit and why you want to keep it.</p>
           </div>
+          {originTitle && originNoteId != null && (
+            <p className="text-sm text-slate-400">
+              From note:{" "}
+              <Link href={`/notes/${originNoteId}`} className="text-cyan-300 hover:underline">
+                {originTitle}
+              </Link>
+            </p>
+          )}
 
           <div className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1">
             <div className="flex flex-col lg:flex-row gap-6 pb-2">

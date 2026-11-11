@@ -49,6 +49,8 @@ const notes = spawnSync(
     "src/app/notes/noteDraft.test.ts",
     "src/app/notes/noteSave.test.ts",
     "src/app/notes/bindNewNoteCreate.test.ts",
+    "src/app/notes/noteMenu.test.ts",
+    "src/app/lib/noteMarkdown.test.ts",
     "src/app/lib/personalCache.test.ts",
     "src/app/lib/sessionBoundary.test.ts",
     "src/app/lib/dataExport.test.ts",

@@ -433,3 +433,117 @@ html:has(.marketing-root) body {
   height: 0;
   pointer-events: none;
 }
+
+/* Date line on a printed note. Hidden on screen. */
+.note-print-only {
+  display: none;
+}
+
+/* A single note prints as a light page. App chrome stays off the paper.
+   Nothing is uploaded; this only changes what window.print() lays out. */
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #1c1c1c !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .app-main {
+    padding-top: 0 !important;
+  }
+
+  .app-main > div {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .note-print-root,
+  .note-print-root * {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .note-print-root .note-print-sheet {
+    background-color: #fff !important;
+    background-image: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    color: #1c1c1c !important;
+  }
+
+  .note-print-only {
+    display: block !important;
+    color: #444 !important;
+    margin-top: 0.25rem;
+  }
+
+  .note-print-sheet,
+  .note-print-sheet h3,
+  .note-print-sheet .note-prose .ProseMirror,
+  .note-print-sheet .note-prose .ProseMirror * {
+    color: #1c1c1c !important;
+  }
+
+  .note-print-sheet .note-prose .ProseMirror a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .note-print-sheet .note-prose .ProseMirror a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    font-weight: 400;
+    word-break: break-all;
+  }
+
+  .note-print-sheet .note-prose .ProseMirror code,
+  .note-print-sheet .note-prose .ProseMirror pre {
+    background: #f3f3f3 !important;
+    border-color: #ddd !important;
+    color: #1c1c1c !important;
+  }
+
+  .note-print-sheet .note-prose .ProseMirror blockquote {
+    border-left-color: #999;
+    color: #333 !important;
+  }
+
+  .note-print-sheet .note-prose .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
+    -webkit-appearance: checkbox;
+    appearance: auto;
+    accent-color: #1c1c1c;
+    width: 0.9rem !important;
+    height: 0.9rem !important;
+  }
+
+  .note-print-sheet .note-print-tags span {
+    color: #333 !important;
+    background: transparent !important;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+  }
+
+  .note-print-sheet a {
+    color: #1c1c1c !important;
+    text-decoration: underline;
+  }
+
+  .note-print-sheet .note-prose .ProseMirror p.is-editor-empty:first-child::before {
+    content: none !important;
+  }
+}

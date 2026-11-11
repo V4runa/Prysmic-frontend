@@ -20,7 +20,7 @@ import {
 import { useTags } from "../hooks/useTags";
 import { tactile } from "../lib/motion";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tag, Paperclip } from "lucide-react";
+import { Pin, Tag, Paperclip } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { calendarDayHref } from "../lib/calendarDay";
 import { localDateKey } from "../lib/date";
@@ -28,6 +28,8 @@ import { noteHtmlToText } from "../lib/noteContent";
 import { tagActiveClasses, tagColorClasses, tagColorKey } from "../lib/tagColors";
 import { parseTagIds, tagFilterHref } from "../lib/tagQuery";
 import TagChip from "../components/TagChip";
+import NoteActionsMenu from "../components/NoteActionsMenu";
+import { notesForList } from "./noteMenu";
 
 interface Note {
   id: number;
@@ -36,6 +38,8 @@ interface Note {
   tags?: { id: number; name: string; color?: string }[];
   createdAt: string;
   attachmentCount?: number;
+  isPinned?: boolean;
+  isArchived?: boolean;
 }
 
 interface TagData {
@@ -52,17 +56,23 @@ export default function NotesOverviewPage() {
   const search = searchParams.toString();
   const activeTagIds = useMemo(() => parseTagIds(search), [search]);
   const [unsavedHref, setUnsavedHref] = useState<string | null>(null);
+  const [cardNotice, setCardNotice] = useState("");
+  const routeNotice = searchParams.get("notice") === "archived" ? "Archived." : "";
+  const notice = cardNotice || routeNotice;
+  const [listMode, setListMode] = useState<"notes" | "archived">("notes");
+  const archived = listMode === "archived";
   const activeTagKey = activeTagIds.join(",");
-  const [pageState, setPageState] = useState({ key: activeTagKey, page: 1 });
-  if (pageState.key !== activeTagKey) {
-    setPageState({ key: activeTagKey, page: 1 });
+  const listKey = `${activeTagKey}:${listMode}`;
+  const [pageState, setPageState] = useState({ key: listKey, page: 1 });
+  if (pageState.key !== listKey) {
+    setPageState({ key: listKey, page: 1 });
   }
-  const currentPage = pageState.key === activeTagKey ? pageState.page : 1;
+  const currentPage = pageState.key === listKey ? pageState.page : 1;
   const setCurrentPage = (update: number | ((page: number) => number)) => {
     setPageState((prev) => {
-      const page = prev.key === activeTagKey ? prev.page : 1;
+      const page = prev.key === listKey ? prev.page : 1;
       const next = typeof update === "function" ? update(page) : update;
-      return { key: activeTagKey, page: next };
+      return { key: listKey, page: next };
     });
   };
   const [notesPerPage] = useState(8);
@@ -75,8 +85,11 @@ export default function NotesOverviewPage() {
     isLoading: notesLoading,
     isError: notesError,
   } = useQuery({
-    queryKey: ["notes", userId],
-    queryFn: () => apiFetch<Note[]>(`/notes/user/${userId}`),
+    queryKey: ["notes", userId, archived ? "archived" : "active"],
+    queryFn: () =>
+      apiFetch<Note[]>(
+        `/notes/user/${userId}${archived ? "?archived=true" : ""}`
+      ),
     enabled: !!userId,
   });
 
@@ -89,9 +102,14 @@ export default function NotesOverviewPage() {
     ? "Could not load notes or tags."
     : "";
 
+  const scopedNotes = useMemo(
+    () => notesForList(notes, archived),
+    [notes, archived]
+  );
+
   const allTags = useMemo<TagData[]>(() => {
     const tagCountMap: Record<string, number> = {};
-    notes.forEach((note) => {
+    scopedNotes.forEach((note) => {
       note.tags?.forEach((tag) => {
         tagCountMap[tag.name] = (tagCountMap[tag.name] || 0) + 1;
       });
@@ -99,7 +117,7 @@ export default function NotesOverviewPage() {
     return (tagList as TagData[])
       .map((tag) => ({ ...tag, count: tagCountMap[tag.name] || 0 }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [notes, tagList]);
+  }, [scopedNotes, tagList]);
 
   useEffect(() => {
     const storage = noteDraftStorage();
@@ -108,6 +126,23 @@ export default function NotesOverviewPage() {
     const draft = draftVisibleToUser(storage ? readDraft(storage) : null, owner);
     setUnsavedHref(draft ? recoveryHref(draft) : null);
   }, []);
+
+  useEffect(() => {
+    if (!cardNotice) return;
+    const timeout = window.setTimeout(() => setCardNotice(""), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [cardNotice]);
+
+  useEffect(() => {
+    if (searchParams.get("notice") !== "archived") return;
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("notice");
+      const next = params.toString();
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }, 4000);
+    return () => window.clearTimeout(timeout);
+  }, [searchParams, pathname, router]);
 
   const setActiveTagIds = (ids: number[]) => {
     router.replace(tagFilterHref(pathname, search, ids), { scroll: false });
@@ -124,11 +159,11 @@ export default function NotesOverviewPage() {
   const filteredNotes = useMemo(
     () =>
       activeTagIds.length
-        ? notes.filter((note) =>
+        ? scopedNotes.filter((note) =>
             note.tags?.some((tag) => activeTagIds.includes(tag.id))
           )
-        : notes,
-    [notes, activeTagIds]
+        : scopedNotes,
+    [scopedNotes, activeTagIds]
   );
 
   const totalPages = Math.max(
@@ -265,6 +300,39 @@ export default function NotesOverviewPage() {
             </div>
           </div>
 
+          <div className="flex border-b border-white/10 text-sm" role="tablist" aria-label="Notes">
+            {(["notes", "archived"] as const).map((mode) => {
+              const selected = listMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => setListMode(mode)}
+                  className={`relative px-3 py-2 -mb-px font-medium ${
+                    selected ? "text-cyan-300" : "text-white/40 hover:text-white"
+                  }`}
+                >
+                  {mode === "notes" ? "Notes" : "Archived"}
+                  {selected && (
+                    <motion.div
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"
+                      layoutId="notesListTab"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {notice && (
+            <p role="status" className="text-sm text-slate-400">
+              {notice}
+            </p>
+          )}
+
           {unsavedHref && (
             <p className="text-sm text-slate-400">
               Unsaved writing is still in this tab.{" "}
@@ -325,7 +393,9 @@ export default function NotesOverviewPage() {
           ) : filteredNotes.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-slate-400 text-center text-lg">
-                No notes match your filter.
+                {archived && activeTagIds.length === 0
+                  ? "No archived notes."
+                  : "No notes match your filter."}
               </p>
             </div>
           ) : (
@@ -333,7 +403,7 @@ export default function NotesOverviewPage() {
               <div className="flex-1 overflow-y-auto app-scroll p-1">
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={currentPage + activeTagKey}
+                    key={`${currentPage}-${listKey}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -350,8 +420,14 @@ export default function NotesOverviewPage() {
                         className="glass-card card-lift relative rounded-2xl hover:bg-white/[0.06] p-4 sm:p-6 overflow-hidden flex flex-col justify-between h-full"
                       >
                         <div>
-                          <h3 className="text-slate-100 text-lg sm:text-xl font-semibold mb-2 sm:mb-3 truncate">
-                            {note.title}
+                          <h3 className="text-slate-100 text-lg sm:text-xl font-semibold mb-2 sm:mb-3 flex items-center gap-1.5 pr-8 min-w-0">
+                            {note.isPinned && (
+                              <span className="inline-flex shrink-0 text-slate-500" title="Pinned">
+                                <Pin className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span className="sr-only">Pinned</span>
+                              </span>
+                            )}
+                            <span className="truncate">{note.title}</span>
                           </h3>
                           <p className="text-slate-400 text-sm leading-relaxed mb-3 sm:mb-5 overflow-hidden line-clamp-4 sm:line-clamp-5">
                             {noteHtmlToText(note.content).slice(0, 200)}
@@ -386,9 +462,15 @@ export default function NotesOverviewPage() {
                             </span>
                           )}
                         </div>
+                        <NoteActionsMenu
+                          note={note}
+                          variant="card"
+                          onNotice={setCardNotice}
+                        />
                         <Link
                           href={`/notes/${note.id}`}
                           className="absolute inset-0 z-10"
+                          aria-label={note.title ? `Open ${note.title}` : "Open note"}
                         />
                       </motion.div>
                     ))}

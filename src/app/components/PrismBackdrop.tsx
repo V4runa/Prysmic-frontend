@@ -136,7 +136,7 @@ export default function PrismBackdrop() {
           behind the UI. */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#06070a]"
+        className="no-print pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#06070a]"
       >
         {/* Aura bloom — a soft cyan light the prism seems to emit, breathing
             just behind it to give the structure presence and depth. */}
@@ -207,7 +207,7 @@ export default function PrismBackdrop() {
           interactive. */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 z-20 overflow-hidden"
+        className="no-print pointer-events-none fixed inset-0 z-20 overflow-hidden"
       >
         <MoteField motes={frontMotes} front reduce={reduce} />
       </div>

@@ -170,7 +170,7 @@ function UpdatesDialog({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6"
+      className="no-print fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -234,21 +234,25 @@ function UpdatesDialog({
               Coming soon
             </h3>
             <p className="mt-1 text-sm leading-relaxed text-slate-400">Prysmic is still growing.</p>
-            <div className="mt-3 flex flex-col gap-4">
-              {comingSoon.map((item) => (
-                <article key={item.id} className="border-b border-white/10 pb-4 last:border-b-0">
-                  <span className="inline-flex items-center rounded-full border border-white/15 px-2 py-0.5 text-xs text-slate-300">
-                    Planned
-                  </span>
-                  <h4 className="selectable-text mt-1.5 text-sm font-medium text-slate-100">
-                    {item.title}
-                  </h4>
-                  <p className="selectable-text mt-1 text-sm leading-relaxed text-slate-300">
-                    {item.summary}
-                  </p>
-                </article>
-              ))}
-            </div>
+            {comingSoon.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-400">Nothing planned right now.</p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-4">
+                {comingSoon.map((item) => (
+                  <article key={item.id} className="border-b border-white/10 pb-4 last:border-b-0">
+                    <span className="inline-flex items-center rounded-full border border-white/15 px-2 py-0.5 text-xs text-slate-300">
+                      Planned
+                    </span>
+                    <h4 className="selectable-text mt-1.5 text-sm font-medium text-slate-100">
+                      {item.title}
+                    </h4>
+                    <p className="selectable-text mt-1 text-sm leading-relaxed text-slate-300">
+                      {item.summary}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </motion.div>
@@ -309,7 +313,7 @@ export function UpdateHighlightCard({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 8 }}
         transition={springSoft}
-        className="glass-card fixed z-40 left-3 right-3 bottom-[calc(var(--bottomnav-h)+0.75rem)] rounded-xl p-4 sm:left-auto sm:right-6 sm:bottom-6 sm:w-full sm:max-w-sm"
+        className="no-print glass-card fixed z-40 left-3 right-3 bottom-[calc(var(--bottomnav-h)+0.75rem)] rounded-xl p-4 sm:left-auto sm:right-6 sm:bottom-6 sm:w-full sm:max-w-sm"
       >
         <div className="flex flex-wrap items-center gap-2">
           <KindChip kind={entry.kind} />
