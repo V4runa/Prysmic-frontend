@@ -169,28 +169,33 @@ test("the published changelog is newest first and ready for a public page", () =
     changelog.updates.map((entry) => entry.id),
     updates.map((entry) => entry.id)
   );
-  assert.equal(changelog.updates[0]?.id, "note-into-task");
+  assert.equal(changelog.updates[0]?.id, "phone-layout");
   assert.equal(changelog.updates[0]?.highlight, false);
-  assert.equal(changelog.updates[0]?.kind, "new");
-  assert.equal(changelog.updates[0]?.date, "2026-11-11");
-  assert.equal(changelog.updates[0]?.title, "Make a task from a note");
-  assert.equal(changelog.updates[1]?.id, "note-actions");
+  assert.equal(changelog.updates[0]?.kind, "improved");
+  assert.equal(changelog.updates[0]?.date, "2026-11-12");
+  assert.equal(changelog.updates[0]?.title, "Easier to use on a phone");
+  assert.equal(changelog.updates[1]?.id, "note-into-task");
   assert.equal(changelog.updates[1]?.highlight, false);
   assert.equal(changelog.updates[1]?.kind, "new");
   assert.equal(changelog.updates[1]?.date, "2026-11-11");
-  assert.equal(changelog.updates[1]?.title, "More you can do with a note");
-  assert.equal(changelog.updates[2]?.id, "calendar-day-links");
+  assert.equal(changelog.updates[1]?.title, "Make a task from a note");
+  assert.equal(changelog.updates[2]?.id, "note-actions");
   assert.equal(changelog.updates[2]?.highlight, false);
   assert.equal(changelog.updates[2]?.kind, "new");
   assert.equal(changelog.updates[2]?.date, "2026-11-11");
-  assert.equal(changelog.updates[3]?.id, "calendar-finished-tasks");
+  assert.equal(changelog.updates[2]?.title, "More you can do with a note");
+  assert.equal(changelog.updates[3]?.id, "calendar-day-links");
   assert.equal(changelog.updates[3]?.highlight, false);
-  assert.equal(changelog.updates[3]?.kind, "improved");
+  assert.equal(changelog.updates[3]?.kind, "new");
   assert.equal(changelog.updates[3]?.date, "2026-11-11");
-  assert.equal(changelog.updates[4]?.id, "shared-tags-notes-tasks");
-  assert.equal(changelog.updates[4]?.highlight, true);
-  assert.equal(changelog.updates[4]?.date, "2026-11-10");
-  assert.equal(changelog.updates[5]?.id, "updates-view");
+  assert.equal(changelog.updates[4]?.id, "calendar-finished-tasks");
+  assert.equal(changelog.updates[4]?.highlight, false);
+  assert.equal(changelog.updates[4]?.kind, "improved");
+  assert.equal(changelog.updates[4]?.date, "2026-11-11");
+  assert.equal(changelog.updates[5]?.id, "shared-tags-notes-tasks");
+  assert.equal(changelog.updates[5]?.highlight, true);
+  assert.equal(changelog.updates[5]?.date, "2026-11-10");
+  assert.equal(changelog.updates[6]?.id, "updates-view");
   assert.equal(
     changelog.updates.find((entry) => entry.id === "plain-first-run-copy")?.title,
     "A clearer welcome and plainer starter notes"
