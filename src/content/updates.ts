@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "phone-layout",
+    date: "2026-11-12",
+    kind: "improved",
+    title: "Easier to use on a phone",
+    summary:
+      "On a phone, the account line sits under the wordmark, a note's heading is no longer cut off, and contract check-offs and note tag filters are easier to tap.",
+  },
+  {
     id: "note-into-task",
     date: "2026-11-11",
     kind: "new",
