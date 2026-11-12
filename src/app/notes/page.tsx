@@ -345,7 +345,7 @@ export default function NotesOverviewPage() {
 
           {/* Mobile tag filter bar */}
           {allTags.length > 0 && (
-            <div className="xl:hidden overflow-x-auto overscroll-x-contain scrollbar-hidden flex gap-2 py-3 px-1 -mx-1">
+            <div className="xl:hidden -mx-1 flex items-center gap-2 overflow-x-auto overscroll-x-contain px-1 py-2 scrollbar-hidden">
               {allTags.map((tag, i) => {
                 const isActive = activeTagIds.includes(tag.id);
                 const color = tagColorKey(tag.color);
@@ -360,7 +360,7 @@ export default function NotesOverviewPage() {
                     transition={{ delay: i * 0.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => toggleTag(tag.id)}
-                    className={`interactive-chip text-xs px-3 py-1 rounded-full border whitespace-nowrap transition-colors duration-200 ${
+                    className={`interactive-chip inline-flex h-11 shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-xs transition-colors duration-200 ${
                       baseClasses
                     } ${isActive ? tagActiveClasses[color] : "hover:bg-white/10"}`}
                   >
@@ -375,7 +375,7 @@ export default function NotesOverviewPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: allTags.length * 0.05 }}
                   onClick={() => setActiveTagIds([])}
-                  className="interactive-chip text-xs text-cyan-300 underline ml-auto hover:text-cyan-200 transition-colors"
+                  className="interactive-chip ml-auto inline-flex h-11 shrink-0 items-center px-3 text-xs text-cyan-300 underline transition-colors hover:text-cyan-200"
                 >
                   Clear
                 </motion.button>

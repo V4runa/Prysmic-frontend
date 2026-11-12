@@ -118,6 +118,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
   const settingsActive = isActive("/settings") || isActive("/account");
+  const wanderingLabel = username ? `Wandering as ${username}` : "Account";
 
   return (
     <div className="min-h-[100dvh] text-slate-100 font-sans relative overflow-hidden">
@@ -130,9 +131,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Top Navigation Bar */}
-      <div className="app-header no-print fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/5 border-b border-white/10 px-4 flex justify-between items-center shadow-sm select-none">
-        <div className="flex gap-2 sm:gap-4 lg:gap-6 items-center min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold tracking-wide cursor-default">Prysmic</h1>
+      <div className="app-header no-print fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-4 shadow-sm backdrop-blur-lg select-none">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 sm:flex-none sm:flex-row sm:items-center sm:gap-4 lg:gap-6">
+          <h1 className="shrink-0 cursor-default text-lg font-bold leading-none tracking-wide sm:text-xl">
+            Prysmic
+          </h1>
+          {/* Phones: account line under the wordmark, so the two never share a row. */}
+          <span className="min-w-0 truncate text-xs italic leading-tight text-slate-400 sm:hidden">
+            {wanderingLabel}
+          </span>
           {/* Inline links: desktop / tablet only — phones use the bottom tab bar. */}
           <div className="hidden sm:flex gap-2 sm:gap-4 lg:gap-6 items-center">
             {navItems.map((item) =>
@@ -159,9 +166,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className="flex gap-2 sm:gap-4 items-center text-xs sm:text-sm min-w-0">
-          <span className="min-w-0 truncate italic text-slate-400">
-            {username ? `Wandering as ${username}` : "Account"}
+        <div className="flex shrink-0 items-center gap-2 text-xs sm:min-w-0 sm:shrink sm:gap-4 sm:text-sm">
+          <span className="hidden min-w-0 truncate italic text-slate-400 sm:inline">
+            {wanderingLabel}
           </span>
           <Link
             href="/settings"
@@ -175,12 +182,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           >
             <UserAvatar username={username} avatar={avatar} />
             <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>Settings</span>
+            <span className="hidden sm:inline">Settings</span>
           </Link>
           <button
             onClick={handleLogout}
             aria-label="Log out"
-            className="tap-target flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 px-2 sm:px-3 py-1 rounded-md border border-white/10 text-xs sm:text-sm"
+            className="tap-target flex shrink-0 items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 px-2 sm:px-3 py-1 rounded-md border border-white/10 text-xs sm:text-sm"
           >
             <LogOut className="h-4 w-4 sm:hidden" />
             <span className="hidden sm:inline">Logout</span>

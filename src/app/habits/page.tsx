@@ -208,7 +208,7 @@ export default function HabitsPage() {
                     )}
 
                     {/* Main Card Content */}
-                    <div className="flex items-center gap-3 z-10 relative pr-8">
+                    <div className="relative z-10 flex items-center gap-3 pr-12">
                       {IconComponent && (
                         <motion.span
                           animate={animating ? { scale: [1, 1.35, 1], rotate: [0, -8, 8, 0] } : {}}
@@ -274,19 +274,23 @@ export default function HabitsPage() {
                         </motion.span>
                       </div>
                     ) : (
-                      <div
-                        className="tap-target absolute top-1 right-1 z-20 flex items-center justify-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleComplete(habit.id);
-                        }}
-                      >
+                      <div className="absolute top-1.5 right-1.5 z-20">
                         <motion.button
+                          type="button"
                           {...tactileSubtle}
                           title="Mark as complete"
-                          className={`h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded-full border ${c.checkBorder} bg-white/10 ${c.checkHover}`}
+                          aria-label="Mark as complete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleComplete(habit.id);
+                          }}
+                          className="flex h-11 w-11 items-center justify-center rounded-full"
                         >
-                          <CheckCircle2 className={`h-4 w-4 ${c.icon}`} />
+                          <span
+                            className={`flex h-7 w-7 items-center justify-center rounded-full border ${c.checkBorder} bg-white/10 ${c.checkHover}`}
+                          >
+                            <CheckCircle2 className={`h-4 w-4 ${c.icon}`} />
+                          </span>
                         </motion.button>
                       </div>
                     )}

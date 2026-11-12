@@ -54,9 +54,11 @@
   --verify-banner-h: 0px;
 }
 
-/* On phones a native-style bottom tab bar reserves space. */
+/* On phones a native-style bottom tab bar reserves space, and the header
+   grows enough for the wordmark with the account line under it. */
 @media (max-width: 639px) {
   :root {
+    --header-h: calc(3.5rem + var(--safe-top));
     --bottomnav-h: calc(3.75rem + var(--safe-bottom));
   }
 }

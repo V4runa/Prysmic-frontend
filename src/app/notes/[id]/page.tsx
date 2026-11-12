@@ -487,11 +487,21 @@ export default function ViewNotePage() {
     <PageTransition>
       <div className="note-print-root w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
         <GlassPanel className="note-print-sheet w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
-        <div className="no-print flex justify-between items-center gap-3">
-          <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide truncate">
+        <div
+          className={`no-print flex gap-3 ${
+            editing
+              ? "items-center justify-between"
+              : "flex-col items-stretch sm:flex-row sm:items-center sm:justify-between"
+          }`}
+        >
+          <h2
+            className={`text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide ${
+              editing ? "min-w-0 truncate" : "sm:min-w-0 sm:flex-1 sm:truncate"
+            }`}
+          >
             {editing ? "Editing Note" : "Viewing Note"}
           </h2>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
             {!editing ? (
               <>
                 {note && noteId && Number.isFinite(Number(noteId)) && (
