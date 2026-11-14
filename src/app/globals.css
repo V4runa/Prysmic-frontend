@@ -69,6 +69,60 @@
   height: calc(100dvh - var(--header-h) - var(--bottomnav-h) - var(--verify-banner-h));
 }
 
+/* List and workspace pages. 1440 and 1920 keep the 1400px column they
+   already use. Wider monitors open up, and the page padding still holds
+   the panels off the screen edges. Moods stays on its narrower column
+   until that same wide step. */
+.app-workspace {
+  width: 100%;
+  max-width: 1400px;
+}
+
+.app-workspace-moods {
+  width: 100%;
+  max-width: 1200px;
+}
+
+@media (min-width: 2000px) {
+  .app-workspace,
+  .app-workspace-moods {
+    max-width: 1860px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .app-workspace,
+  .app-workspace-moods {
+    max-width: 2100px;
+  }
+}
+
+/* Notes list: the tag sidebar and the notes panel are one centered group.
+   The cap is the workspace width plus the sidebar and the gap between them,
+   so a wide screen does not park the sidebar on the far left of a centered panel. */
+.app-notes-group {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 1280px) {
+  .app-notes-group {
+    max-width: calc(1400px + 260px + 1.5rem);
+  }
+}
+
+@media (min-width: 2000px) {
+  .app-notes-group {
+    max-width: calc(1860px + 260px + 1.5rem);
+  }
+}
+
+@media (min-width: 2560px) {
+  .app-notes-group {
+    max-width: calc(2100px + 260px + 1.5rem);
+  }
+}
+
 /* Fixed top header: grows to clear the notch, stays 3rem on desktop. */
 .app-header {
   height: var(--header-h);

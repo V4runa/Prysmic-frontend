@@ -20,6 +20,7 @@ import {
 import { useTags } from "../hooks/useTags";
 import { tactile } from "../lib/motion";
 import { motion, AnimatePresence } from "framer-motion";
+import clsx from "clsx";
 import { Pin, Tag, Paperclip } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { calendarDayHref } from "../lib/calendarDay";
@@ -186,7 +187,13 @@ export default function NotesOverviewPage() {
 
   return (
     <PageTransition>
-    <div className="w-full app-page-h flex flex-col xl:flex-row px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
+    <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
+    <div
+      className={clsx(
+        "flex h-full min-h-0 w-full flex-col gap-4 sm:gap-6 xl:flex-row",
+        allTags.length > 0 ? "app-notes-group" : "app-workspace"
+      )}
+    >
       {/* Sidebar (desktop only) */}
       {allTags.length > 0 && (
         <aside className="hidden xl:block w-[260px] shrink-0">
@@ -274,8 +281,8 @@ export default function NotesOverviewPage() {
       )}
 
       {/* Main content */}
-      <main className="flex-grow flex flex-col items-center gap-4 sm:gap-6 min-h-0">
-        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <GlassPanel className="flex h-full min-h-0 w-full min-w-0 flex-col gap-4 sm:gap-6">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
               Your Notes
@@ -409,7 +416,7 @@ export default function NotesOverviewPage() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.25 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 w-full"
+                    className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 min-[2560px]:grid-cols-5"
                   >
                     {currentNotes.map((note, i) => (
                       <motion.div
@@ -518,6 +525,7 @@ export default function NotesOverviewPage() {
           )}
         </GlassPanel>
       </main>
+    </div>
     </div>
     </PageTransition>
   );

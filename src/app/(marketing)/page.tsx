@@ -4,7 +4,7 @@ import { EnterIfSignedIn } from "@/marketing/components/EnterIfSignedIn";
 import { LoopClip } from "@/marketing/components/LoopClip";
 import { Shot } from "@/marketing/components/Shot";
 import { ogImage } from "@/marketing/og";
-import { btnGhost, btnPrimary, kickerClass, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/marketing/site";
+import { btnGhost, btnPrimary, kickerClass, marketingShell, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/marketing/site";
 
 export const metadata: Metadata = {
   title: { absolute: SITE_TITLE },
@@ -38,7 +38,7 @@ const jsonLd = {
 const frame =
   "overflow-hidden rounded-xl border border-white/10 bg-[#0c0e12]";
 
-const section = "mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-24";
+const section = `${marketingShell} px-5 py-16 sm:px-8 sm:py-24`;
 
 const notesClip = {
   mp4: "/marketing/clips/notes.mp4",
@@ -71,12 +71,12 @@ export default function HomePage() {
       />
 
       <section className={section}>
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
+        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14 min-[2200px]:grid-cols-[minmax(0,36rem)_1fr] min-[2200px]:gap-16">
           <div>
-            <h1 className="text-4xl font-semibold leading-tight text-slate-50 sm:text-5xl">
+            <h1 className="text-4xl font-semibold leading-tight text-slate-50 sm:text-5xl min-[2200px]:text-6xl">
               A calm place to keep your ideas and come back to them.
             </h1>
-            <p className="mt-6 text-base leading-relaxed text-slate-300 sm:text-lg">
+            <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
               Prysmic is a private notebook for creative work and reflective practice. Write notes and organize them with tags you name. Write your habits as short contracts with yourself and check them off. Log how each day felt. The calendar puts it all together, day by day.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
@@ -96,7 +96,7 @@ export default function HomePage() {
               <Shot
                 src="/marketing/notes.webp"
                 alt="The Notes page with the novel tag selected and the matching notes listed."
-                sizes="(min-width: 1024px) 560px, 100vw"
+                sizes="(min-width: 2200px) 1100px, (min-width: 1024px) 560px, 100vw"
                 priority
                 className="aspect-[16/10]"
               />
@@ -123,7 +123,7 @@ export default function HomePage() {
         </div>
         <figure className="mt-10">
           <div className={`${frame} relative aspect-[16/10]`}>
-            <LoopClip clip={notesClip} sizes="(min-width: 1024px) 960px, 100vw" />
+            <LoopClip clip={notesClip} sizes="(min-width: 3000px) 1700px, (min-width: 2200px) 1500px, (min-width: 1024px) 960px, 100vw" />
           </div>
           <figcaption className="mt-3 text-sm text-slate-400">{notesClip.label}</figcaption>
         </figure>
@@ -132,7 +132,7 @@ export default function HomePage() {
             <Shot
               src="/marketing/note.webp"
               alt="An open note titled Chapter 3: the train scene, with a heading, a paragraph, two tags, and an attached image."
-              sizes="(min-width: 1024px) 960px, 100vw"
+              sizes="(min-width: 3000px) 1700px, (min-width: 2200px) 1500px, (min-width: 1024px) 960px, 100vw"
               className="aspect-[16/10]"
             />
           </div>
@@ -157,14 +157,14 @@ export default function HomePage() {
             <Shot
               src="/marketing/habit.webp"
               alt="The Write 300 words contract, open to its daily frequency, intent, affirmation, and streak."
-              sizes="(min-width: 1024px) 960px, 100vw"
+              sizes="(min-width: 3000px) 1700px, (min-width: 2200px) 1500px, (min-width: 1024px) 960px, 100vw"
               className="aspect-[16/10]"
             />
           </div>
         </figure>
         <figure className="mt-8">
           <div className={`${frame} relative aspect-[16/10]`}>
-            <LoopClip clip={habitClip} sizes="(min-width: 1024px) 960px, 100vw" />
+            <LoopClip clip={habitClip} sizes="(min-width: 3000px) 1700px, (min-width: 2200px) 1500px, (min-width: 1024px) 960px, 100vw" />
           </div>
           <figcaption className="mt-3 text-sm text-slate-400">{habitClip.label}</figcaption>
         </figure>
@@ -178,28 +178,28 @@ export default function HomePage() {
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
           <div className="rounded-xl border border-white/10 p-5 sm:p-6">
             <h3 className="text-lg font-semibold text-slate-50">Moods</h3>
-            <p className="mt-3 text-base leading-relaxed text-slate-300">
+            <p className="mt-3 max-w-prose text-base leading-relaxed text-slate-300">
               Log one mood a day from a set you make yourself, each with a name and an emoji. Add a short reflection if you want one. Your recent days appear as a timeline.
             </p>
             <div className={`${frame} mt-5`}>
               <Shot
                 src="/marketing/moods.webp"
                 alt="A mood timeline with Focused, Restless, and Calm."
-                sizes="(min-width: 1024px) 480px, 100vw"
+                sizes="(min-width: 2200px) 800px, (min-width: 1024px) 480px, 100vw"
                 className="aspect-[16/10]"
               />
             </div>
           </div>
           <div className="rounded-xl border border-white/10 p-5 sm:p-6">
             <h3 className="text-lg font-semibold text-slate-50">Tasks</h3>
-            <p className="mt-3 text-base leading-relaxed text-slate-300">
+            <p className="mt-3 max-w-prose text-base leading-relaxed text-slate-300">
               Add what needs doing with a priority and a due date. Each task appears on the calendar on its due date, and you can add one straight from any day.
             </p>
             <div className={`${frame} mt-5`}>
               <Shot
                 src="/marketing/tasks.webp"
                 alt="A task list with due dates, including a revision due today."
-                sizes="(min-width: 1024px) 480px, 100vw"
+                sizes="(min-width: 2200px) 800px, (min-width: 1024px) 480px, 100vw"
                 className="aspect-[16/10]"
               />
             </div>
@@ -222,7 +222,7 @@ export default function HomePage() {
         </div>
         <figure className="mt-10">
           <div className={`${frame} relative aspect-[16/10]`}>
-            <LoopClip clip={calendarClip} sizes="(min-width: 1024px) 1024px, 100vw" />
+            <LoopClip clip={calendarClip} sizes="(min-width: 3000px) 1700px, (min-width: 2200px) 1500px, (min-width: 1024px) 1024px, 100vw" />
           </div>
           <figcaption className="mt-3 text-sm text-slate-400">{calendarClip.label}</figcaption>
         </figure>

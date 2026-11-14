@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Mark } from "./Mark";
+import { marketingShell } from "../site";
 
 const links = [
   { href: "/login", label: "Sign in" },
@@ -11,7 +12,7 @@ const links = [
 export function SiteFooter() {
   return (
     <footer className="border-t border-white/10">
-      <div className="mx-auto max-w-5xl px-5 py-12 sm:px-8">
+      <div className={`${marketingShell} px-5 py-12 sm:px-8`}>
         <div className="flex items-center gap-2 text-slate-100">
           <Mark className="h-5 w-5 text-cyan-200" />
           <span className="text-sm font-medium">Prysmic</span>

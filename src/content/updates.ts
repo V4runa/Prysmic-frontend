@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "large-screen-layout",
+    date: "2026-11-14",
+    kind: "improved",
+    title: "Looks right on big screens",
+    summary:
+      "On a large screen, tag names fit on their cards, a contract's Edit and Delete sit with the writing, and notes, lists, the calendar, and the home page use the extra width.",
+  },
+  {
     id: "phone-layout",
     date: "2026-11-12",
     kind: "improved",

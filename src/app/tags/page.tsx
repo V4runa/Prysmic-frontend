@@ -76,7 +76,7 @@ export default function TagsPage() {
   return (
     <PageTransition>
       <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
-      <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
+      <GlassPanel className="app-workspace flex flex-col gap-4 sm:gap-6 h-full min-h-0">
         {/* Header */}
         <h2 className="text-slate-100 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-wide">
           Tag Codex
@@ -103,7 +103,7 @@ export default function TagsPage() {
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto app-scroll p-1">
             {isLoading && tags.length === 0 ? (
-              <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">
+              <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 min-[2000px]:grid-cols-7 min-[2560px]:grid-cols-8 gap-3 sm:gap-6">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div
                     key={i}
@@ -118,7 +118,7 @@ export default function TagsPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4 }}
-                className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6"
+                className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 min-[2000px]:grid-cols-7 min-[2560px]:grid-cols-8 gap-3 sm:gap-6"
               >
                 {tags.map((tag, i) => {
                 const colorClass = tagColorClasses[tagColorKey(tag.color, "cyan")];
@@ -130,7 +130,7 @@ export default function TagsPage() {
                     initial="hidden"
                     animate="visible"
                     whileTap={{ scale: 0.99 }}
-                    className={`card-lift rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/10 bg-white/5 flex items-start justify-between gap-2 shadow-md ${colorClass}`}
+                    className={`card-lift rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/10 bg-white/5 flex items-start justify-between gap-2 shadow-md sm:flex-col ${colorClass}`}
                   >
                     {editingId === tag.id ? (
                       <div className="flex flex-col gap-2 w-full">
@@ -160,8 +160,11 @@ export default function TagsPage() {
                       </div>
                     ) : (
                       <>
-                        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                          <span className="text-xs sm:text-sm font-medium truncate">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:w-full">
+                          <span
+                            title={tag.name}
+                            className="text-xs font-medium truncate sm:overflow-visible sm:whitespace-normal sm:break-words sm:text-sm"
+                          >
                             {tag.name}
                           </span>
                           <div className="flex flex-col items-start gap-0.5 text-[11px] sm:text-xs font-medium leading-tight">
@@ -179,7 +182,7 @@ export default function TagsPage() {
                             </Link>
                           </div>
                         </div>
-                        <div className="flex gap-1 sm:gap-2 shrink-0">
+                        <div className="flex shrink-0 gap-1 sm:gap-2 sm:self-end">
                           <motion.button
                             {...tactileSubtle}
                             onClick={() => {

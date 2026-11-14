@@ -246,7 +246,12 @@ export default function HabitDetailPage() {
             </p>
           )}
 
-          <div className="flex-1 flex flex-col min-h-0">
+          <div
+            className={clsx(
+              "flex min-h-0 flex-1 flex-col",
+              !edit && "sm:app-scroll sm:overflow-y-auto"
+            )}
+          >
             <AnimatePresence mode="wait">
               {edit ? (
                 <motion.div
@@ -327,7 +332,7 @@ export default function HabitDetailPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.3 }}
-                  className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1"
+                  className="min-h-0 flex-1 overflow-y-auto app-scroll -mr-1 pr-1 sm:flex-none sm:overflow-visible"
                 >
                   <div className="flex flex-col gap-4 sm:gap-6">
                   <div className="flex justify-between items-center gap-3">
