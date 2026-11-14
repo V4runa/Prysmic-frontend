@@ -416,7 +416,7 @@ export default function NotesOverviewPage() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.25 }}
-                    className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 min-[2560px]:grid-cols-5"
+                    className="wide-grid-notes grid w-full grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4"
                   >
                     {currentNotes.map((note, i) => (
                       <motion.div

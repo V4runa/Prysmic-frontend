@@ -264,7 +264,7 @@ export default function TasksPage() {
                   transition={{ duration: 0.2 }}
                   className="flex-1 overflow-y-auto app-scroll p-1 max-sm:flex-none max-sm:overflow-visible"
                 >
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[2000px]:grid-cols-5 min-[2560px]:grid-cols-6">
+                  <div className="wide-grid-tasks grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleTasks.map((task, i) => (
                       <motion.div
                         key={task.id}

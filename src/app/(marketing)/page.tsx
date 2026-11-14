@@ -71,9 +71,9 @@ export default function HomePage() {
       />
 
       <section className={section}>
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14 min-[2200px]:grid-cols-[minmax(0,36rem)_1fr] min-[2200px]:gap-16">
-          <div>
-            <h1 className="text-4xl font-semibold leading-tight text-slate-50 sm:text-5xl min-[2200px]:text-6xl">
+        <div className="marketing-hero grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
+          <div className="max-w-xl">
+            <h1 className="text-4xl font-semibold leading-tight text-slate-50 sm:text-5xl">
               A calm place to keep your ideas and come back to them.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">

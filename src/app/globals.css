@@ -123,6 +123,54 @@
   }
 }
 
+/* Tailwind emits arbitrary min-width utilities before the sm/lg/xl blocks,
+   so a later lg:grid-cols-* would cancel a wider column count. These sit
+   outside those layers and only take over once the workspace has widened. */
+@media (min-width: 2000px) {
+  .wide-grid-contracts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .wide-grid-tasks {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .wide-grid-tags {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  .wide-mood-grid {
+    max-width: 72rem;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .wide-mood-head {
+    max-width: 72rem;
+  }
+}
+
+@media (min-width: 2560px) {
+  .wide-grid-notes {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .wide-grid-contracts {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .wide-grid-tasks {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .wide-grid-tags {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 2200px) {
+  .marketing-hero {
+    grid-template-columns: minmax(0, 36rem) minmax(0, 1fr);
+    gap: 4rem;
+  }
+  .marketing-hero h1 {
+    font-size: 3.75rem;
+    line-height: 1.15;
+  }
+}
+
 /* Fixed top header: grows to clear the notch, stays 3rem on desktop. */
 .app-header {
   height: var(--header-h);

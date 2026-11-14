@@ -150,7 +150,7 @@ export default function HabitsPage() {
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto app-scroll p-1">
             {isLoading && habits.length === 0 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 min-[2000px]:grid-cols-4 min-[2560px]:grid-cols-5">
+              <div className="wide-grid-contracts grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div
                     key={i}
@@ -165,7 +165,7 @@ export default function HabitsPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
-                className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 min-[2000px]:grid-cols-4 min-[2560px]:grid-cols-5"
+                className="wide-grid-contracts grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3"
               >
                 {habits.map((habit, i) => {
                 const iconKey: IconKey = habit.icon && iconMap[habit.icon] ? habit.icon : "star";

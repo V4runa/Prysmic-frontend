@@ -103,7 +103,7 @@ export default function TagsPage() {
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto app-scroll p-1">
             {isLoading && tags.length === 0 ? (
-              <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 min-[2000px]:grid-cols-7 min-[2560px]:grid-cols-8 gap-3 sm:gap-6">
+              <div className="wide-grid-tags grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div
                     key={i}
@@ -118,7 +118,7 @@ export default function TagsPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4 }}
-                className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 min-[2000px]:grid-cols-7 min-[2560px]:grid-cols-8 gap-3 sm:gap-6"
+                className="wide-grid-tags grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6"
               >
                 {tags.map((tag, i) => {
                 const colorClass = tagColorClasses[tagColorKey(tag.color, "cyan")];

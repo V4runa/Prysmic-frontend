@@ -129,7 +129,7 @@ export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
     <div className="app-scroll relative w-full h-full overflow-y-auto">
       <div className="flex flex-col items-center w-full min-h-full px-4 py-6 sm:px-6 sm:py-8">
         {/* Header */}
-        <div className="w-full max-w-5xl min-[2000px]:max-w-6xl flex items-center justify-between gap-3 mb-6 sm:mb-10">
+        <div className="wide-mood-head flex w-full max-w-5xl items-center justify-between gap-3 mb-6 sm:mb-10">
           <div className="min-w-0">
             {onCancel && !managing && (
               <button
@@ -174,7 +174,7 @@ export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
           <p className="text-slate-400 mt-10">Loading your moods...</p>
         ) : (
           <motion.div
-            className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 min-[2000px]:grid-cols-6 gap-3 sm:gap-5 place-items-center w-full max-w-5xl min-[2000px]:max-w-6xl"
+            className="wide-mood-grid grid w-full max-w-5xl grid-cols-3 place-items-center gap-3 sm:grid-cols-4 sm:gap-5 md:grid-cols-5"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.6 }}
