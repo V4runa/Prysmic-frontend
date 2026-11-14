@@ -9,16 +9,22 @@ import { TextArea, FormButton } from "./forms";
 
 interface MoodReflectionProps {
   color?: string;
+  initialNote?: string;
+  maxLength?: number;
+  skipLabel?: string;
   onSubmit: (note?: string) => void | Promise<void>;
   onSkip: () => void | Promise<void>;
 }
 
 export default function MoodReflection({
   color,
+  initialNote = "",
+  maxLength = 180,
+  skipLabel = "Skip",
   onSubmit,
   onSkip,
 }: MoodReflectionProps) {
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(initialNote);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,7 +37,7 @@ export default function MoodReflection({
     setSubmitting(true);
     setError("");
     try {
-      await onSubmit(note.trim() || undefined);
+      await onSubmit(note.trim());
     } catch {
       setError("Couldn't save your mood. Please try again.");
       setSubmitting(false);
@@ -83,7 +89,7 @@ export default function MoodReflection({
         </p>
 
         <TextArea
-          maxLength={180}
+          maxLength={maxLength}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Write your reflection here..."
@@ -102,7 +108,7 @@ export default function MoodReflection({
           </motion.button>
 
           <FormButton variant="secondary" onClick={handleSkip} disabled={submitting}>
-            Skip
+            {skipLabel}
           </FormButton>
         </div>
 
@@ -118,7 +124,7 @@ export default function MoodReflection({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
         >
-          {note.length}/180 characters
+          {note.length}/{maxLength} characters
         </motion.div>
       </motion.div>
       </div>

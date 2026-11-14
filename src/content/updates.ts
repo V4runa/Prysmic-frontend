@@ -49,6 +49,14 @@ export const productUpdates = [
       "On a large screen, tag names fit on their cards, a contract's Edit and Delete sit with the writing, and notes, lists, the calendar, and the home page use the extra width.",
   },
   {
+    id: "mood-check-in",
+    date: "2026-11-14",
+    kind: "improved",
+    title: "Moods that fit your day",
+    summary:
+      "You can add your own mood from the picker and log it for today. Once today is logged, you can change the mood or the note on the Moods page.",
+  },
+  {
     id: "phone-layout",
     date: "2026-11-12",
     kind: "improved",

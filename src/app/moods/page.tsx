@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../hooks/useApi";
@@ -12,6 +12,7 @@ import MoodReflection from "../components/MoodReflection";
 import MoodTimeline from "../components/MoodTimeline";
 import { calendarDayFromSearch } from "../lib/calendarDay";
 import { localDateKey } from "../lib/date";
+import { resolveMoodVisual } from "../lib/moodColors";
 import { useLogicalToday } from "../hooks/usePreferences";
 import { calendarQueryKey } from "../hooks/useCalendar";
 import { MoodOption, useMoodOptions } from "../hooks/useMoodOptions";
@@ -59,6 +60,9 @@ export default function MoodPage() {
   const focusDay = calendarDayFromSearch(searchParams.toString());
   const [phase, setPhase] = useState<MoodPhase>(MoodPhase.PICK);
   const [selectedMood, setSelectedMood] = useState<MoodOption | null>(null);
+  const [replacing, setReplacing] = useState(false);
+  // Once someone starts changing today, a refetch must not send them back to the timeline.
+  const phaseLocked = useRef(false);
 
   const todayKey = useLogicalToday();
 
@@ -77,11 +81,15 @@ export default function MoodPage() {
   useMoodOptions();
 
   const timeline = useMemo(() => normalizeMoods(moodsRaw), [moodsRaw]);
+  const todayEntry = useMemo(
+    () => timeline.find((mood) => localDateKey(mood.date) === todayKey) ?? null,
+    [timeline, todayKey]
+  );
   const error = isError ? "Failed to load moods." : "";
 
   // 🧠 Detect today's entry and pick the starting phase once moods load.
   useEffect(() => {
-    if (loading) return;
+    if (loading || phaseLocked.current) return;
 
     if (focusDay && timeline.some((mood) => localDateKey(mood.date) === focusDay)) {
       setPhase(MoodPhase.TIMELINE);
@@ -105,6 +113,7 @@ export default function MoodPage() {
 
   // 🎭 When a mood is picked
   const handleMoodSelect = (mood: MoodOption) => {
+    phaseLocked.current = true;
     setSelectedMood(mood);
     setPhase(MoodPhase.REFLECT);
   };
@@ -113,16 +122,53 @@ export default function MoodPage() {
   // Throws on failure so the reflection screen can surface a retry instead of
   // getting stuck in a "Saving..." state. Retries once to ride out transient
   // failures (cold starts / flaky network) before giving up.
+  const beginChange = () => {
+    phaseLocked.current = true;
+    setReplacing(true);
+    setSelectedMood(null);
+    setPhase(MoodPhase.PICK);
+  };
+
+  const cancelChange = () => {
+    setReplacing(false);
+    setSelectedMood(null);
+    setPhase(MoodPhase.TIMELINE);
+  };
+
+  // Same write the calendar day uses: POST /moods upserts the logical day,
+  // and an edit keeps the day's original backfilled flag on the server.
+  const saveTodayNote = async (note: string) => {
+    if (!todayEntry) throw new Error("No mood for today");
+    const visual = resolveMoodVisual(todayEntry);
+    await apiFetch("/moods", {
+      method: "POST",
+      body: JSON.stringify({
+        moodType: visual.label,
+        emoji: visual.emoji,
+        color: visual.color,
+        note: note.trim(),
+        date: todayKey,
+        backfilled: false,
+      }),
+    });
+    await queryClient.invalidateQueries({ queryKey: ["moods"] });
+    queryClient.invalidateQueries({ queryKey: calendarQueryKey });
+  };
+
   const handleReflectionSubmit = async (note?: string) => {
     if (!selectedMood) throw new Error("Invalid mood selection");
 
+    const trimmed = note?.trim() ?? "";
+    // A first log omits an empty note. Changing today sends it, including ""
+    // when the note was cleared, so the stored day matches what was written.
     const body = JSON.stringify({
       moodType: selectedMood.label,
       emoji: selectedMood.emoji,
       color: selectedMood.color,
-      note,
+      ...(trimmed || replacing ? { note: trimmed } : {}),
       date: todayKey,
       // Logged for the live logical day, so it counts toward the streak.
+      // Edits keep the day's original classification on the server.
       backfilled: false,
     });
 
@@ -140,6 +186,7 @@ export default function MoodPage() {
     if (lastError) throw lastError;
 
     localStorage.setItem("lastMoodDate", todayKey);
+    setReplacing(false);
     setPhase(MoodPhase.TIMELINE);
     await queryClient.invalidateQueries({ queryKey: ["moods"] });
     // The calendar shows moods from its own cached feed; refresh it too.
@@ -176,7 +223,10 @@ export default function MoodPage() {
                 transition={{ duration: 0.8, ease: "easeInOut" }}
                 className="w-full h-full flex-1"
               >
-                <MoodPicker onSelect={handleMoodSelect} />
+                <MoodPicker
+                  onSelect={handleMoodSelect}
+                  onCancel={replacing ? cancelChange : undefined}
+                />
               </motion.div>
             )}
 
@@ -192,8 +242,13 @@ export default function MoodPage() {
               >
                 <MoodReflection
                   color={selectedMood?.color}
+                  initialNote={replacing ? todayEntry?.note ?? "" : ""}
+                  maxLength={replacing ? 280 : 180}
+                  skipLabel={replacing ? "Keep note" : "Skip"}
                   onSubmit={handleReflectionSubmit}
-                  onSkip={() => handleReflectionSubmit()}
+                  onSkip={() =>
+                    handleReflectionSubmit(replacing ? todayEntry?.note : undefined)
+                  }
                 />
               </motion.div>
             )}
@@ -208,7 +263,12 @@ export default function MoodPage() {
                 transition={{ duration: 1.0, ease: "easeOut" }}
                 className="w-full h-full flex-1"
               >
-                <MoodTimeline timeline={timeline} focusDay={focusDay} />
+                <MoodTimeline
+                  timeline={timeline}
+                  focusDay={focusDay}
+                  onChangeToday={todayEntry ? beginChange : undefined}
+                  onSaveTodayNote={todayEntry ? saveTodayNote : undefined}
+                />
               </motion.div>
             )}
           </AnimatePresence>

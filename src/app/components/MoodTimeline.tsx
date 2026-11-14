@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import clsx from "clsx";
@@ -9,6 +9,7 @@ import { calendarDayHref } from "../lib/calendarDay";
 import { localDateKey, prevDayKey } from "../lib/date";
 import { useLogicalToday } from "../hooks/usePreferences";
 import { resolveMoodVisual } from "../lib/moodColors";
+import { TextArea } from "./forms";
 
 interface MoodEntry {
   id: number;
@@ -25,9 +26,18 @@ interface MoodTimelineProps {
   timeline?: MoodEntry[];
   /** YYYY-MM-DD to bring into view when opening a mood from the calendar. */
   focusDay?: string | null;
+  /** Open the picker again so today's mood can be replaced. */
+  onChangeToday?: () => void;
+  /** Save a new note for today without changing the mood. */
+  onSaveTodayNote?: (note: string) => Promise<void>;
 }
 
-export default function MoodTimeline({ timeline = [], focusDay = null }: MoodTimelineProps) {
+export default function MoodTimeline({
+  timeline = [],
+  focusDay = null,
+  onChangeToday,
+  onSaveTodayNote,
+}: MoodTimelineProps) {
   const today = useLogicalToday();
   // Count consecutive logical days that have at least one *organically logged*
   // mood entry, walking backwards from the current logical day.
@@ -105,6 +115,7 @@ export default function MoodTimeline({ timeline = [], focusDay = null }: MoodTim
 
             const dayKey = localDateKey(mood.date);
             const focused = focusDay === dayKey;
+            const isToday = dayKey === today;
 
             return (
               <motion.div
@@ -152,19 +163,32 @@ export default function MoodTimeline({ timeline = [], focusDay = null }: MoodTim
                     cc.cardHover,
                     focused && "ring-1 ring-cyan-300/50"
                   )}
-                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileHover={isToday ? undefined : { scale: 1.02, y: -2 }}
                 >
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl sm:text-3xl drop-shadow">
-                      {meta.emoji}
-                    </span>
-                    <span
-                      className={`${cc.label} text-lg sm:text-xl font-semibold tracking-wide`}
-                    >
-                      {meta.label}
-                    </span>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="text-2xl sm:text-3xl drop-shadow">
+                        {meta.emoji}
+                      </span>
+                      <span
+                        className={`${cc.label} text-lg sm:text-xl font-semibold tracking-wide`}
+                      >
+                        {meta.label}
+                      </span>
+                    </div>
+                    {isToday && onChangeToday && (
+                      <button
+                        type="button"
+                        onClick={onChangeToday}
+                        className="tap-target shrink-0 text-sm text-cyan-300 hover:underline"
+                      >
+                        Change mood
+                      </button>
+                    )}
                   </div>
-                  {mood.note ? (
+                  {isToday && onSaveTodayNote ? (
+                    <TodayNote note={mood.note} onSave={onSaveTodayNote} />
+                  ) : mood.note ? (
                     <p className="selectable-text text-slate-200 text-sm sm:text-base leading-relaxed">
                       {mood.note}
                     </p>
@@ -178,6 +202,94 @@ export default function MoodTimeline({ timeline = [], focusDay = null }: MoodTim
             );
           })}
         </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function TodayNote({
+  note,
+  onSave,
+}: {
+  note?: string;
+  onSave: (note: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!editing) {
+    return (
+      <div className="flex flex-col items-start gap-2">
+        {note ? (
+          <p className="selectable-text text-slate-200 text-sm sm:text-base leading-relaxed">
+            {note}
+          </p>
+        ) : (
+          <p className="text-slate-600 italic text-sm mt-1">No reflection</p>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(note ?? "");
+            setError("");
+            setEditing(true);
+          }}
+          className="tap-target text-sm text-slate-400 hover:text-slate-200"
+        >
+          Edit note
+        </button>
+      </div>
+    );
+  }
+
+  const save = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } catch {
+      setError("Couldn't save that note. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <TextArea
+        value={draft}
+        maxLength={280}
+        rows={3}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="A few words about today..."
+        aria-label="Note for today"
+        className="text-left"
+      />
+      {error && (
+        <p role="alert" className="text-sm text-rose-400">
+          {error}
+        </p>
+      )}
+      <div className="flex gap-4">
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="tap-target text-sm text-cyan-300 hover:underline disabled:opacity-60"
+        >
+          {saving ? "Saving..." : "Save note"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          disabled={saving}
+          className="tap-target text-sm text-slate-400 hover:text-slate-200 disabled:opacity-60"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );
