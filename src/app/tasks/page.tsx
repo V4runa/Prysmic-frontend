@@ -174,7 +174,7 @@ export default function TasksPage() {
   return (
     <PageTransition>
       <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
-        <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0 max-sm:overflow-y-auto max-sm:app-scroll">
+        <GlassPanel className="app-workspace flex h-full min-h-0 flex-col gap-4 sm:gap-6 max-sm:overflow-y-auto max-sm:app-scroll">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <h1 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
@@ -264,7 +264,7 @@ export default function TasksPage() {
                   transition={{ duration: 0.2 }}
                   className="flex-1 overflow-y-auto app-scroll p-1 max-sm:flex-none max-sm:overflow-visible"
                 >
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="wide-grid-tasks grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleTasks.map((task, i) => (
                       <motion.div
                         key={task.id}

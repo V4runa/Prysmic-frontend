@@ -20,6 +20,8 @@ import { Field, TextField, FormButton } from "./forms";
 
 interface MoodPickerProps {
   onSelect: (mood: MoodOption) => void;
+  /** When set, the picker is replacing today's mood and can return to the timeline. */
+  onCancel?: () => void;
 }
 
 const EMOJI_SUGGESTIONS = [
@@ -34,25 +36,32 @@ interface EditorState {
   color: string;
 }
 
-export default function MoodPicker({ onSelect }: MoodPickerProps) {
+export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
   const { data: options = [], isLoading } = useMoodOptions();
   const invalidate = useInvalidateMoodOptions();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [managing, setManaging] = useState(false);
   const [editor, setEditor] = useState<EditorState | null>(null);
+  const [logOnSave, setLogOnSave] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const openCreate = () =>
+  const openCreate = (logToday = false) => {
+    setLogOnSave(logToday);
+    setFormError("");
     setEditor({ label: "", emoji: "", color: DEFAULT_MOOD_COLOR });
+  };
 
-  const openEdit = (o: MoodOption) =>
+  const openEdit = (o: MoodOption) => {
+    setLogOnSave(false);
     setEditor({ id: o.id, label: o.label, emoji: o.emoji, color: o.color });
+  };
 
   const closeEditor = () => {
     setEditor(null);
     setFormError("");
+    setLogOnSave(false);
   };
 
   const handleSave = async () => {
@@ -72,14 +81,27 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
           method: "PUT",
           body: JSON.stringify({ label, emoji, color: editor.color }),
         });
+        await invalidate();
+        closeEditor();
       } else {
-        await apiFetch("/mood-options", {
+        const created = await apiFetch<MoodOption>("/mood-options", {
           method: "POST",
           body: JSON.stringify({ label, emoji, color: editor.color }),
         });
+        const shouldLog = logOnSave;
+        await invalidate();
+        closeEditor();
+        // Saving from "Your own…" continues straight into today's log,
+        // instead of dropping the new mood back into the grid to be picked.
+        if (shouldLog) {
+          onSelect({
+            id: created?.id ?? 0,
+            label: created?.label || label,
+            emoji: created?.emoji || emoji,
+            color: created?.color || editor.color,
+          });
+        }
       }
-      await invalidate();
-      closeEditor();
     } catch {
       setFormError("Couldn't save that mood. Please try again.");
     } finally {
@@ -107,15 +129,26 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
     <div className="app-scroll relative w-full h-full overflow-y-auto">
       <div className="flex flex-col items-center w-full min-h-full px-4 py-6 sm:px-6 sm:py-8">
         {/* Header */}
-        <div className="w-full max-w-5xl flex items-center justify-between gap-3 mb-6 sm:mb-10">
-          <motion.h2
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-xl sm:text-4xl font-semibold text-slate-100 tracking-wide"
-          >
-            {managing ? "Customize your moods" : "How are you feeling today?"}
-          </motion.h2>
+        <div className="wide-mood-head flex w-full max-w-5xl items-center justify-between gap-3 mb-6 sm:mb-10">
+          <div className="min-w-0">
+            {onCancel && !managing && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="mb-2 text-sm text-slate-400 hover:text-slate-200"
+              >
+                Back
+              </button>
+            )}
+            <motion.h2
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-xl sm:text-4xl font-semibold text-slate-100 tracking-wide"
+            >
+              {managing ? "Customize your moods" : "How are you feeling today?"}
+            </motion.h2>
+          </div>
 
           <motion.button
             {...tactileSubtle}
@@ -141,7 +174,7 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
           <p className="text-slate-400 mt-10">Loading your moods...</p>
         ) : (
           <motion.div
-            className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-5 place-items-center w-full max-w-5xl"
+            className="wide-mood-grid grid w-full max-w-5xl grid-cols-3 place-items-center gap-3 sm:grid-cols-4 sm:gap-5 md:grid-cols-5"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.6 }}
@@ -212,11 +245,26 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
               );
             })}
 
+            {!managing && (
+              <motion.button
+                type="button"
+                {...tactile}
+                onClick={() => openCreate(true)}
+                disabled={!!selectedId}
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-[9rem] mx-auto aspect-square flex flex-col items-center justify-center gap-1 rounded-2xl sm:rounded-3xl border-2 border-dashed border-white/20 text-slate-300 hover:text-white hover:border-white/40 hover:bg-white/5 transition-colors disabled:opacity-40"
+              >
+                <Plus className="h-7 w-7 sm:h-9 sm:w-9" />
+                <span className="text-xs sm:text-sm">Your own…</span>
+              </motion.button>
+            )}
+
             {/* Add tile (manage mode only) */}
             {managing && (
               <motion.button
                 {...tactile}
-                onClick={openCreate}
+                onClick={() => openCreate(false)}
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="w-full max-w-[9rem] mx-auto aspect-square flex flex-col items-center justify-center gap-1 rounded-2xl sm:rounded-3xl border-2 border-dashed border-white/20 text-slate-300 hover:text-white hover:border-white/40 hover:bg-white/5 transition-colors"
@@ -248,7 +296,7 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-slate-100">
-                  {editor.id ? "Edit mood" : "New mood"}
+                  {editor.id ? "Edit mood" : logOnSave ? "Your own mood" : "New mood"}
                 </h3>
                 <button
                   onClick={closeEditor}
@@ -258,6 +306,12 @@ export default function MoodPicker({ onSelect }: MoodPickerProps) {
                   <X className="h-5 w-5" />
                 </button>
               </div>
+
+              {logOnSave && !editor.id && (
+                <p className="text-sm text-slate-400">
+                  This is saved to your moods and logged for today.
+                </p>
+              )}
 
               {/* Live preview */}
               <div className="flex items-center gap-3">

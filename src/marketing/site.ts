@@ -15,3 +15,7 @@ export const btnGhost =
 
 export const kickerClass =
   "text-xs font-medium uppercase tracking-widest text-slate-400";
+
+/** Marketing column. Unchanged through 1920; the hero and figures open up after that. */
+export const marketingShell =
+  "mx-auto w-full max-w-5xl min-[2200px]:max-w-[1600px] min-[3000px]:max-w-[1800px]";

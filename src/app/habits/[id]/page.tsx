@@ -223,7 +223,13 @@ export default function HabitDetailPage() {
   return (
     <PageTransition>
       <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
-        <GlassPanel className={clsx("w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0", bgPanelMap[color])}>
+        <GlassPanel
+          className={clsx(
+            "flex w-full max-w-[1400px] min-h-0 flex-col gap-4 sm:gap-6",
+            edit ? "h-full" : "h-full sm:h-auto sm:max-h-full",
+            bgPanelMap[color]
+          )}
+        >
           <div className="flex justify-between items-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-100 tracking-wide">
               {edit ? "Edit Contract" : "Habit Contract"}
@@ -246,7 +252,12 @@ export default function HabitDetailPage() {
             </p>
           )}
 
-          <div className="flex-1 flex flex-col min-h-0">
+          <div
+            className={clsx(
+              "flex min-h-0 flex-1 flex-col",
+              !edit && "sm:app-scroll sm:overflow-y-auto"
+            )}
+          >
             <AnimatePresence mode="wait">
               {edit ? (
                 <motion.div
@@ -327,7 +338,7 @@ export default function HabitDetailPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.3 }}
-                  className="flex-1 overflow-y-auto app-scroll min-h-0 -mr-1 pr-1"
+                  className="min-h-0 flex-1 overflow-y-auto app-scroll -mr-1 pr-1 sm:flex-none sm:overflow-visible"
                 >
                   <div className="flex flex-col gap-4 sm:gap-6">
                   <div className="flex justify-between items-center gap-3">
