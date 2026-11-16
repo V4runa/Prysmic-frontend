@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import DeleteAccountDialog from "../components/DeleteAccountDialog";
+import InstallHint from "../components/InstallHint";
 import ExportDataButton from "../components/ExportDataButton";
 import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
@@ -896,6 +897,7 @@ export default function SettingsPage() {
     <PageTransition>
       <div className="w-full app-page-h overflow-y-auto app-scroll px-4 py-6 sm:px-6">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-4 pb-8">
+          <InstallHint />
           <ProfileSection userId={identity.userId} />
           <SecuritySection userId={identity.userId} />
           <PreferencesSection />

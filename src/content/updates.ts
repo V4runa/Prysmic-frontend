@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "add-to-home-screen",
+    date: "2026-11-16",
+    kind: "new",
+    title: "Add Prysmic to your Home Screen",
+    summary:
+      "Prysmic opens full screen, like an app, on your phone or computer.",
+  },
+  {
     id: "stay-signed-in",
     date: "2026-11-16",
     kind: "improved",

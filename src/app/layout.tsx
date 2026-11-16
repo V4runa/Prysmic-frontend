@@ -5,6 +5,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import ClientShellWrapper from "./components/ClientShellWrapper";
 import { WebAnalytics } from "./components/WebAnalytics";
+import { INSTALL_PROMPT_BOOTSTRAP } from "./lib/installPrompt";
 import { SITE_DESCRIPTION, SITE_URL } from "@/marketing/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -29,6 +30,11 @@ export const metadata: Metadata = {
     title: "Prysmic",
     description: SITE_DESCRIPTION,
   },
+  appleWebApp: {
+    capable: true,
+    title: "Prysmic",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
@@ -46,7 +52,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+      </head>
       <body className={inter.variable}>
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_PROMPT_BOOTSTRAP }} />
         <ClientShellWrapper>{children}</ClientShellWrapper>
         <WebAnalytics />
       </body>

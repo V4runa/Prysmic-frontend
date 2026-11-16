@@ -375,8 +375,9 @@ try {
   await page.click('button[aria-label="Export your data"]');
   for (let i = 0; i < 40 && !export401HeadersFlushed; i += 1) await delay(50);
   if (!export401HeadersFlushed) throw new Error("401 headers were not flushed");
-  await page.waitForFunction(() => document.body.innerText.includes("Preparing export"));
-  await page.click('button[aria-label="Log out"]');
+  // Refresh runs as soon as the 401 status arrives, and a failed refresh ends
+  // this session. The sign-in page follows. The body is still held so the
+  // late bytes can be released after the next sign-in.
   await page.waitForFunction(() => location.pathname === "/login");
   await page.evaluate((value) => localStorage.setItem("token", value), tokenC);
   await page.goto(`${appUrl}/settings`, { waitUntil: "domcontentloaded" });
