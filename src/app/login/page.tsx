@@ -73,7 +73,7 @@ export default function LoginPage() {
   if (!ready) {
     return (
       <div className="h-[100dvh] overflow-y-auto app-scroll bg-transparent">
-        <div className="min-h-full flex items-center justify-center px-4 py-8">
+        <div className="safe-auth min-h-full flex items-center justify-center">
           <div className="text-center">
             <p role="status" className="text-slate-400 text-sm">
               One moment…
@@ -91,7 +91,7 @@ export default function LoginPage() {
 
   return (
     <div className="h-[100dvh] overflow-y-auto app-scroll bg-transparent">
-      <div className="min-h-full flex items-center justify-center px-4 py-8">
+      <div className="safe-auth min-h-full flex items-center justify-center">
       <PageTransition>
         {" "}
         {/* ✅ */}

@@ -11,7 +11,7 @@ const links = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/10">
+    <footer className="border-t border-white/10 pb-[var(--safe-bottom)] pl-[var(--safe-left)] pr-[var(--safe-right)]">
       <div className={`${marketingShell} px-5 py-12 sm:px-8`}>
         <div className="flex items-center gap-2 text-slate-100">
           <Mark className="h-5 w-5 text-cyan-200" />

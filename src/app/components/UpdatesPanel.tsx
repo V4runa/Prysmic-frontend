@@ -313,7 +313,7 @@ export function UpdateHighlightCard({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 8 }}
         transition={springSoft}
-        className="no-print glass-card fixed z-40 left-3 right-3 bottom-[calc(var(--bottomnav-h)+0.75rem)] rounded-xl p-4 sm:left-auto sm:right-6 sm:bottom-6 sm:w-full sm:max-w-sm"
+        className="no-print glass-card fixed z-40 left-3 right-3 bottom-[calc(var(--bottomnav-h)+0.75rem)] rounded-xl p-4 sm:left-auto sm:right-6 sm:bottom-[max(1.5rem,calc(var(--safe-bottom)+0.75rem))] sm:w-full sm:max-w-sm"
       >
         <div className="flex flex-wrap items-center gap-2">
           <KindChip kind={entry.kind} />

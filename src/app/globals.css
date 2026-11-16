@@ -171,21 +171,44 @@
   }
 }
 
-/* Fixed top header: grows to clear the notch, stays 3rem on desktop. */
+/* Fixed top header: grows to clear the notch, stays 3rem on desktop.
+   Horizontal insets keep the wordmark off a landscape notch. */
 .app-header {
   height: var(--header-h);
   padding-top: var(--safe-top);
+  padding-left: max(1rem, var(--safe-left));
+  padding-right: max(1rem, var(--safe-right));
 }
 
-/* Main content sits below the fixed header. */
+/* Main content sits below the fixed header and inside the side insets. */
 .app-main {
   padding-top: var(--header-h);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 /* Native-style bottom tab bar (mobile only). */
 .app-bottom-nav {
   height: var(--bottomnav-h);
   padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+/* Phones reserve the tab bar. Larger standalone windows have no tab bar,
+   so the page still ends above the home indicator. */
+@media (min-width: 640px) {
+  :root {
+    --bottomnav-h: var(--safe-bottom);
+  }
+}
+
+/* Auth screens. Matches the old py-8 px-4, and grows for the notch. */
+.safe-auth {
+  padding-top: max(2rem, var(--safe-top));
+  padding-right: max(1rem, var(--safe-right));
+  padding-bottom: max(2rem, var(--safe-bottom));
+  padding-left: max(1rem, var(--safe-left));
 }
 
 /* Smooth, contained momentum scrolling inside app panels.
