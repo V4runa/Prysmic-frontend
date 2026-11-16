@@ -7,10 +7,18 @@ import {
   readBoundedExportBody,
   shouldSaveExportBody,
 } from "../lib/dataExport";
+import {
+  apiBaseUrl,
+  isCredentialRejection,
+  isRefreshExemptPath,
+  isSessionRefreshPaused,
+  refreshAccessSession,
+  requestNeedsSessionCookie,
+} from "../lib/refreshSession";
 import { currentSessionEpoch } from "../lib/sessionBoundary";
+import { discardExpiredAccessToken } from "../lib/storedSession";
 
-const getBaseUrl = () =>
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
+const getBaseUrl = () => apiBaseUrl();
 
 const getToken = () =>
   typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -61,48 +69,127 @@ function readBody(res: Response): Promise<unknown> {
     : res.text().catch(() => "");
 }
 
-// A 401 means the session is gone; clear it and let the app react globally.
+// A 401 that refresh could not repair. The draft stays; the shell sends them to sign in.
 function handleUnauthorized(msg: string): never {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("token");
-    window.dispatchEvent(new Event("token-expired"));
-  }
+  discardExpiredAccessToken();
   throw new Error(`Session expired. ${msg}`);
+}
+
+async function peekBody(res: Response): Promise<unknown> {
+  try {
+    const clone = res.clone();
+    const ct = clone.headers.get("content-type") || "";
+    if (ct.includes("application/json")) return await clone.json().catch(() => null);
+    const text = await clone.text().catch(() => "");
+    if (!text) return null;
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return text;
+    }
+  } catch {
+    return null;
+  }
+}
+
+type SendOpts = {
+  endpoint: string;
+  method: string;
+  auth: boolean;
+  keepSessionOn401: boolean;
+  headers?: HeadersInit;
+  body?: BodyInit | null;
+  cache?: RequestCache;
+  form?: boolean;
+  retried?: boolean;
+};
+
+/**
+ * One 401 from a normal call refreshes once and retries. A second 401, or a
+ * refresh that fails, uses the existing sign-in redirect. Wrong-password 401s
+ * stay on the form. Login and other credential posts are not retried.
+ */
+async function send(opts: SendOpts): Promise<Response> {
+  const token = opts.auth ? getToken() : null;
+  const headers = opts.form
+    ? new Headers(opts.headers)
+    : buildHeaders(token, opts.headers);
+  if (opts.form && token) headers.set("Authorization", `Bearer ${token}`);
+
+  const init: RequestInit = {
+    method: opts.method,
+    headers,
+    body: opts.body ?? undefined,
+    cache: opts.cache,
+  };
+  if (requestNeedsSessionCookie(opts.endpoint, opts.method)) {
+    init.credentials = "include";
+  }
+
+  const res = await fetch(`${getBaseUrl()}${opts.endpoint}`, init);
+  if (res.status !== 401) return res;
+
+  if (isSessionRefreshPaused()) {
+    throw new Error("Session expired.");
+  }
+
+  const recoverable =
+    opts.auth && !opts.retried && !isRefreshExemptPath(opts.endpoint);
+
+  if (recoverable) {
+    if (opts.keepSessionOn401 && isCredentialRejection(await peekBody(res))) {
+      return res;
+    }
+    const refreshed = await refreshAccessSession(token);
+    if (!refreshed.ok && (refreshed.reason === "paused" || isSessionRefreshPaused())) {
+      throw new Error("Session expired.");
+    }
+    if (isSessionRefreshPaused()) {
+      throw new Error("Session expired.");
+    }
+    if (refreshed.ok) {
+      return send({ ...opts, retried: true });
+    }
+    if (opts.keepSessionOn401) return res;
+  }
+
+  if (opts.keepSessionOn401) return res;
+
+  handleUnauthorized(await res.text().catch(() => ""));
 }
 
 export async function apiFetch<T>(
   endpoint: string,
   options: ApiInit = {}
 ): Promise<T> {
-  const { auth = true, keepSessionOn401 = false, headers: headerInit, ...request } = options;
-  const token = auth ? getToken() : null;
-  const headers = buildHeaders(token, headerInit);
+  const { auth = true, keepSessionOn401 = false, headers: headerInit, method, body, cache } = options;
 
-  const res = await fetch(`${getBaseUrl()}${endpoint}`, {
-    ...request,
-    headers,
+  const res = await send({
+    endpoint,
+    method: method ?? "GET",
+    auth,
+    keepSessionOn401,
+    headers: headerInit,
+    body: body ?? null,
+    cache,
   });
-
-  if (res.status === 401 && !keepSessionOn401) {
-    handleUnauthorized(await res.text().catch(() => ""));
-  }
 
   if (res.status === 204) {
     return null as unknown as T;
   }
 
-  const body = await readBody(res);
+  const responseBody = await readBody(res);
 
   if (!res.ok) {
     throw new ApiError(
       res.status,
       res.statusText,
-      body,
+      responseBody,
       res.headers.get("retry-after")
     );
   }
 
-  return body as T;
+  return responseBody as T;
 }
 
 /**
@@ -114,23 +201,16 @@ export async function apiUpload<T>(
   formData: FormData,
   options: Omit<RequestInit, "body"> = {}
 ): Promise<T> {
-  const token = getToken();
-
-  const headers = new Headers({
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
-  });
-
-  const res = await fetch(`${getBaseUrl()}${endpoint}`, {
-    method: "POST",
-    ...options,
-    headers,
+  const res = await send({
+    endpoint,
+    method: options.method ?? "POST",
+    auth: true,
+    keepSessionOn401: false,
+    headers: options.headers,
     body: formData,
+    cache: options.cache,
+    form: true,
   });
-
-  if (res.status === 401) {
-    handleUnauthorized(await res.text().catch(() => ""));
-  }
 
   const ct = res.headers.get("content-type") || "";
   const body = ct.includes("application/json")
@@ -150,15 +230,12 @@ export async function apiUpload<T>(
 
 /** Fetch a binary resource (e.g. an attachment) as a Blob, with auth. */
 export async function apiFetchBlob(endpoint: string): Promise<Blob> {
-  const token = getToken();
-
-  const res = await fetch(`${getBaseUrl()}${endpoint}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  const res = await send({
+    endpoint,
+    method: "GET",
+    auth: true,
+    keepSessionOn401: false,
   });
-
-  if (res.status === 401) {
-    handleUnauthorized(await res.text().catch(() => ""));
-  }
 
   if (!res.ok) {
     throw new Error(`API Error: ${res.status} ${res.statusText}`);
@@ -176,14 +253,33 @@ export async function apiFetchDownload(endpoint: string): Promise<{
   contentType: string | null;
   contentDisposition: string | null;
 }> {
-  const startedToken = getToken();
+  let startedToken = getToken();
   const startedEpoch = currentSessionEpoch();
 
-  const res = await fetch(`${getBaseUrl()}${endpoint}`, {
-    method: "GET",
-    cache: "no-store",
-    headers: startedToken ? { Authorization: `Bearer ${startedToken}` } : {},
-  });
+  const load = (token: string | null) =>
+    fetch(`${getBaseUrl()}${endpoint}`, {
+      method: "GET",
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+  let res = await load(startedToken);
+
+  if (
+    res.status === 401 &&
+    currentSessionEpoch() === startedEpoch &&
+    !isSessionRefreshPaused()
+  ) {
+    await res.body?.cancel().catch(() => undefined);
+    const refreshed = await refreshAccessSession(startedToken);
+    if (currentSessionEpoch() !== startedEpoch || isSessionRefreshPaused()) {
+      throw new Error("Session expired.");
+    }
+    if (refreshed.ok) {
+      startedToken = refreshed.accessToken;
+      res = await load(startedToken);
+    }
+  }
 
   if (res.status === 401) {
     await finishUnauthorizedExport({

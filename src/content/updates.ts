@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "stay-signed-in",
+    date: "2026-11-16",
+    kind: "improved",
+    title: "You'll stay signed in now",
+    summary:
+      "Prysmic keeps you signed in for 30 days while you use it, and signing out still ends it.",
+  },
+  {
     id: "large-screen-layout",
     date: "2026-11-14",
     kind: "improved",

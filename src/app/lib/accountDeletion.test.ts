@@ -106,6 +106,14 @@ test("delete responses stay on the page except for success", () => {
     { type: "expired" }
   );
   assert.equal(
+    interpretDeleteAccount(
+      401,
+      { message: "This session is no longer valid. Sign in again.", code: "refresh_revoked" },
+      null
+    ).type,
+    "expired"
+  );
+  assert.equal(
     deletionFailureMessage({
       status: 401,
       body: { message: "Invalid credentials" },

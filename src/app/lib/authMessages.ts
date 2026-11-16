@@ -55,6 +55,20 @@ export function messageFromBody(body: unknown): string | null {
   return null;
 }
 
+/**
+ * A 401 that means the access token (or the refresh session) is done.
+ * "Invalid credentials" is a wrong password and is not this.
+ * refresh_expired and refresh_revoked come from POST /auth/refresh.
+ */
+export function isEndedSessionBody(body: unknown): boolean {
+  if (body && typeof body === "object") {
+    const code = (body as { code?: unknown }).code;
+    if (code === "refresh_expired" || code === "refresh_revoked") return true;
+  }
+  const message = messageFromBody(body) ?? "";
+  return /^unauthorized\b/i.test(message);
+}
+
 export function validateEmail(email: string): string | null {
   if (!email) return "Add the email on your account.";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

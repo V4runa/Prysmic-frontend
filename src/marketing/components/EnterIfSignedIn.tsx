@@ -3,30 +3,24 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { landingHref } from "@/app/lib/preferences";
+import { restoreSessionIfNeeded } from "@/app/lib/refreshSession";
 
 /**
- * A valid session still belongs in the app. Login and signup already
- * land on the saved default page; opening the public home follows them.
- * Expired or unreadable tokens stay on the marketing page.
+ * A live session belongs in the app. A missing or expired access token can
+ * still have the sign-in cookie, so try that once before staying on the
+ * marketing page. Login and signup already land on the saved default page.
  */
-function hasLiveSession(): boolean {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) return false;
-    const part = token.split(".")[1];
-    if (!part) return false;
-    const payload = JSON.parse(atob(part)) as { exp?: number };
-    return typeof payload.exp === "number" && payload.exp * 1000 > Date.now();
-  } catch {
-    return false;
-  }
-}
-
 export function EnterIfSignedIn() {
   const router = useRouter();
 
   useEffect(() => {
-    if (hasLiveSession()) router.replace(landingHref());
+    let live = true;
+    restoreSessionIfNeeded().then((ok) => {
+      if (live && ok) router.replace(landingHref());
+    });
+    return () => {
+      live = false;
+    };
   }, [router]);
 
   return null;

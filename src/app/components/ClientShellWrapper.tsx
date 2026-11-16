@@ -7,6 +7,8 @@ import OnboardingModal from "./OnboardingModal";
 import PrismBackdrop from "./PrismBackdrop";
 import { SessionToastProvider, useSessionToast } from "./SessionToastContext";
 import { isPublicPath } from "../lib/publicPaths";
+import { isAccessTokenCurrent, refreshAccessSession } from "../lib/refreshSession";
+import { discardExpiredAccessToken, isSessionRestoreSuppressed, readStoredToken } from "../lib/storedSession";
 import QueryProvider from "../providers/QueryProvider";
 
 function ClientShellInner({ children }: { children: React.ReactNode }) {
@@ -16,33 +18,28 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
   const triggerToast = useSessionToast();
 
   useEffect(() => {
-    const checkToken = () => {
-      const token = localStorage.getItem("token");
-      if (!token || isPublic || toastTriggeredRef.current) return;
+    let cancelled = false;
 
-      try {
-        const { exp } = JSON.parse(atob(token.split(".")[1]));
-        const now = Math.floor(Date.now() / 1000);
-
-        if (now >= exp) {
-          toastTriggeredRef.current = true;
-          localStorage.removeItem("token");
-          triggerToast();
-        }
-      } catch (err) {
-        console.warn("Token decode failed", err);
+    const renewOrSignIn = async () => {
+      if (cancelled || toastTriggeredRef.current || isPublic || isSessionRestoreSuppressed()) return;
+      const token = readStoredToken();
+      if (isAccessTokenCurrent(token)) return;
+      const refreshed = await refreshAccessSession(token);
+      if (cancelled || toastTriggeredRef.current || isPublic || isSessionRestoreSuppressed()) return;
+      if (!refreshed.ok && refreshed.reason !== "paused") {
+        discardExpiredAccessToken();
       }
     };
 
-    // Run immediately on mount
-    checkToken();
+    let interval = 0;
+    if (!isPublic) {
+      void renewOrSignIn();
+      interval = window.setInterval(() => {
+        void renewOrSignIn();
+      }, 5000);
+    }
 
-    // 🔁 Start polling every 5 seconds
-    const interval = setInterval(() => {
-      checkToken();
-    }, 5000);
-
-    // 🌐 Listen to manual session expiration triggers
+    // A failed refresh, and any 401 that cannot be repaired, still uses this.
     const handleTokenExpired = () => {
       if (!toastTriggeredRef.current) {
         toastTriggeredRef.current = true;
@@ -53,7 +50,8 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
     window.addEventListener("token-expired", handleTokenExpired);
 
     return () => {
-      clearInterval(interval);
+      cancelled = true;
+      if (interval) window.clearInterval(interval);
       window.removeEventListener("token-expired", handleTokenExpired);
     };
   }, [pathname, isPublic, triggerToast]);
