@@ -12,6 +12,8 @@ const SNOOZE_KEY = "prysmic.verifyPromptSnooze";
 const REFRESH_KEY = "prysmic.emailVerifiedRefreshed";
 const SIGNUP_NOTE_KEY = "prysmic.signupEmailNote";
 const LOGIN_NOTICE_KEY = "prysmic.loginNotice";
+/** This tab just signed out. A failed logout must not silently sign them back in. */
+const SKIP_RESTORE_KEY = "prysmic.skipSessionRestore";
 
 type QueryClientLike = {
   clear: () => void;
@@ -112,6 +114,7 @@ export function applyAuthSession(input: {
   signedUp?: boolean;
 }): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, input.token);
+  clearSessionRestoreSuppression();
   sessionRemove(LOGIN_NOTICE_KEY);
   sessionRemove(REFRESH_KEY);
   if (typeof input.emailVerified === "boolean") {
@@ -221,6 +224,36 @@ export function isVerifyPromptDismissed(now = Date.now()): boolean {
 
 export function setLoginNotice(message: string): void {
   sessionSet(LOGIN_NOTICE_KEY, message);
+}
+
+/** Skip the next silent refresh in this tab. Cleared when a new session is stored. */
+export function suppressSessionRestore(): void {
+  sessionSet(SKIP_RESTORE_KEY, "1");
+}
+
+export function isSessionRestoreSuppressed(): boolean {
+  return sessionGet(SKIP_RESTORE_KEY) === "1";
+}
+
+export function clearSessionRestoreSuppression(): void {
+  sessionRemove(SKIP_RESTORE_KEY);
+}
+
+/**
+ * The access token is no longer usable and refresh could not replace it.
+ * The note draft is left in this tab. The shell listens for `token-expired`
+ * and sends the person to sign in. This does not advance the session epoch,
+ * so an in-flight save can still keep that draft.
+ */
+export function discardExpiredAccessToken(): void {
+  try {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+  } catch {
+    // Ignore.
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("token-expired"));
+  }
 }
 
 export function readLoginNotice(): string | null {

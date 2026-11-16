@@ -2,14 +2,15 @@ import {
   ACCOUNT_DELETED_NOTICE,
   RATE_LIMIT_MESSAGE,
   formatWait,
+  isEndedSessionBody,
   messageFromBody,
   parseRetryAfter,
 } from "./authMessages";
 import { clearDraft, noteDraftStorage, type DraftStorage } from "../notes/noteDraft";
 import {
-  ACCESS_TOKEN_KEY,
   clearStoredSession,
   clearUserAuthMemory,
+  discardExpiredAccessToken,
   readStoredUserId,
   setLoginNotice,
 } from "./storedSession";
@@ -48,8 +49,7 @@ export function interpretDeleteAccount(
 ): DeleteAccountOutcome {
   if (status === 204 || (status >= 200 && status < 300)) return { type: "deleted" };
   if (status === 401) {
-    const message = messageFromBody(body) ?? "";
-    if (/^unauthorized\b/i.test(message)) return { type: "expired" };
+    if (isEndedSessionBody(body)) return { type: "expired" };
     return { type: "rejected", message: WRONG_PASSWORD_MESSAGE };
   }
   if (status === 429) {
@@ -86,14 +86,7 @@ export function deletionFailureMessage(err: {
  * The note draft stays, so the same person can recover it after they sign in.
  */
 export function signalSessionExpired(): void {
-  try {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-  } catch {
-    // Ignore.
-  }
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("token-expired"));
-  }
+  discardExpiredAccessToken();
 }
 
 /**

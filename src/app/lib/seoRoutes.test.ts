@@ -32,11 +32,15 @@ test("privacy and terms are indexable and listed in the sitemap", async () => {
     assert.equal(page.includes("["), false);
     assert.equal(page.includes("]"), false);
     assert.match(page, /mailto:hello@prysmic\.me/);
-    assert.match(page, /November 9, 2026/);
     assert.match(page, /Eduardo Martin Gargani/);
   }
 
+  const privacy = readFileSync(new URL("../(marketing)/privacy/page.tsx", import.meta.url), "utf8");
+  assert.match(privacy, /November 16, 2026/);
+  assert.equal(privacy.includes("November 9, 2026"), false);
+
   const terms = readFileSync(new URL("../(marketing)/terms/page.tsx", import.meta.url), "utf8");
+  assert.match(terms, /November 9, 2026/);
   assert.match(terms, /href="\/privacy"/);
   assert.match(
     terms,

@@ -145,6 +145,20 @@ test("password change stores the login token and shows policy failures on the ne
     message: "Invalid credentials",
   });
   assert.equal(interpretPasswordChange(401, { message: "Unauthorized: Invalid or missing token" }).type, "expired");
+  assert.equal(
+    interpretPasswordChange(401, {
+      message: "This session has expired. Sign in again.",
+      code: "refresh_expired",
+    }).type,
+    "expired"
+  );
+  assert.equal(
+    interpretPasswordChange(401, {
+      message: "This session is no longer valid. Sign in again.",
+      code: "refresh_revoked",
+    }).type,
+    "expired"
+  );
 
   for (const message of [
     "New password must be different from the current password.",

@@ -1,6 +1,7 @@
 import {
   RATE_LIMIT_MESSAGE,
   formatWait,
+  isEndedSessionBody,
   messageFromBody,
   parseRetryAfter,
 } from "./authMessages";
@@ -207,8 +208,8 @@ export function interpretProfileWrite(
     return { type: "saved", user: readPublicUser(body) };
   }
   if (status === 401) {
+    if (isEndedSessionBody(body)) return { type: "expired" };
     const message = messageFromBody(body) ?? "";
-    if (/^unauthorized\b/i.test(message)) return { type: "expired" };
     return { type: "wrong-password", message: message || "Invalid credentials" };
   }
   if (status === 409) {
@@ -256,8 +257,8 @@ export function interpretPasswordChange(
     return { type: "updated", token, emailVerified: readEmailVerifiedFlag(body) };
   }
   if (status === 401) {
+    if (isEndedSessionBody(body)) return { type: "expired" };
     const message = messageFromBody(body) ?? "";
-    if (/^unauthorized\b/i.test(message)) return { type: "expired" };
     return { type: "wrong-password", message: message || "Invalid credentials" };
   }
   if (status === 400 || status === 422) {

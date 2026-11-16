@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import GlassPanel from "../components/GlassPanel";
@@ -8,6 +8,7 @@ import { apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
 import { TextField, FormButton } from "../components/forms";
 import { landingHref } from "../lib/preferences";
+import { restoreSessionIfNeeded } from "../lib/refreshSession";
 import { applyAuthSession, readLoginNotice } from "../lib/storedSession";
 
 export default function LoginPage() {
@@ -19,11 +20,27 @@ export default function LoginPage() {
   // The backend can be cold on the first hit after idle; surface that so a
   // multi-second wait never reads as a frozen/unresponsive button.
   const [slow, setSlow] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [gateSlow, setGateSlow] = useState(false);
   const notice = useSyncExternalStore(
     () => () => {},
     readLoginNotice,
     () => null
   );
+
+  useEffect(() => {
+    let live = true;
+    const slowTimer = window.setTimeout(() => setGateSlow(true), 3500);
+    restoreSessionIfNeeded().then((ok) => {
+      if (!live) return;
+      if (ok) router.replace(landingHref());
+      else setReady(true);
+    });
+    return () => {
+      live = false;
+      window.clearTimeout(slowTimer);
+    };
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +69,25 @@ export default function LoginPage() {
       setSlow(false);
     }
   };
+
+  if (!ready) {
+    return (
+      <div className="h-[100dvh] overflow-y-auto app-scroll bg-transparent">
+        <div className="min-h-full flex items-center justify-center px-4 py-8">
+          <div className="text-center">
+            <p role="status" className="text-slate-400 text-sm">
+              One moment…
+            </p>
+            {gateSlow ? (
+              <p className="text-slate-400 text-xs mt-3">
+                Waking the server — the first attempt can take a few seconds.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[100dvh] overflow-y-auto app-scroll bg-transparent">

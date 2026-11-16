@@ -32,7 +32,7 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-2xl px-5 py-16 sm:px-8 sm:py-20">
       <h1 className="text-4xl font-semibold text-slate-50">Privacy Policy</h1>
-      <p className="mt-3 text-sm text-slate-400">Last updated: November 9, 2026</p>
+      <p className="mt-3 text-sm text-slate-400">Last updated: November 16, 2026</p>
       <div className="mt-8 space-y-8 text-base leading-relaxed text-slate-300">
         <p>
           {`Prysmic is a private notebook for notes, habits, tasks, moods and a calendar. It is run by Eduardo Martin Gargani, Orlando, Florida, USA ("we"). There are no feeds, followers or sharing. What you write is visible only to you.`}
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
 
         <Section title="Your browser">
           <p>
-            {`Prysmic does not set cookies. To keep you signed in, the app stores a sign-in token in your browser's local storage. It expires after one hour. While you write, an unsaved copy of the note you're editing is kept in that browser tab so it isn't lost, and it's cleared when the tab closes or after 24 hours. Signing out removes the token.`}
+            {`Prysmic sets one essential sign-in cookie on api.prysmic.me. It is httpOnly, used only to keep you signed in for up to 30 days, and renewed while you use the app. The app also stores a short-lived sign-in token in your browser's local storage. While you write, an unsaved copy of the note you're editing is kept in that browser tab so it isn't lost, and it's cleared when the tab closes or after 24 hours. Signing out, changing your password, or deleting your account ends the cookie and the token. Prysmic does not set tracking or analytics cookies.`}
           </p>
         </Section>
 
