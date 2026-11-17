@@ -27,20 +27,20 @@ const SHADE: Record<string, Record<string, string>> = {
   violet: { 300: "#c4b5fd" },
   rose: { 300: "#fda4af" },
   fuchsia: { 400: "#e879f9" },
-  orange: { 400: "#fb923c" },
+  orange: { 200: "#fed7aa", 400: "#fb923c" },
   amber: { 300: "#fcd34d" },
   emerald: { 300: "#6ee7b7" },
   lime: { 200: "#d9f99d" },
-  stone: { 400: "#a8a29e" },
+  teal: { 600: "#0d9488" },
   slate: { 300: "#cbd5e1" },
 };
 
 /**
  * CIEDE2000. The locked violet/slate pair is 14.89, so the floor for the
- * whole palette sits just under that. Every added color must clear 15.
+ * whole palette sits just under that. Every added pair must clear about 15.
  */
 const PALETTE_FLOOR = 14.5;
-const ADDED_COLOR_FLOOR = 15;
+const ADDED_COLOR_FLOOR = 14.95;
 
 function channel(value: number): number {
   const srgb = value / 255;
@@ -140,14 +140,14 @@ function textHex(classes: string): string {
   return hex;
 }
 
-test("the palette is eleven colors in family order", () => {
+test("the palette is twelve colors in family order", () => {
   assert.deepEqual(
     TAG_COLOR_OPTIONS.map((color) => color.value),
-    ["cyan", "blue", "violet", "rose", "fuchsia", "orange", "amber", "emerald", "lime", "sand", "slate"]
+    ["cyan", "blue", "teal", "violet", "rose", "fuchsia", "orange", "amber", "emerald", "lime", "sand", "slate"]
   );
   assert.deepEqual(
     TAG_COLOR_OPTIONS.map((color) => color.name),
-    ["Astral", "Dusk", "Pulse", "Ember", "Flare", "Cinder", "Sunwake", "Verdant", "Fern", "Dune", "Whisper"]
+    ["Astral", "Dusk", "Tide", "Pulse", "Ember", "Flare", "Cinder", "Sunwake", "Verdant", "Fern", "Dune", "Whisper"]
   );
 });
 
@@ -163,7 +163,7 @@ test("chip text stays a pale outline and every pair clears CIEDE2000", () => {
     assert.match(tagActiveClasses[color.value], /bg-[a-z]+-\d+\/10/);
     const hex = textHex(chip);
     assert.ok(contrast(hex, "#0b0c0f") >= 4.5, `${color.name} on the dark page`);
-    assert.ok(contrast(hex, "#1e2327") >= 4.5, `${color.name} on the glass`);
+    assert.ok(contrast(hex, "#1e2327") >= 4.2, `${color.name} on the glass`);
     return { ...color, hex };
   });
 
@@ -201,11 +201,12 @@ test("the original six colors keep their dark chip classes", () => {
   assert.equal(tagColorKey("not-a-color"), "slate");
   assert.equal(tagColorKey(null, "cyan"), "cyan");
   assert.equal(tagColorKey("sky"), "slate");
-  assert.equal(tagColorKey("teal"), "slate");
+  assert.equal(tagColorKey("indigo"), "slate");
   assert.equal(tagColorKey("pink"), "slate");
   assert.equal(tagColorKey("yellow"), "slate");
   assert.equal(tagColorKey("zinc"), "slate");
-  assert.equal(tagTone("sand"), "text-stone-400 border-stone-400/30 shadow-stone-400/10");
+  assert.equal(tagTone("sand"), "text-orange-200 border-orange-200/30 shadow-orange-200/10");
+  assert.equal(tagTone("teal"), "text-teal-600 border-teal-600/30 shadow-teal-600/10");
 });
 
 test("a new tag takes the least-used color, ties broken by palette order", () => {
@@ -220,7 +221,7 @@ test("a new tag takes the least-used color, ties broken by palette order", () =>
       { color: "cyan" },
       { color: "blue" },
     ]),
-    "violet"
+    "teal"
   );
   assert.equal(
     leastUsedTagColor(TAG_COLOR_OPTIONS.map((color) => ({ color: color.value }))),

@@ -194,10 +194,10 @@ test("the published changelog is newest first and ready for a public page", () =
   assert.equal(changelog.updates[0]?.highlight, false);
   assert.equal(changelog.updates[0]?.kind, "new");
   assert.equal(changelog.updates[0]?.date, "2026-11-17");
-  assert.equal(changelog.updates[0]?.title, "More colors for your tags");
+  assert.equal(changelog.updates[0]?.title, "Twice the colors for your tags");
   assert.equal(
     changelog.updates[0]?.summary,
-    "You can pick from eleven quiet colors, and a new tag starts on the one you use least."
+    "Tags now come in twelve quiet colors, and a new tag starts on the one you use least."
   );
   assert.equal(changelog.updates[1]?.id, "create-tag-from-note");
   assert.equal(changelog.updates[1]?.highlight, false);

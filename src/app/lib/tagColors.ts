@@ -3,10 +3,11 @@
  * faint glow — no solid fill — so a fully tagged page stays calm.
  *
  * The server stores color as a free string. The original six values keep
- * the dark treatment they already had. Five more fill the gaps that still
- * read as their own hue at this tint: Dusk is a true blue, Flare a magenta,
- * Cinder an orange, Fern a yellow-green, Dune a warm tan. A red sits on
- * Ember and a teal sits on Verdant, so they are not in the palette.
+ * the dark treatment they already had. Six more fill the gaps that still
+ * read as their own hue at this tint: Dusk is a true blue, Tide a deep
+ * ocean teal, Flare a magenta, Cinder an orange, Fern a yellow-green,
+ * and Dune a warm sand. A red sits on Ember, and a lighter teal sits on
+ * Verdant, so those shades are not used.
  *
  * Both themes use these same pale classes. The light theme lightens the
  * page background, but the chips sit on the dark glass either way.
@@ -17,6 +18,7 @@
 export const TAG_COLOR_OPTIONS = [
   { name: "Astral", value: "cyan" },
   { name: "Dusk", value: "blue" },
+  { name: "Tide", value: "teal" },
   { name: "Pulse", value: "violet" },
   { name: "Ember", value: "rose" },
   { name: "Flare", value: "fuchsia" },
@@ -40,7 +42,8 @@ export const tagColorClasses: Record<string, string> = {
   amber: "text-amber-300 border-amber-300/30 shadow-amber-300/10",
   emerald: "text-emerald-300 border-emerald-300/30 shadow-emerald-300/10",
   lime: "text-lime-200 border-lime-200/30 shadow-lime-200/10",
-  sand: "text-stone-400 border-stone-400/30 shadow-stone-400/10",
+  sand: "text-orange-200 border-orange-200/30 shadow-orange-200/10",
+  teal: "text-teal-600 border-teal-600/30 shadow-teal-600/10",
   slate: "text-slate-300 border-slate-300/30 shadow-slate-300/10",
 };
 
@@ -55,7 +58,8 @@ export const tagActiveClasses: Record<string, string> = {
   fuchsia: "ring ring-fuchsia-400 shadow-[0_0_10px] shadow-fuchsia-400/40 bg-fuchsia-500/10",
   orange: "ring ring-orange-400 shadow-[0_0_10px] shadow-orange-400/40 bg-orange-500/10",
   lime: "ring ring-lime-200 shadow-[0_0_10px] shadow-lime-300/40 bg-lime-500/10",
-  sand: "ring ring-stone-400 shadow-[0_0_10px] shadow-stone-400/40 bg-stone-500/10",
+  sand: "ring ring-orange-200 shadow-[0_0_10px] shadow-orange-300/40 bg-orange-400/10",
+  teal: "ring ring-teal-600 shadow-[0_0_10px] shadow-teal-500/40 bg-teal-500/10",
 };
 
 export function tagColorKey(color: string | null | undefined, fallback = "slate"): string {
