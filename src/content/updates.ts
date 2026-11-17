@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "more-tag-colors",
+    date: "2026-11-17",
+    kind: "new",
+    title: "Twice the colors for your tags",
+    summary:
+      "Tags now come in twelve quiet colors, and a new tag starts on the one you use least.",
+  },
+  {
     id: "create-tag-from-note",
     date: "2026-11-17",
     kind: "new",

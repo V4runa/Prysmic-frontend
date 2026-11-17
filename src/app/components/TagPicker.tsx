@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useCreateTag } from "../hooks/useCreateTag";
 import type { Tag } from "../lib/tag";
-import { tagActiveTone, tagTone } from "../lib/tagColors";
+import { leastUsedTagColor, tagActiveTone, tagTone } from "../lib/tagColors";
 import {
   TAG_CREATE_DUPLICATE,
   duplicateTagName,
@@ -51,7 +51,8 @@ export default function TagPicker({
   const newTagRef = useRef<HTMLButtonElement>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const [color, setColor] = useState("cyan");
+  const [pickedColor, setPickedColor] = useState<string | null>(null);
+  const color = pickedColor ?? leastUsedTagColor(tags);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -156,7 +157,10 @@ export default function TagPicker({
             disabled={disabled || saving}
             aria-expanded={creating}
             onClick={() => {
-              setCreating((open) => !open);
+              setCreating((open) => {
+                if (!open) setPickedColor(null);
+                return !open;
+              });
               setError("");
             }}
             className="interactive-chip px-3 sm:px-4 py-1 text-xs rounded-full border border-dashed border-white/20 text-slate-300 hover:bg-white/10 disabled:opacity-40"
@@ -188,7 +192,7 @@ export default function TagPicker({
               void create();
             }}
           />
-          <TagColorChoices value={color} onChange={setColor} disabled={disabled || saving} />
+          <TagColorChoices value={color} onChange={setPickedColor} disabled={disabled || saving} />
           <div className="flex flex-wrap gap-2">
             <FormButton type="button" variant="primary" disabled={disabled || saving || !name.trim()} onClick={() => void create()}>
               {saving ? "Creating..." : "Create"}

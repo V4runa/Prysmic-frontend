@@ -160,19 +160,21 @@ test("a removed last-seen id falls back to its date", () => {
 test("a tag made from a note is unread for someone caught up through the previous entry", () => {
   const updates = publishedUpdates();
   const newest = updates[0];
-  assert.equal(newest?.id, "create-tag-from-note");
-  assert.equal(newest?.highlight, undefined);
+  const madeFromNote = updates.find((entry) => entry.id === "create-tag-from-note");
+  assert.equal(newest?.id, "more-tag-colors");
+  assert.ok(madeFromNote);
+  assert.equal(madeFromNote?.highlight, undefined);
   const caughtUp = {
     v: 1 as const,
     lastSeenId: "add-to-home-screen",
     lastSeenDate: "2026-11-16",
     dismissedHighlightIds: ["shared-tags-notes-tasks"],
   };
-  assert.equal(isEntryUnread(newest!, updates, caughtUp), true);
+  assert.equal(isEntryUnread(madeFromNote!, updates, caughtUp), true);
   assert.equal(hasUnread(updates, caughtUp), true);
   assert.equal(pendingHighlight(updates, caughtUp), null);
   const seen = markUpdatesViewed(memoryStorage(), updates);
-  assert.equal(seen.lastSeenId, "create-tag-from-note");
+  assert.equal(seen.lastSeenId, "more-tag-colors");
   assert.equal(hasUnread(updates, seen), false);
 });
 
@@ -188,70 +190,79 @@ test("the published changelog is newest first and ready for a public page", () =
     changelog.updates.map((entry) => entry.id),
     updates.map((entry) => entry.id)
   );
-  assert.equal(changelog.updates[0]?.id, "create-tag-from-note");
+  assert.equal(changelog.updates[0]?.id, "more-tag-colors");
   assert.equal(changelog.updates[0]?.highlight, false);
   assert.equal(changelog.updates[0]?.kind, "new");
   assert.equal(changelog.updates[0]?.date, "2026-11-17");
-  assert.equal(changelog.updates[0]?.title, "Make a tag without leaving your note");
+  assert.equal(changelog.updates[0]?.title, "Twice the colors for your tags");
   assert.equal(
     changelog.updates[0]?.summary,
-    "You can make a new tag from the note you're writing, and it stays selected on that note."
+    "Tags now come in twelve quiet colors, and a new tag starts on the one you use least."
   );
-  assert.equal(changelog.updates[1]?.id, "add-to-home-screen");
+  assert.equal(changelog.updates[1]?.id, "create-tag-from-note");
   assert.equal(changelog.updates[1]?.highlight, false);
   assert.equal(changelog.updates[1]?.kind, "new");
-  assert.equal(changelog.updates[1]?.date, "2026-11-16");
-  assert.equal(changelog.updates[1]?.title, "Add Prysmic to your Home Screen");
+  assert.equal(changelog.updates[1]?.date, "2026-11-17");
+  assert.equal(changelog.updates[1]?.title, "Make a tag without leaving your note");
   assert.equal(
     changelog.updates[1]?.summary,
-    "Prysmic opens full screen, like an app, on your phone or computer."
+    "You can make a new tag from the note you're writing, and it stays selected on that note."
   );
-  assert.equal(changelog.updates[2]?.id, "stay-signed-in");
+  assert.equal(changelog.updates[2]?.id, "add-to-home-screen");
   assert.equal(changelog.updates[2]?.highlight, false);
-  assert.equal(changelog.updates[2]?.kind, "improved");
+  assert.equal(changelog.updates[2]?.kind, "new");
   assert.equal(changelog.updates[2]?.date, "2026-11-16");
-  assert.equal(changelog.updates[2]?.title, "You'll stay signed in now");
+  assert.equal(changelog.updates[2]?.title, "Add Prysmic to your Home Screen");
   assert.equal(
     changelog.updates[2]?.summary,
-    "Prysmic keeps you signed in for 30 days while you use it, and signing out still ends it."
+    "Prysmic opens full screen, like an app, on your phone or computer."
   );
-  assert.equal(changelog.updates[3]?.id, "large-screen-layout");
+  assert.equal(changelog.updates[3]?.id, "stay-signed-in");
   assert.equal(changelog.updates[3]?.highlight, false);
   assert.equal(changelog.updates[3]?.kind, "improved");
-  assert.equal(changelog.updates[3]?.date, "2026-11-14");
-  assert.equal(changelog.updates[3]?.title, "Looks right on big screens");
-  assert.equal(changelog.updates[4]?.id, "mood-check-in");
+  assert.equal(changelog.updates[3]?.date, "2026-11-16");
+  assert.equal(changelog.updates[3]?.title, "You'll stay signed in now");
+  assert.equal(
+    changelog.updates[3]?.summary,
+    "Prysmic keeps you signed in for 30 days while you use it, and signing out still ends it."
+  );
+  assert.equal(changelog.updates[4]?.id, "large-screen-layout");
   assert.equal(changelog.updates[4]?.highlight, false);
   assert.equal(changelog.updates[4]?.kind, "improved");
   assert.equal(changelog.updates[4]?.date, "2026-11-14");
-  assert.equal(changelog.updates[4]?.title, "Moods that fit your day");
-  assert.equal(changelog.updates[5]?.id, "phone-layout");
+  assert.equal(changelog.updates[4]?.title, "Looks right on big screens");
+  assert.equal(changelog.updates[5]?.id, "mood-check-in");
   assert.equal(changelog.updates[5]?.highlight, false);
   assert.equal(changelog.updates[5]?.kind, "improved");
-  assert.equal(changelog.updates[5]?.date, "2026-11-12");
-  assert.equal(changelog.updates[5]?.title, "Easier to use on a phone");
-  assert.equal(changelog.updates[6]?.id, "note-into-task");
+  assert.equal(changelog.updates[5]?.date, "2026-11-14");
+  assert.equal(changelog.updates[5]?.title, "Moods that fit your day");
+  assert.equal(changelog.updates[6]?.id, "phone-layout");
   assert.equal(changelog.updates[6]?.highlight, false);
-  assert.equal(changelog.updates[6]?.kind, "new");
-  assert.equal(changelog.updates[6]?.date, "2026-11-11");
-  assert.equal(changelog.updates[6]?.title, "Make a task from a note");
-  assert.equal(changelog.updates[7]?.id, "note-actions");
+  assert.equal(changelog.updates[6]?.kind, "improved");
+  assert.equal(changelog.updates[6]?.date, "2026-11-12");
+  assert.equal(changelog.updates[6]?.title, "Easier to use on a phone");
+  assert.equal(changelog.updates[7]?.id, "note-into-task");
   assert.equal(changelog.updates[7]?.highlight, false);
   assert.equal(changelog.updates[7]?.kind, "new");
   assert.equal(changelog.updates[7]?.date, "2026-11-11");
-  assert.equal(changelog.updates[7]?.title, "More you can do with a note");
-  assert.equal(changelog.updates[8]?.id, "calendar-day-links");
+  assert.equal(changelog.updates[7]?.title, "Make a task from a note");
+  assert.equal(changelog.updates[8]?.id, "note-actions");
   assert.equal(changelog.updates[8]?.highlight, false);
   assert.equal(changelog.updates[8]?.kind, "new");
   assert.equal(changelog.updates[8]?.date, "2026-11-11");
-  assert.equal(changelog.updates[9]?.id, "calendar-finished-tasks");
+  assert.equal(changelog.updates[8]?.title, "More you can do with a note");
+  assert.equal(changelog.updates[9]?.id, "calendar-day-links");
   assert.equal(changelog.updates[9]?.highlight, false);
-  assert.equal(changelog.updates[9]?.kind, "improved");
+  assert.equal(changelog.updates[9]?.kind, "new");
   assert.equal(changelog.updates[9]?.date, "2026-11-11");
-  assert.equal(changelog.updates[10]?.id, "shared-tags-notes-tasks");
-  assert.equal(changelog.updates[10]?.highlight, true);
-  assert.equal(changelog.updates[10]?.date, "2026-11-10");
-  assert.equal(changelog.updates[11]?.id, "updates-view");
+  assert.equal(changelog.updates[10]?.id, "calendar-finished-tasks");
+  assert.equal(changelog.updates[10]?.highlight, false);
+  assert.equal(changelog.updates[10]?.kind, "improved");
+  assert.equal(changelog.updates[10]?.date, "2026-11-11");
+  assert.equal(changelog.updates[11]?.id, "shared-tags-notes-tasks");
+  assert.equal(changelog.updates[11]?.highlight, true);
+  assert.equal(changelog.updates[11]?.date, "2026-11-10");
+  assert.equal(changelog.updates[12]?.id, "updates-view");
   assert.equal(
     changelog.updates.find((entry) => entry.id === "plain-first-run-copy")?.title,
     "A clearer welcome and plainer starter notes"

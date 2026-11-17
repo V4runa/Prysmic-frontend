@@ -17,7 +17,7 @@ import {
   tagNameToCreate,
 } from "../lib/tagCreate";
 import { tactileSubtle } from "../lib/motion";
-import { tagColorClasses, tagColorKey } from "../lib/tagColors";
+import { leastUsedTagColor, tagColorClasses, tagColorKey } from "../lib/tagColors";
 import { notesTagHref, tagDeleteErrorMessage, tagUsageLabel, tasksTagHref } from "../lib/tagQuery";
 import { TextField, FormButton } from "../components/forms";
 
@@ -26,7 +26,8 @@ export default function TagsPage() {
   const invalidateTags = useInvalidateTags();
   const createTag = useCreateTag();
   const [newTagName, setNewTagName] = useState("");
-  const [newTagColor, setNewTagColor] = useState("cyan");
+  const [pickedColor, setPickedColor] = useState<string | null>(null);
+  const newTagColor = pickedColor ?? leastUsedTagColor(tags);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editedName, setEditedName] = useState("");
   const [editedColor, setEditedColor] = useState("cyan");
@@ -106,7 +107,7 @@ export default function TagsPage() {
           </FormButton>
         </div>
 
-        <TagColorChoices value={newTagColor} onChange={setNewTagColor} />
+        <TagColorChoices value={newTagColor} onChange={setPickedColor} />
 
         {/* Tags Grid */}
         <div className="flex-1 flex flex-col min-h-0">

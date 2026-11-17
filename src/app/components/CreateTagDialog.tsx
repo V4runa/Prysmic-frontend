@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useCreateTag } from "../hooks/useCreateTag";
+import { leastUsedTagColor } from "../lib/tagColors";
 import type { Tag } from "../lib/tag";
 import {
   TAG_CREATE_DUPLICATE,
@@ -43,7 +44,8 @@ export default function CreateTagDialog({
 
   const createTag = useCreateTag();
   const [name, setName] = useState("");
-  const [color, setColor] = useState("cyan");
+  const [pickedColor, setPickedColor] = useState<string | null>(null);
+  const color = pickedColor ?? leastUsedTagColor(tags);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -216,7 +218,7 @@ export default function CreateTagDialog({
             </span>
             <TagColorChoices
               value={color}
-              onChange={setColor}
+              onChange={setPickedColor}
               disabled={saving}
               labelledBy={colorLabelId}
               className="tap-target"
