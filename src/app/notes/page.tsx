@@ -28,7 +28,7 @@ import { localDateKey } from "../lib/date";
 import { noteHtmlToText } from "../lib/noteContent";
 import { tagActiveClasses, tagColorClasses, tagColorKey } from "../lib/tagColors";
 import { parseTagIds, tagFilterHref } from "../lib/tagQuery";
-import TagChip from "../components/TagChip";
+import TagChipRow from "../components/TagChipRow";
 import NoteActionsMenu from "../components/NoteActionsMenu";
 import { notesForList, type OriginatedTaskRef } from "./noteMenu";
 
@@ -441,13 +441,7 @@ export default function NotesOverviewPage() {
                             {noteHtmlToText(note.content).slice(0, 200)}
                           </p>
                         </div>
-                        {note.tags && note.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
-                            {note.tags.map((tag) => (
-                              <TagChip key={tag.id} tag={tag} />
-                            ))}
-                          </div>
-                        )}
+                        <TagChipRow tags={note.tags ?? []} className="mt-2" />
                         <div className="mt-3 sm:mt-4 flex items-center justify-between gap-2">
                           <Link
                             href={calendarDayHref(localDateKey(note.createdAt))}

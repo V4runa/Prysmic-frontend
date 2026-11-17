@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "tidier-tags",
+    date: "2026-11-17",
+    kind: "improved",
+    title: "Tidier tags on busy notes",
+    summary:
+      "Notes with lots of tags keep them on one line now. Tap the +number to see the rest.",
+  },
+  {
     id: "more-tag-colors",
     date: "2026-11-17",
     kind: "new",
