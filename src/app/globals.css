@@ -296,6 +296,17 @@ select option {
   box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.25);
 }
 
+/* Tag names stay on one line. 11rem is the cap; 100% keeps a chip inside its row. */
+.tag-chip {
+  display: inline-block;
+  max-width: min(11rem, 100%);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 /* Card lift without scale — avoids clipping inside overflow containers. */
 .card-lift {
   transition:
@@ -663,6 +674,13 @@ html:has(.marketing-root) body {
     background: transparent !important;
     border-color: #ccc !important;
     box-shadow: none !important;
+  }
+
+  .note-print-sheet .note-print-tags .tag-chip {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .note-print-sheet a {

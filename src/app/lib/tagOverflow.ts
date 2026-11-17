@@ -33,6 +33,10 @@ export function moreTagsLabel(hiddenCount: number): string {
   return count === 1 ? "Show 1 more tag" : `Show ${count} more tags`;
 }
 
+export function fewerTagsLabel(): string {
+  return "Show fewer tags";
+}
+
 function capWidth(width: number, maxChipWidth: number): number {
   if (!Number.isFinite(width) || width <= 0) return 0;
   return Math.min(width, maxChipWidth);
