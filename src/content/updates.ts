@@ -46,7 +46,7 @@ export const productUpdates = [
     kind: "improved",
     title: "Tidier tags on busy notes",
     summary:
-      "Notes with lots of tags keep them on one line now. Tap the +number to see the rest.",
+      "Notes with lots of tags keep them on one line now. Tap the +number to show them all.",
   },
   {
     id: "more-tag-colors",

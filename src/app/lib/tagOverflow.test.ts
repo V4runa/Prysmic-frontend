@@ -4,6 +4,7 @@ import {
   TAG_ROW_MAX_CHIP_WIDTH,
   TAG_ROW_MIN_CHIP_WIDTH,
   layoutTagRow,
+  fewerTagsLabel,
   moreTagsLabel,
   overflowPillText,
 } from "./tagOverflow";
@@ -134,6 +135,8 @@ test("labels stay plain and never use a bare ellipsis", () => {
   assert.equal(overflowPillText(12), "+12");
   assert.equal(moreTagsLabel(1), "Show 1 more tag");
   assert.equal(moreTagsLabel(3), "Show 3 more tags");
+  assert.equal(fewerTagsLabel(), "Show fewer tags");
   assert.equal(moreTagsLabel(1).includes("..."), false);
+  assert.equal(fewerTagsLabel().includes("..."), false);
   assert.equal(overflowPillText(4).includes("..."), false);
 });

@@ -169,7 +169,7 @@ test("tidier tags on busy notes is unread for someone caught up through the prev
   assert.equal(newest?.title, "Tidier tags on busy notes");
   assert.equal(
     newest?.summary,
-    "Notes with lots of tags keep them on one line now. Tap the +number to see the rest."
+    "Notes with lots of tags keep them on one line now. Tap the +number to show them all."
   );
   assert.equal(colors?.id, "more-tag-colors");
   assert.equal(colors?.kind, "new");
@@ -220,7 +220,7 @@ test("the published changelog is newest first and ready for a public page", () =
   assert.equal(changelog.updates[0]?.title, "Tidier tags on busy notes");
   assert.equal(
     changelog.updates[0]?.summary,
-    "Notes with lots of tags keep them on one line now. Tap the +number to see the rest."
+    "Notes with lots of tags keep them on one line now. Tap the +number to show them all."
   );
   assert.equal(changelog.updates[1]?.id, "more-tag-colors");
   assert.equal(changelog.updates[1]?.highlight, false);
