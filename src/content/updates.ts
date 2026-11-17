@@ -46,7 +46,7 @@ export const productUpdates = [
     kind: "new",
     title: "More colors for your tags",
     summary:
-      "You can pick from sixteen quiet colors, and a new tag starts on the one you use least.",
+      "You can pick from eleven quiet colors, and a new tag starts on the one you use least.",
   },
   {
     id: "create-tag-from-note",

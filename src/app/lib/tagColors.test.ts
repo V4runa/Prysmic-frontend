@@ -3,11 +3,9 @@ import test from "node:test";
 import {
   TAG_COLOR_OPTIONS,
   leastUsedTagColor,
-  selectedColorClasses,
   tagActiveClasses,
   tagColorClasses,
   tagColorKey,
-  tagSwatchClasses,
   tagTone,
 } from "./tagColors";
 
@@ -20,24 +18,29 @@ const ORIGINAL_DARK = {
   amber: "text-amber-300 border-amber-300/30 shadow-amber-300/10",
 } as const;
 
-/** Tailwind default palette steps used by the tag chips. */
+const ORIGINAL_VALUES = new Set(["cyan", "rose", "slate", "violet", "emerald", "amber"]);
+
+/** Tailwind steps used as the rendered chip text. */
 const SHADE: Record<string, Record<string, string>> = {
-  cyan: { 300: "#67e8f9", 600: "#0891b2", 700: "#0e7490", 800: "#155e75" },
-  sky: { 300: "#7dd3fc", 600: "#0284c7", 700: "#0369a1" },
-  indigo: { 400: "#818cf8", 500: "#6366f1", 700: "#4338ca" },
-  violet: { 300: "#c4b5fd", 500: "#8b5cf6", 700: "#6d28d9" },
-  teal: { 400: "#2dd4bf", 600: "#0d9488", 800: "#115e59" },
-  rose: { 300: "#fda4af", 500: "#f43f5e", 700: "#be123c" },
-  fuchsia: { 300: "#f0abfc", 500: "#d946ef", 700: "#a21caf" },
-  pink: { 300: "#f9a8d4", 500: "#ec4899", 700: "#be185d" },
-  orange: { 200: "#fed7aa", 300: "#fdba74" },
+  cyan: { 300: "#67e8f9" },
+  blue: { 400: "#60a5fa" },
+  violet: { 300: "#c4b5fd" },
+  rose: { 300: "#fda4af" },
+  fuchsia: { 400: "#e879f9" },
+  orange: { 400: "#fb923c" },
   amber: { 300: "#fcd34d" },
-  yellow: { 200: "#fef08a" },
   emerald: { 300: "#6ee7b7" },
   lime: { 200: "#d9f99d" },
+  stone: { 400: "#a8a29e" },
   slate: { 300: "#cbd5e1" },
-  zinc: { 400: "#a1a1aa" },
 };
+
+/**
+ * CIEDE2000. The locked violet/slate pair is 14.89, so the floor for the
+ * whole palette sits just under that. Every added color must clear 15.
+ */
+const PALETTE_FLOOR = 14.5;
+const ADDED_COLOR_FLOOR = 15;
 
 function channel(value: number): number {
   const srgb = value / 255;
@@ -60,14 +63,13 @@ function contrast(foreground: string, background: string): number {
 }
 
 function lab(hex: string): [number, number, number] {
-  const rgb = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(1 + offset, 3 + offset), 16));
-  const [r, g, b] = rgb.map((value) => {
-    const srgb = value / 255;
-    return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
-  });
-  let x = r * 0.4124 + g * 0.3576 + b * 0.1805;
-  let y = r * 0.2126 + g * 0.7152 + b * 0.0722;
-  let z = r * 0.0193 + g * 0.1192 + b * 0.9505;
+  const n = Number.parseInt(hex.slice(1), 16);
+  const r = channel((n >> 16) & 255);
+  const g = channel((n >> 8) & 255);
+  const b = channel(n & 255);
+  let x = r * 0.4124564 + g * 0.3575761 + b * 0.1804375;
+  let y = r * 0.2126729 + g * 0.7151522 + b * 0.072175;
+  let z = r * 0.0193339 + g * 0.119192 + b * 0.9503041;
   x /= 0.95047;
   y /= 1;
   z /= 1.08883;
@@ -78,123 +80,147 @@ function lab(hex: string): [number, number, number] {
   return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
 }
 
-function deltaE(a: string, b: string): number {
-  const [l1, a1, b1] = lab(a);
-  const [l2, a2, b2] = lab(b);
-  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+/** Sharma, Wu, Dalal CIEDE2000. Same result on either theme: the text hex does not change. */
+function deltaE00(hex1: string, hex2: string): number {
+  const [L1, a1, b1] = lab(hex1);
+  const [L2, a2, b2] = lab(hex2);
+  const avgLp = (L1 + L2) / 2;
+  const C1 = Math.hypot(a1, b1);
+  const C2 = Math.hypot(a2, b2);
+  const avgC = (C1 + C2) / 2;
+  const avgC7 = avgC ** 7;
+  const G = 0.5 * (1 - Math.sqrt(avgC7 / (avgC7 + 25 ** 7)));
+  const a1p = a1 * (1 + G);
+  const a2p = a2 * (1 + G);
+  const C1p = Math.hypot(a1p, b1);
+  const C2p = Math.hypot(a2p, b2);
+  const avgCp = (C1p + C2p) / 2;
+  const hue = (ap: number, bp: number) => {
+    if (ap === 0 && bp === 0) return 0;
+    const degrees = (Math.atan2(bp, ap) * 180) / Math.PI;
+    return degrees < 0 ? degrees + 360 : degrees;
+  };
+  const h1p = hue(a1p, b1);
+  const h2p = hue(a2p, b2);
+  let dh = h2p - h1p;
+  if (C1p * C2p === 0) dh = 0;
+  else if (dh > 180) dh -= 360;
+  else if (dh < -180) dh += 360;
+  const dLp = L2 - L1;
+  const dCp = C2p - C1p;
+  const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin(((dh * Math.PI) / 180) / 2);
+  let avgHp = (h1p + h2p) / 2;
+  if (C1p * C2p === 0) avgHp = h1p + h2p;
+  else if (Math.abs(h1p - h2p) > 180) avgHp += avgHp < 180 ? 180 : -180;
+  const hp = (avgHp * Math.PI) / 180;
+  const T =
+    1 -
+    0.17 * Math.cos(hp - (30 * Math.PI) / 180) +
+    0.24 * Math.cos(2 * hp) +
+    0.32 * Math.cos(3 * hp + (6 * Math.PI) / 180) -
+    0.2 * Math.cos(4 * hp - (63 * Math.PI) / 180);
+  const avgLp50 = avgLp - 50;
+  const SL = 1 + (0.015 * avgLp50 * avgLp50) / Math.sqrt(20 + avgLp50 * avgLp50);
+  const SC = 1 + 0.045 * avgCp;
+  const SH = 1 + 0.015 * avgCp * T;
+  const avgCp7 = avgCp ** 7;
+  const RC = 2 * Math.sqrt(avgCp7 / (avgCp7 + 25 ** 7));
+  const dTheta = 30 * Math.exp(-(((avgHp - 275) / 25) ** 2));
+  const RT = -Math.sin((2 * dTheta * Math.PI) / 180) * RC;
+  return Math.sqrt(
+    (dLp / SL) ** 2 + (dCp / SC) ** 2 + (dHp / SH) ** 2 + RT * (dCp / SC) * (dHp / SH)
+  );
 }
 
-function shadeOf(classes: string): { family: string; step: string; hex: string } {
+function textHex(classes: string): string {
   const match = classes.match(/(?:^|\s)text-([a-z]+)-(\d+)/);
   assert.ok(match, `missing text class in ${classes}`);
-  const family = match[1];
-  const step = match[2];
-  const hex = SHADE[family]?.[step];
-  assert.ok(hex, `no swatch for ${family}-${step}`);
-  return { family, step, hex };
+  const hex = SHADE[match[1]]?.[match[2]];
+  assert.ok(hex, `no rendered color for ${match[1]}-${match[2]}`);
+  return hex;
 }
 
-test("the palette is sixteen colors in family order", () => {
+test("the palette is eleven colors in family order", () => {
   assert.deepEqual(
     TAG_COLOR_OPTIONS.map((color) => color.value),
-    [
-      "cyan",
-      "sky",
-      "indigo",
-      "violet",
-      "teal",
-      "rose",
-      "fuchsia",
-      "pink",
-      "orange",
-      "amber",
-      "yellow",
-      "emerald",
-      "lime",
-      "sand",
-      "slate",
-      "zinc",
-    ]
+    ["cyan", "blue", "violet", "rose", "fuchsia", "orange", "amber", "emerald", "lime", "sand", "slate"]
   );
   assert.deepEqual(
     TAG_COLOR_OPTIONS.map((color) => color.name),
-    [
-      "Astral",
-      "Drift",
-      "Dusk",
-      "Pulse",
-      "Tide",
-      "Ember",
-      "Flare",
-      "Dawn",
-      "Cinder",
-      "Sunwake",
-      "Gleam",
-      "Verdant",
-      "Fern",
-      "Dune",
-      "Whisper",
-      "Ash",
-    ]
+    ["Astral", "Dusk", "Pulse", "Ember", "Flare", "Cinder", "Sunwake", "Verdant", "Fern", "Dune", "Whisper"]
   );
-  assert.equal(new Set(TAG_COLOR_OPTIONS.map((color) => color.value)).size, 16);
 });
 
-test("every color keeps the pale chip treatment on the dark glass", () => {
-  const ink: string[] = [];
-  for (const { value } of TAG_COLOR_OPTIONS) {
-    const chip = tagColorClasses[value];
-    assert.equal(chip.includes("bg-"), false, value);
-    assert.equal(chip.includes("light:"), false, value);
+test("chip text stays a pale outline and every pair clears CIEDE2000", () => {
+  const rendered = TAG_COLOR_OPTIONS.map((color) => {
+    const chip = tagColorClasses[color.value];
+    assert.equal(chip.includes("bg-"), false, color.value);
+    assert.equal(chip.includes("light:"), false, color.value);
     assert.match(chip, /border-/);
     assert.match(chip, /\/30/);
     assert.match(chip, /shadow-/);
-    assert.equal(chip.includes("${"), false);
-    assert.match(tagActiveClasses[value], /ring /);
-    assert.match(tagActiveClasses[value], /bg-[a-z]+-\d+\/10/);
-    assert.match(selectedColorClasses[value], /outline /);
-    assert.match(tagSwatchClasses[value], /(?:^|\s)bg-/);
-    const tone = shadeOf(chip);
-    // Page background, and the glass card these chips actually sit on.
-    assert.ok(contrast(tone.hex, "#0b0c0f") >= 4.5, `${value} on page`);
-    assert.ok(contrast(tone.hex, "#1e2327") >= 4.5, `${value} on glass`);
-    ink.push(tone.hex);
-  }
-  for (let i = 0; i < ink.length; i += 1) {
-    for (let j = i + 1; j < ink.length; j += 1) {
-      const distance = deltaE(ink[i], ink[j]);
+    assert.match(tagActiveClasses[color.value], /ring /);
+    assert.match(tagActiveClasses[color.value], /bg-[a-z]+-\d+\/10/);
+    const hex = textHex(chip);
+    assert.ok(contrast(hex, "#0b0c0f") >= 4.5, `${color.name} on the dark page`);
+    assert.ok(contrast(hex, "#1e2327") >= 4.5, `${color.name} on the glass`);
+    return { ...color, hex };
+  });
+
+  let closest = { distance: Number.POSITIVE_INFINITY, a: "", b: "" };
+  for (let i = 0; i < rendered.length; i += 1) {
+    for (let j = i + 1; j < rendered.length; j += 1) {
+      const distance = deltaE00(rendered[i].hex, rendered[j].hex);
+      if (distance < closest.distance) {
+        closest = { distance, a: rendered[i].name, b: rendered[j].name };
+      }
       assert.ok(
-        distance >= 16,
-        `${TAG_COLOR_OPTIONS[i].value} and ${TAG_COLOR_OPTIONS[j].value} are too close (${distance.toFixed(1)})`
+        distance >= PALETTE_FLOOR,
+        `${rendered[i].name}/${rendered[j].name} ΔE00 ${distance.toFixed(2)}`
       );
+      const added = !ORIGINAL_VALUES.has(rendered[i].value) || !ORIGINAL_VALUES.has(rendered[j].value);
+      if (added) {
+        assert.ok(
+          distance >= ADDED_COLOR_FLOOR,
+          `${rendered[i].name}/${rendered[j].name} ΔE00 ${distance.toFixed(2)}`
+        );
+      }
     }
   }
+  assert.equal(closest.a, "Pulse");
+  assert.equal(closest.b, "Whisper");
+  assert.ok(Math.abs(closest.distance - 14.89) < 0.05, closest.distance.toFixed(2));
 });
 
 test("the original six colors keep their dark chip classes", () => {
   for (const [value, classes] of Object.entries(ORIGINAL_DARK)) {
-    assert.equal(tagColorClasses[value].startsWith(classes), true, value);
-    assert.equal(tagTone(value), tagColorClasses[value]);
+    assert.equal(tagColorClasses[value], classes, value);
+    assert.equal(tagTone(value), classes);
   }
   assert.equal(tagColorKey("cyan"), "cyan");
   assert.equal(tagColorKey("not-a-color"), "slate");
   assert.equal(tagColorKey(null, "cyan"), "cyan");
-  assert.equal(tagTone("sand").includes("text-orange-200"), true);
+  assert.equal(tagColorKey("sky"), "slate");
+  assert.equal(tagColorKey("teal"), "slate");
+  assert.equal(tagColorKey("pink"), "slate");
+  assert.equal(tagColorKey("yellow"), "slate");
+  assert.equal(tagColorKey("zinc"), "slate");
+  assert.equal(tagTone("sand"), "text-stone-400 border-stone-400/30 shadow-stone-400/10");
 });
 
 test("a new tag takes the least-used color, ties broken by palette order", () => {
   assert.equal(leastUsedTagColor([]), "cyan");
   assert.equal(leastUsedTagColor([{ color: null }, { color: undefined }, { color: "" }]), "cyan");
-  assert.equal(leastUsedTagColor([{ color: "magenta" }, { color: "nope" }]), "cyan");
-  assert.equal(leastUsedTagColor([{ color: "cyan" }]), "sky");
+  assert.equal(leastUsedTagColor([{ color: "magenta" }, { color: "sky" }, { color: "zinc" }]), "cyan");
+  assert.equal(leastUsedTagColor([{ color: "cyan" }]), "blue");
   assert.equal(
     leastUsedTagColor([
       { color: "cyan" },
-      { color: "sky" },
+      { color: "blue" },
       { color: "cyan" },
-      { color: "sky" },
+      { color: "blue" },
     ]),
-    "indigo"
+    "violet"
   );
   assert.equal(
     leastUsedTagColor(TAG_COLOR_OPTIONS.map((color) => ({ color: color.value }))),
@@ -203,11 +229,11 @@ test("a new tag takes the least-used color, ties broken by palette order", () =>
   const crowded: { color: string }[] = [];
   for (const color of TAG_COLOR_OPTIONS) {
     crowded.push({ color: color.value });
-    if (color.value !== "zinc") crowded.push({ color: color.value });
+    if (color.value !== "slate") crowded.push({ color: color.value });
   }
-  assert.equal(leastUsedTagColor(crowded), "zinc");
+  assert.equal(leastUsedTagColor(crowded), "slate");
   assert.equal(
     leastUsedTagColor([{ color: "cyan" }, { color: "cyan" }, { color: "chartreuse" }]),
-    "sky"
+    "blue"
   );
 });
