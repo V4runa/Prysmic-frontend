@@ -80,6 +80,12 @@ test("a created tag joins the shared list once, in name order", () => {
   ]);
 });
 
+test("the new-tag dialog starts on the least-used color", () => {
+  const dialog = readFileSync(new URL("../components/CreateTagDialog.tsx", import.meta.url), "utf8");
+  assert.match(dialog, /leastUsedTagColor\(tags\)/);
+  assert.equal(dialog.includes('useState("cyan")'), false);
+});
+
 test("both note editors open tag creation in a dialog from the picker", () => {
   const picker = readFileSync(new URL("../components/TagPicker.tsx", import.meta.url), "utf8");
   const create = readFileSync(new URL("../notes/new/page.tsx", import.meta.url), "utf8");
