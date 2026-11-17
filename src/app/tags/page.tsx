@@ -8,7 +8,14 @@ import GlassPanel from "../components/GlassPanel";
 import PageTransition from "../components/PageTransition";
 import TagColorChoices from "../components/TagColorChoices";
 import { apiFetch } from "../hooks/useApi";
+import { useCreateTag } from "../hooks/useCreateTag";
 import { Tag, useTags, useInvalidateTags } from "../hooks/useTags";
+import {
+  TAG_CREATE_DUPLICATE,
+  duplicateTagName,
+  tagCreateErrorMessage,
+  tagNameToCreate,
+} from "../lib/tagCreate";
 import { tactileSubtle } from "../lib/motion";
 import { tagColorClasses, tagColorKey } from "../lib/tagColors";
 import { notesTagHref, tagDeleteErrorMessage, tagUsageLabel, tasksTagHref } from "../lib/tagQuery";
@@ -17,6 +24,7 @@ import { TextField, FormButton } from "../components/forms";
 export default function TagsPage() {
   const { data: tags = [], isError, isLoading } = useTags();
   const invalidateTags = useInvalidateTags();
+  const createTag = useCreateTag();
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("cyan");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -25,17 +33,18 @@ export default function TagsPage() {
   const [error, setError] = useState(isError ? "Could not fetch tags" : "");
 
   const handleCreate = async () => {
-    if (!newTagName.trim()) return;
+    const name = tagNameToCreate(newTagName);
+    if (!name) return;
+    if (duplicateTagName(name, tags)) {
+      setError(TAG_CREATE_DUPLICATE);
+      return;
+    }
     setError("");
     try {
-      await apiFetch<Tag>("/tags", {
-        method: "POST",
-        body: JSON.stringify({ name: newTagName, color: newTagColor }),
-      });
-      await invalidateTags();
+      await createTag(name, newTagColor);
       setNewTagName("");
-    } catch {
-      setError("Failed to create tag");
+    } catch (err) {
+      setError(tagCreateErrorMessage(err));
     }
   };
 

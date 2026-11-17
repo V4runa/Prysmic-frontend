@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "create-tag-from-note",
+    date: "2026-11-17",
+    kind: "new",
+    title: "Make a tag without leaving your note",
+    summary:
+      "You can make a new tag from the note you're writing, and it stays selected on that note.",
+  },
+  {
     id: "add-to-home-screen",
     date: "2026-11-16",
     kind: "new",

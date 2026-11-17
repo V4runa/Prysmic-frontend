@@ -56,6 +56,7 @@ const notes = spawnSync(
     "src/app/lib/sessionBoundary.test.ts",
     "src/app/lib/dataExport.test.ts",
     "src/app/lib/tagQuery.test.ts",
+    "src/app/lib/tagCreate.test.ts",
     "src/app/lib/updatesSeen.test.ts",
     "src/app/lib/installPrompt.test.ts",
   ],
