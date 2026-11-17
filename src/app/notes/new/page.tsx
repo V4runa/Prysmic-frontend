@@ -435,6 +435,7 @@ export default function CreateNotePage() {
                   selectedIds={selectedTagIds}
                   disabled={saving}
                   allowCreate
+                  createInDialog
                   onChange={setSelectedTagIds}
                 />
               </div>

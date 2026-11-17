@@ -1,15 +1,20 @@
 "use client";
 
-import { useId, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useId, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ApiError, apiFetch } from "../hooks/useApi";
-import { tagsQueryKey } from "../hooks/useTags";
+import { useCreateTag } from "../hooks/useCreateTag";
 import type { Tag } from "../lib/tag";
 import { tagActiveTone, tagTone } from "../lib/tagColors";
-import { messageFromBody } from "../lib/authMessages";
+import {
+  TAG_CREATE_DUPLICATE,
+  duplicateTagName,
+  selectionWithCreatedTag,
+  tagCreateErrorMessage,
+  tagNameToCreate,
+} from "../lib/tagCreate";
 import { TextField, FormButton } from "./forms";
 import TagColorChoices from "./TagColorChoices";
+import CreateTagDialog from "./CreateTagDialog";
 
 interface TagPickerProps {
   tags: Tag[];
@@ -17,18 +22,15 @@ interface TagPickerProps {
   onChange: (ids: number[]) => void;
   disabled?: boolean;
   allowCreate?: boolean;
+  /**
+   * Note editors open a dialog so the title and body stay put.
+   * Tasks keep the inline name field.
+   */
+  createInDialog?: boolean;
   /** Editor chips match the note form. Filter chips match the notes list. */
   appearance?: "editor" | "filter";
   selection?: "multiple" | "single";
   groupLabel?: string;
-}
-
-function createErrorMessage(err: unknown): string {
-  if (err instanceof ApiError && err.status === 409) {
-    const message = messageFromBody(err.body);
-    if (message && message.length <= 500) return message;
-  }
-  return "Could not create tag";
 }
 
 /** Selectable tag chips, shared by notes and tasks. */
@@ -38,12 +40,15 @@ export default function TagPicker({
   onChange,
   disabled = false,
   allowCreate = false,
+  createInDialog = false,
   appearance = "editor",
   selection = "multiple",
   groupLabel = "Tags",
 }: TagPickerProps) {
-  const queryClient = useQueryClient();
+  const createTag = useCreateTag();
   const inputId = useId();
+  const dialogId = useId();
+  const newTagRef = useRef<HTMLButtonElement>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [color, setColor] = useState("cyan");
@@ -59,35 +64,28 @@ export default function TagPicker({
     onChange(selectedIds.includes(id) ? selectedIds.filter((current) => current !== id) : [...selectedIds, id]);
   };
 
+  const selectCreated = (tag: Tag) => {
+    if (typeof tag.id === "number") {
+      onChange(selectionWithCreatedTag(selectedIds, tag.id, selection));
+    }
+    setName("");
+    setCreating(false);
+    setError("");
+  };
+
   const create = async () => {
-    const trimmed = name.trim();
+    const trimmed = tagNameToCreate(name);
     if (!trimmed || saving || disabled) return;
+    if (duplicateTagName(trimmed, tags)) {
+      setError(TAG_CREATE_DUPLICATE);
+      return;
+    }
     setSaving(true);
     setError("");
     try {
-      const created = await apiFetch<Tag>("/tags", {
-        method: "POST",
-        body: JSON.stringify({ name: trimmed, color }),
-      });
-      queryClient.setQueryData<Tag[]>(tagsQueryKey, (prev) => {
-        const list = prev ?? [];
-        if (list.some((tag) => tag.id === created.id)) return list;
-        return [...list, created].sort((a, b) => a.name.localeCompare(b.name));
-      });
-      void queryClient.invalidateQueries({ queryKey: tagsQueryKey });
-      if (typeof created.id === "number") {
-        onChange(
-          selection === "single"
-            ? [created.id]
-            : selectedIds.includes(created.id)
-              ? selectedIds
-              : [...selectedIds, created.id]
-        );
-      }
-      setName("");
-      setCreating(false);
+      selectCreated(await createTag(trimmed, color));
     } catch (err) {
-      setError(createErrorMessage(err));
+      setError(tagCreateErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -97,6 +95,8 @@ export default function TagPicker({
     appearance === "filter"
       ? "flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hidden px-0.5 py-1 sm:flex-wrap sm:overflow-x-visible"
       : "flex flex-wrap gap-2 sm:gap-3";
+
+  const openDialog = creating && createInDialog;
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
@@ -131,7 +131,26 @@ export default function TagPicker({
             </motion.button>
           );
         })}
-        {allowCreate && (
+        {allowCreate && createInDialog && (
+          <button
+            ref={newTagRef}
+            type="button"
+            disabled={disabled}
+            aria-haspopup="dialog"
+            aria-expanded={openDialog}
+            aria-controls={openDialog ? dialogId : undefined}
+            onClick={() => {
+              setError("");
+              setCreating(true);
+            }}
+            className={`interactive-chip tap-target whitespace-nowrap px-3 sm:px-4 py-1 text-xs rounded-full border backdrop-blur-md shadow-sm transition-colors text-slate-300 border-white/10 disabled:opacity-40 ${
+              openDialog ? "bg-white/10 ring-1 ring-inset ring-white/20" : "hover:bg-white/10"
+            }`}
+          >
+            + New tag
+          </button>
+        )}
+        {allowCreate && !createInDialog && (
           <button
             type="button"
             disabled={disabled || saving}
@@ -151,7 +170,7 @@ export default function TagPicker({
         <p className="text-xs text-slate-500">No tags yet.</p>
       )}
 
-      {allowCreate && creating && (
+      {allowCreate && !createInDialog && creating && (
         <div className="flex min-w-0 flex-col gap-2">
           <label htmlFor={inputId} className="sr-only">
             Tag name
@@ -189,10 +208,20 @@ export default function TagPicker({
         </div>
       )}
 
-      {error && (
+      {allowCreate && !createInDialog && error && (
         <p role="alert" className="text-xs text-rose-400">
           {error}
         </p>
+      )}
+
+      {openDialog && (
+        <CreateTagDialog
+          id={dialogId}
+          tags={tags}
+          returnFocusRef={newTagRef}
+          onClose={() => setCreating(false)}
+          onCreated={selectCreated}
+        />
       )}
     </div>
   );

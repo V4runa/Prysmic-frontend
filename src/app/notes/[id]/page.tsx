@@ -725,6 +725,7 @@ export default function ViewNotePage() {
                   selectedIds={selectedTagIds}
                   disabled={saving}
                   allowCreate
+                  createInDialog
                   onChange={(ids) => {
                     setSelectedTagIds(ids);
                     setDirty(true);

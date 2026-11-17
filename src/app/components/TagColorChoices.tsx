@@ -7,12 +7,26 @@ interface TagColorChoicesProps {
   value: string;
   onChange: (color: string) => void;
   disabled?: boolean;
+  /** Extra classes for each swatch, such as a larger touch target in a dialog. */
+  className?: string;
+  /** Id of the visible label for this group. */
+  labelledBy?: string;
 }
 
 /** The six named swatches from the Tags page. */
-export default function TagColorChoices({ value, onChange, disabled }: TagColorChoicesProps) {
+export default function TagColorChoices({
+  value,
+  onChange,
+  disabled,
+  className,
+  labelledBy,
+}: TagColorChoicesProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div
+      className="flex flex-wrap gap-2"
+      role={labelledBy ? "group" : undefined}
+      aria-labelledby={labelledBy}
+    >
       {TAG_COLOR_OPTIONS.map((color) => (
         <motion.button
           key={color.value}
@@ -25,7 +39,7 @@ export default function TagColorChoices({ value, onChange, disabled }: TagColorC
             value === color.value
               ? `${tagColorClasses[color.value]} ${selectedColorClasses[color.value]}`
               : "border-white/10 text-slate-400 hover:text-white hover:border-white/20"
-          }`}
+          } ${className ?? ""}`}
         >
           {color.name}
         </motion.button>
