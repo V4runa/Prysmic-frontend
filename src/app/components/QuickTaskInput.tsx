@@ -12,7 +12,7 @@ import { noteHref } from "../lib/calendarDay";
 import { postTaskKeepingOrigin } from "../notes/noteMenu";
 import { Field, TextField, TextArea, SelectField } from "./forms";
 import TagPicker from "./TagPicker";
-import TagChip from "./TagChip";
+import TagChipRow from "./TagChipRow";
 import { useTags } from "../hooks/useTags";
 
 interface QuickTaskInputProps {
@@ -258,13 +258,7 @@ export default function QuickTaskInput({
       </AnimatePresence>
 
       {!expanded && selectedTagIds.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {tags
-            .filter((tag) => selectedTagIds.includes(tag.id))
-            .map((tag) => (
-              <TagChip key={tag.id} tag={tag} />
-            ))}
-        </div>
+        <TagChipRow tags={tags.filter((tag) => selectedTagIds.includes(tag.id))} />
       )}
 
       {error && <p className="text-red-400 text-sm">{error}</p>}

@@ -25,7 +25,7 @@ import { readOriginNote, withoutOriginNoteId, type OriginRef } from "../notes/no
 import { taskDueDayKey } from "../lib/date";
 import Sparkles from "./Sparkles";
 import TaskForm from "./TaskForm";
-import TagChip from "./TagChip";
+import TagChipRow from "./TagChipRow";
 import { tactileSubtle } from "../lib/motion";
 
 interface TaskCardProps {
@@ -464,13 +464,7 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
             <TaskOriginNote origin={origin} className="mt-1 text-xs text-slate-400" />
           )}
 
-          {task.tags && task.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
-              {task.tags.map((tag) => (
-                <TagChip key={tag.id} tag={tag} />
-              ))}
-            </div>
-          )}
+          <TagChipRow tags={task.tags ?? []} className="mt-2" />
 
           {task.dueDate && (
             <p
