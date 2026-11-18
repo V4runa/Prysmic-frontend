@@ -24,6 +24,8 @@ import { useLogicalToday } from "../../hooks/usePreferences";
 import { calendarDayFromSearch, calendarDayHref, formatCalendarDay, parseResourceId } from "../../lib/calendarDay";
 import { isMissingRecord } from "../../lib/missingRecord";
 import MissingRecord from "../../components/MissingRecord";
+import ContractRecord from "../../components/ContractRecord";
+import { applyCheckinDate, type CheckinRecord } from "../../lib/contractRecord";
 import { calendarQueryKey } from "../../hooks/useCalendar";
 import { tactile, tactileSubtle } from "../../lib/motion";
 import Sparkles from "../../components/Sparkles";
@@ -156,6 +158,13 @@ export default function HabitDetailPage() {
       setForm(habitData);
       queryClient.setQueryData(["habit", id], habitData);
       queryClient.invalidateQueries({ queryKey: ["habits"] });
+      if (resourceId != null) {
+        queryClient.setQueriesData<CheckinRecord>(
+          { queryKey: ["habit-checkins", resourceId] },
+          (current) => (current ? applyCheckinDate(current, today, willCheck) : current)
+        );
+        queryClient.invalidateQueries({ queryKey: ["habit-checkins", resourceId] });
+      }
       // The calendar feed is cached separately; refresh it so the check-in
       // shows on the grid immediately rather than after the cache goes stale.
       queryClient.invalidateQueries({ queryKey: calendarQueryKey });
@@ -458,6 +467,14 @@ export default function HabitDetailPage() {
                       </div>
                     )}
                   </div>
+
+                  {resourceId != null && (
+                    <ContractRecord
+                      habitId={resourceId}
+                      createdAt={habit.createdAt}
+                      color={color}
+                    />
+                  )}
 
                   {habit.description && (
                     <p className="text-slate-400 whitespace-pre-line text-sm sm:text-base">{habit.description}</p>
