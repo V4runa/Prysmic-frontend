@@ -69,7 +69,7 @@ export default function MoodTimeline({
   }, [focusDay, timeline]);
 
   return (
-    <div className="app-scroll relative w-full h-full min-h-0 flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 sm:pt-32 pb-24 sm:pb-20 px-2 sm:px-0">
+    <div className="app-scroll relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 pb-24 sm:pt-32 sm:pb-20">
       {/* 🔥 Streak header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -90,14 +90,14 @@ export default function MoodTimeline({
           <span className="absolute inset-[-70px] blur-[100px] opacity-70 bg-[radial-gradient(circle,rgba(255,150,0,0.55)_0%,rgba(0,0,0,0)_85%)]" />
         </motion.div>
 
-        <p className="text-slate-50 mt-6 text-2xl sm:text-3xl font-semibold tracking-wide drop-shadow-[0_0_10px_rgba(255,180,80,0.35)]">
+        <p className="mt-6 max-w-full px-4 text-center text-2xl font-semibold tracking-wide text-slate-50 drop-shadow-[0_0_10px_rgba(255,180,80,0.35)] sm:text-3xl">
           {streak > 0 ? `${streak}-day streak` : "No current streak"}
         </p>
       </motion.div>
 
       {/* 🌙 Timeline entries */}
-      <div className="relative mx-auto w-full max-w-3xl mt-8 sm:mt-10 mb-8 px-1 sm:px-0">
-        <div className="absolute left-[4.5rem] sm:left-[5.25rem] top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-white/15 via-white/8 to-transparent rounded-full" />
+      <div className="relative mx-auto mb-8 mt-8 w-full min-w-0 max-w-3xl sm:mt-10">
+        <div className="pointer-events-none absolute bottom-0 left-[calc(3.25rem+0.75rem+0.625rem)] top-0 w-[1.5px] -translate-x-1/2 rounded-full bg-gradient-to-b from-white/15 via-white/8 to-transparent sm:left-[5.25rem]" />
 
         <AnimatePresence>
           {timeline.map((mood, i) => {
@@ -125,17 +125,17 @@ export default function MoodTimeline({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="relative flex items-center gap-4 sm:gap-6 mb-8 sm:mb-12"
+                className="relative mb-8 grid w-full min-w-0 grid-cols-[3.25rem_1.25rem_minmax(0,1fr)] items-center gap-x-3 sm:mb-12 sm:grid-cols-[4rem_1.25rem_minmax(0,1fr)] sm:gap-x-6"
               >
                 <Link
                   href={calendarDayHref(dayKey)}
                   title="Open this day on the calendar"
-                  className="text-right text-slate-400 text-xs sm:text-sm w-[3.25rem] sm:w-16 shrink-0 hover:text-cyan-300 hover:underline"
+                  className="tap-target inline-flex w-full min-w-0 items-center justify-end text-right text-xs leading-tight text-slate-400 hover:text-cyan-300 hover:underline sm:text-sm"
                 >
                   {format(new Date(mood.date), "MMM d")}
                 </Link>
 
-                <div className="relative w-5 h-full flex items-center justify-center">
+                <div className="relative flex h-full w-full shrink-0 items-center justify-center">
                   <motion.div
                     className={`absolute left-1/2 -translate-x-1/2 top-0 h-1/2 w-[2px] ${
                       isBreak ? "bg-slate-700/40" : cc.lineTop
@@ -159,19 +159,22 @@ export default function MoodTimeline({
 
                 <motion.div
                   className={clsx(
-                    "min-w-0 flex-1 bg-white/[0.05] border border-white/10 rounded-2xl p-4 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-all duration-300",
+                    "min-w-0 bg-white/[0.05] border border-white/10 rounded-2xl p-3 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-all duration-300",
                     cc.cardHover,
                     focused && "ring-1 ring-cyan-300/50"
                   )}
                   whileHover={isToday ? undefined : { scale: 1.02, y: -2 }}
                 >
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="text-2xl sm:text-3xl drop-shadow">
+                  <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 sm:flex-nowrap sm:justify-between">
+                    <div className="flex min-w-0 max-w-full flex-[1_1_100%] flex-wrap items-center gap-x-2.5 gap-y-0.5 sm:flex-1 sm:flex-nowrap sm:gap-3">
+                      <span className="shrink-0 text-2xl leading-none drop-shadow sm:text-3xl sm:leading-9">
                         {meta.emoji}
                       </span>
                       <span
-                        className={`${cc.label} text-lg sm:text-xl font-semibold tracking-wide`}
+                        className={clsx(
+                          cc.label,
+                          "min-w-0 flex-[1_1_7.5rem] break-words hyphens-auto text-lg font-semibold tracking-wide sm:text-xl"
+                        )}
                       >
                         {meta.label}
                       </span>
@@ -180,7 +183,7 @@ export default function MoodTimeline({
                       <button
                         type="button"
                         onClick={onChangeToday}
-                        className="tap-target shrink-0 text-sm text-cyan-300 hover:underline"
+                        className="tap-target inline-flex shrink-0 items-center text-sm text-cyan-300 hover:underline"
                       >
                         Change mood
                       </button>
@@ -189,7 +192,7 @@ export default function MoodTimeline({
                   {isToday && onSaveTodayNote ? (
                     <TodayNote note={mood.note} onSave={onSaveTodayNote} />
                   ) : mood.note ? (
-                    <p className="selectable-text text-slate-200 text-sm sm:text-base leading-relaxed">
+                    <p className="selectable-text min-w-0 break-words hyphens-auto text-sm leading-relaxed text-slate-200 sm:text-base">
                       {mood.note}
                     </p>
                   ) : (
@@ -221,9 +224,9 @@ function TodayNote({
 
   if (!editing) {
     return (
-      <div className="flex flex-col items-start gap-2">
+      <div className="flex w-full min-w-0 flex-col items-start gap-2">
         {note ? (
-          <p className="selectable-text text-slate-200 text-sm sm:text-base leading-relaxed">
+          <p className="selectable-text min-w-0 break-words hyphens-auto text-sm leading-relaxed text-slate-200 sm:text-base">
             {note}
           </p>
         ) : (
@@ -236,7 +239,7 @@ function TodayNote({
             setError("");
             setEditing(true);
           }}
-          className="tap-target text-sm text-slate-400 hover:text-slate-200"
+          className="tap-target inline-flex items-center text-sm text-slate-400 hover:text-slate-200"
         >
           Edit note
         </button>
@@ -258,7 +261,7 @@ function TodayNote({
   };
 
   return (
-    <div className="flex flex-col items-start gap-2">
+    <div className="flex w-full min-w-0 flex-col items-start gap-2">
       <TextArea
         value={draft}
         maxLength={280}
@@ -278,7 +281,7 @@ function TodayNote({
           type="button"
           onClick={save}
           disabled={saving}
-          className="tap-target text-sm text-cyan-300 hover:underline disabled:opacity-60"
+          className="tap-target inline-flex items-center text-sm text-cyan-300 hover:underline disabled:opacity-60"
         >
           {saving ? "Saving..." : "Save note"}
         </button>
@@ -286,7 +289,7 @@ function TodayNote({
           type="button"
           onClick={() => setEditing(false)}
           disabled={saving}
-          className="tap-target text-sm text-slate-400 hover:text-slate-200 disabled:opacity-60"
+          className="tap-target inline-flex items-center text-sm text-slate-400 hover:text-slate-200 disabled:opacity-60"
         >
           Cancel
         </button>
