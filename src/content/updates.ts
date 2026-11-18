@@ -41,6 +41,14 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "contract-record",
+    date: "2026-11-18",
+    kind: "new",
+    title: "A record of the days you kept",
+    summary:
+      "A contract now shows the days you kept it, month by month. A kept day opens that day on the calendar.",
+  },
+  {
     id: "tidier-tags",
     date: "2026-11-17",
     kind: "improved",
