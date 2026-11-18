@@ -310,7 +310,12 @@ test("the published changelog is newest first and ready for a public page", () =
   }
   assert.deepEqual(
     changelog.comingSoon.map((item) => item.id),
-    []
+    ["phone-apps"]
+  );
+  assert.equal(changelog.comingSoon[0]?.title, "Phone apps");
+  assert.equal(
+    changelog.comingSoon[0]?.summary,
+    "Prysmic is coming to iPhone and Android."
   );
   assert.equal(
     changelog.updates.some((entry) => entry.kind === "new"),

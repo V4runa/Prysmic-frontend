@@ -12,6 +12,7 @@ import {
   noteHref,
   parseTaskFocus,
   taskHref,
+  taskParamState,
 } from "./calendarDay";
 
 test("calendar day keys reject impossible dates and do not shift the written day", () => {
@@ -45,6 +46,8 @@ test("calendar day keys reject impossible dates and do not shift the written day
   assert.equal(parseTaskFocus("task=0"), null);
   assert.equal(parseTaskFocus("task=1.5"), null);
   assert.equal(parseTaskFocus("task=01"), 1);
+  assert.equal(parseTaskFocus("task=2147483647"), 2147483647);
+  assert.equal(parseTaskFocus("task=2147483648"), null);
   assert.equal(parseTaskFocus(""), null);
   assert.equal(habitHref(3), "/habits/3");
   assert.equal(habitHref(3, "2026-11-03"), "/habits/3?date=2026-11-03");
@@ -53,6 +56,18 @@ test("calendar day keys reject impossible dates and do not shift the written day
   assert.equal(linkedItemHref("note", 4), "/notes/4");
   assert.equal(linkedItemHref("task", 9), "/tasks?task=9");
   assert.equal(linkedItemHref("habit", 3, "2026-11-03"), "/habits/3?date=2026-11-03");
+});
+
+test("a task link can be absent, malformed, or a real id", () => {
+  assert.deepEqual(taskParamState(""), { kind: "absent" });
+  assert.deepEqual(taskParamState("tagId=2"), { kind: "absent" });
+  assert.deepEqual(taskParamState("task="), { kind: "invalid" });
+  assert.deepEqual(taskParamState("task=nope"), { kind: "invalid" });
+  assert.deepEqual(taskParamState("task=0"), { kind: "invalid" });
+  assert.deepEqual(taskParamState("task=1.5"), { kind: "invalid" });
+  assert.deepEqual(taskParamState("task=2147483648"), { kind: "invalid" });
+  assert.deepEqual(taskParamState("tagId=2&task=9"), { kind: "id", id: 9 });
+  assert.deepEqual(taskParamState("task=01"), { kind: "id", id: 1 });
 });
 
 test("calendar days and module items link to each other", () => {
@@ -81,5 +96,5 @@ test("calendar days and module items link to each other", () => {
   assert.match(read("../components/MoodTimeline.tsx"), /calendarDayHref/);
   assert.match(read("../habits/[id]/page.tsx"), /calendarDayHref/);
   assert.match(read("../moods/page.tsx"), /calendarDayFromSearch/);
-  assert.match(read("../tasks/page.tsx"), /parseTaskFocus/);
+  assert.match(read("../tasks/page.tsx"), /taskParamState/);
 });

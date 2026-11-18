@@ -186,7 +186,13 @@ export const productUpdates = [
   },
 ] as const satisfies readonly ProductUpdate[];
 
-export const comingSoon: readonly PlannedUpdate[] = [];
+export const comingSoon: readonly PlannedUpdate[] = [
+  {
+    id: "phone-apps",
+    title: "Phone apps",
+    summary: "Prysmic is coming to iPhone and Android.",
+  },
+];
 
 const MONTHS = [
   "Jan",

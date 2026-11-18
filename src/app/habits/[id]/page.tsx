@@ -21,7 +21,9 @@ import {
 import { habitIconMap as iconMap, IconKey } from "../../components/habitIcons";
 import { getHabitColor } from "../../lib/habitColors";
 import { useLogicalToday } from "../../hooks/usePreferences";
-import { calendarDayFromSearch, calendarDayHref, formatCalendarDay } from "../../lib/calendarDay";
+import { calendarDayFromSearch, calendarDayHref, formatCalendarDay, parseResourceId } from "../../lib/calendarDay";
+import { isMissingRecord } from "../../lib/missingRecord";
+import MissingRecord from "../../components/MissingRecord";
 import { calendarQueryKey } from "../../hooks/useCalendar";
 import { tactile, tactileSubtle } from "../../lib/motion";
 import Sparkles from "../../components/Sparkles";
@@ -62,6 +64,7 @@ interface Habit {
 export default function HabitDetailPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const resourceId = parseResourceId(id);
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -74,16 +77,19 @@ export default function HabitDetailPage() {
   const [form, setForm] = useState<Partial<Habit>>({});
   const [error, setError] = useState("");
 
-  const { data: fetchedHabit, isError: loadError } = useQuery({
+  const { data: fetchedHabit, isError: loadError, error: loadFailure } = useQuery({
     queryKey: ["habit", id],
-    queryFn: () => apiFetch<Habit>(`/habits/${id}?today=${today}`),
-    enabled: !!id,
+    queryFn: () => apiFetch<Habit>(`/habits/${resourceId}?today=${today}`),
+    enabled: resourceId != null,
+    retry: (failureCount, err) => !isMissingRecord(err) && failureCount < 3,
     // Paint instantly from the habits-list cache (name, streaks, checked
     // state) while the full record — intent, affirmation, frequency — loads.
     placeholderData: () =>
-      queryClient
-        .getQueryData<Habit[]>(["habits"])
-        ?.find((h) => String(h.id) === String(id)),
+      resourceId == null
+        ? undefined
+        : queryClient
+            .getQueryData<Habit[]>(["habits"])
+            ?.find((h) => h.id === resourceId),
   });
 
   // Mirror server/cache data into local state, which also drives the optimistic
@@ -95,9 +101,6 @@ export default function HabitDetailPage() {
     }
   }, [fetchedHabit, edit]);
 
-  useEffect(() => {
-    if (loadError && !habit) setError("Could not load habit");
-  }, [loadError, habit]);
 
   useEffect(() => {
     if (seenDay.current === null) {
@@ -208,14 +211,34 @@ export default function HabitDetailPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const contractMissing =
+    resourceId == null || (loadError && isMissingRecord(loadFailure));
+
+  if (contractMissing || (loadError && !habit)) {
+    return (
+      <PageTransition>
+        <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
+          <GlassPanel className="flex h-full min-h-0 w-full max-w-[1400px] flex-col">
+            <MissingRecord
+              title={contractMissing ? "Not found" : "Could not load"}
+              message={
+                contractMissing
+                  ? "This contract isn't here."
+                  : "This contract could not be loaded."
+              }
+              backHref="/habits"
+              backLabel="Back to contracts"
+            />
+          </GlassPanel>
+        </div>
+      </PageTransition>
+    );
+  }
+
   if (!habit) {
     return (
       <div className="app-page-h flex items-center justify-center">
-        {error ? (
-          <p className="text-slate-400">{error}</p>
-        ) : (
-          <Spinner label="Summoning contract..." />
-        )}
+        <Spinner label="Summoning contract..." />
       </div>
     );
   }
