@@ -261,7 +261,7 @@ export default function MoodPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 1.0, ease: "easeOut" }}
-                className="w-full h-full flex-1"
+                className="h-full min-h-0 w-full min-w-0 flex-1"
               >
                 <MoodTimeline
                   timeline={timeline}
