@@ -6,25 +6,20 @@ import { taskDueDayKey } from "./date";
  * One month of a contract's kept days.
  *
  * GET /habits/:id/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD
- * returns `{ from, to, dates }`. `dates` are the YYYY-MM-DD days the
- * contract was kept. The range is capped at about 62 days, so each request
- * is one calendar month (the Monday-start grid, including the leading and
- * trailing days).
+ * The range is inclusive and at most 62 days. A calendar month, including
+ * the Monday-start leading and trailing days, fits in that cap.
  *
- * Days before the contract was signed come from `signedAt` or `createdAt`
- * on that response when the API sends one, and otherwise from the habit's
- * own `createdAt`.
+ * 200 `{ from, to, dates }`. `dates` are YYYY-MM-DD, ascending, and only
+ * the days that were kept. Days before the contract come from `createdAt`
+ * on GET /habits/:id, an ISO timestamp. There is no signed date on this
+ * response.
  */
 export const CHECKIN_RANGE_MAX_DAYS = 62;
-
-const SIGNED_FIELDS = ["signedAt", "signedOn", "createdAt"] as const;
 
 export type CheckinRecord = {
   from: string;
   to: string;
   dates: string[];
-  /** Local calendar day the contract was signed, when the response includes one. */
-  signedDay: string | null;
 };
 
 export type RecordDay = {
@@ -54,10 +49,8 @@ export function inclusiveDaySpan(from: string, to: string): number {
   return Math.round((endUtc - startUtc) / 86400000) + 1;
 }
 
-function dayFromUnknown(value: unknown): string | null {
-  if (typeof value !== "string" || !value) return null;
-  const day = taskDueDayKey(value);
-  return isCalendarDayKey(day) ? day : null;
+function calendarDay(value: unknown): string | null {
+  return typeof value === "string" && isCalendarDayKey(value) ? value : null;
 }
 
 /** The month grid the calendar already uses, kept inside the API's range cap. */
@@ -77,32 +70,24 @@ export function checkinsPath(habitId: number, anchor: string): string {
 export function parseCheckins(body: unknown): CheckinRecord | null {
   if (!body || typeof body !== "object") return null;
   const record = body as Record<string, unknown>;
-  const from = dayFromUnknown(record.from);
-  const to = dayFromUnknown(record.to);
-  if (!from || !to || !Array.isArray(record.dates)) return null;
+  const from = calendarDay(record.from);
+  const to = calendarDay(record.to);
+  if (!from || !to || from > to || !Array.isArray(record.dates)) return null;
+  if (inclusiveDaySpan(from, to) > CHECKIN_RANGE_MAX_DAYS) return null;
   const dates: string[] = [];
   for (const value of record.dates) {
-    const day = dayFromUnknown(value);
+    const day = calendarDay(value);
     if (day && !dates.includes(day)) dates.push(day);
   }
-  let signedDay: string | null = null;
-  for (const field of SIGNED_FIELDS) {
-    signedDay = dayFromUnknown(record[field]);
-    if (signedDay) break;
-  }
-  return { from, to, dates, signedDay };
+  dates.sort();
+  return { from, to, dates };
 }
 
-/**
- * Day the contract was signed. A field on the check-in response wins.
- * Otherwise the habit's `createdAt` is used.
- */
-export function contractSignedDay(
-  habitCreatedAt: string | null | undefined,
-  record: { signedDay: string | null } | null | undefined
-): string | null {
-  if (record?.signedDay) return record.signedDay;
-  return dayFromUnknown(habitCreatedAt);
+/** Local calendar day of the habit's `createdAt` timestamp. */
+export function contractSignedDay(habitCreatedAt: string | null | undefined): string | null {
+  if (typeof habitCreatedAt !== "string" || !habitCreatedAt) return null;
+  const day = taskDueDayKey(habitCreatedAt);
+  return isCalendarDayKey(day) ? day : null;
 }
 
 export function canStepRecordMonth(anchor: string, today: string, direction: -1 | 1): boolean {
@@ -167,5 +152,6 @@ export function applyCheckinDate(record: CheckinRecord, day: string, kept: boole
   if (!isCalendarDayKey(day)) return record;
   const dates = record.dates.filter((value) => value !== day);
   if (kept) dates.push(day);
+  dates.sort();
   return { ...record, dates };
 }

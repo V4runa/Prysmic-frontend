@@ -39,13 +39,16 @@ test("check-ins are the returned days, and a month cannot step past the current 
   const parsed = parseCheckins({
     from: "2026-10-26",
     to: "2026-12-06",
-    dates: ["2026-11-02", "2026-11-02", "nope", "2026-11-18T00:00:00.000Z"],
+    dates: ["2026-11-18", "2026-11-02", "2026-11-02", "nope", "2026-11-18T00:00:00.000Z"],
     signedAt: "2026-10-02T00:00:00.000Z",
   });
   assert.ok(parsed);
   assert.deepEqual(parsed.dates, ["2026-11-02", "2026-11-18"]);
-  assert.equal(parsed.signedDay, "2026-10-02");
+  assert.equal("signedDay" in parsed, false);
   assert.equal(parseCheckins({ from: "2026-11-01", to: "2026-11-30" }), null);
+  assert.equal(parseCheckins({ from: "2026-11-30", to: "2026-11-01", dates: [] }), null);
+  assert.equal(parseCheckins({ from: "2026-02-31", to: "2026-03-01", dates: [] }), null);
+  assert.equal(parseCheckins({ from: "2026-01-01", to: "2026-04-01", dates: [] }), null);
   assert.equal(parseCheckins(null), null);
 
   assert.equal(canStepRecordMonth("2026-11-18", "2026-11-18", 1), false);
@@ -86,17 +89,16 @@ test("weekly and monthly contracts mark only the day that was kept", () => {
   );
 });
 
-test("days before the contract was signed are dimmed, including a stray earlier check-in", () => {
-  assert.equal(contractSignedDay("2026-10-02T00:00:00.000Z", null), "2026-10-02");
-  assert.equal(
-    contractSignedDay("2026-01-01T00:00:00.000Z", { signedDay: "2026-10-02" }),
-    "2026-10-02"
-  );
+test("days before the contract was signed come from the habit createdAt", () => {
+  assert.equal(contractSignedDay("2026-10-02T00:00:00.000Z"), "2026-10-02");
+  assert.equal(contractSignedDay("2026-10-02"), "2026-10-02");
+  assert.equal(contractSignedDay(""), null);
+  assert.equal(contractSignedDay(null), null);
   const days = flat(
     buildRecordDays({
       anchor: "2026-10-18",
       today: "2026-11-18",
-      signedDay: contractSignedDay("2026-10-02T00:00:00.000Z", { signedDay: null }),
+      signedDay: contractSignedDay("2026-10-02T00:00:00.000Z"),
       dates: ["2026-10-01", "2026-10-02", "2026-10-05"],
     })
   );
@@ -111,7 +113,7 @@ test("days before the contract was signed are dimmed, including a stray earlier 
   assert.equal(later?.kept, true);
 
   const updated = applyCheckinDate(
-    { from: "2026-10-01", to: "2026-10-31", dates: ["2026-10-02"], signedDay: "2026-10-02" },
+    { from: "2026-10-01", to: "2026-10-31", dates: ["2026-10-02"] },
     "2026-10-05",
     true
   );

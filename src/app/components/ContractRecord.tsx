@@ -74,7 +74,7 @@ export default function ContractRecord({
     },
   });
 
-  const signedDay = contractSignedDay(createdAt, query.data);
+  const signedDay = contractSignedDay(createdAt);
   const weeks = query.data
     ? buildRecordDays({
         anchor,
