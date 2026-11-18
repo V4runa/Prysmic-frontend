@@ -54,7 +54,9 @@ import { useWritingGuard } from "../useWritingGuard";
 import TagChip from "../../components/TagChip";
 import TagPicker from "../../components/TagPicker";
 import NoteActionsMenu from "../../components/NoteActionsMenu";
-import { taskHref } from "../../lib/calendarDay";
+import { parseResourceId, taskHref } from "../../lib/calendarDay";
+import { isMissingRecord } from "../../lib/missingRecord";
+import MissingRecord from "../../components/MissingRecord";
 import {
   readOriginatedContracts,
   readOriginatedTasks,
@@ -143,7 +145,8 @@ export default function ViewNotePage() {
     return ownerForDraftWrite(sessionOwnerRef.current, tokenOwner);
   };
 
-  const numericNoteId = noteId ? Number(noteId) : null;
+  const resourceId = parseResourceId(noteId);
+  const numericNoteId = resourceId;
   const {
     attachments,
     upload: uploadAttachment,
@@ -154,15 +157,18 @@ export default function ViewNotePage() {
     data: note = null,
     isLoading: loading,
     isError,
+    error: loadFailure,
   } = useQuery({
     queryKey: ["note", noteId],
-    queryFn: () => apiFetch<Note>(`/notes/${noteId}`),
-    enabled: !!noteId,
+    queryFn: () => apiFetch<Note>(`/notes/${resourceId}`),
+    enabled: resourceId != null,
+    retry: (failureCount, err) => !isMissingRecord(err) && failureCount < 3,
   });
 
-  const { data: availableTags = [] } = useTags(!!noteId);
+  const { data: availableTags = [] } = useTags(resourceId != null);
 
   const loadFailed = isError && !note;
+  const noteMissing = resourceId == null || (loadFailed && isMissingRecord(loadFailure));
   const showEditor = shouldShowNoteEditor(loading, loadFailed);
   const noteReady = !!note;
   const contracts = readOriginatedContracts(note?.originatedContracts);
@@ -473,6 +479,27 @@ export default function ViewNotePage() {
 
   const attachmentsEditable = editing || attachmentItems.length > 0;
 
+  if (noteMissing || loadFailed) {
+    return (
+      <PageTransition>
+        <div className="note-print-root w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
+          <GlassPanel className="note-print-sheet flex h-full min-h-0 w-full max-w-[1400px] flex-col">
+            <MissingRecord
+              title={noteMissing ? "Not found" : "Could not load"}
+              message={
+                noteMissing
+                  ? "This note isn't here."
+                  : "This note could not be loaded."
+              }
+              backHref="/notes"
+              backLabel="Back to notes"
+            />
+          </GlassPanel>
+        </div>
+      </PageTransition>
+    );
+  }
+
   const editedText = noteHtmlToText(editedContent);
   const wordCount = editedText ? editedText.split(/\s+/).length : 0;
 
@@ -557,15 +584,9 @@ export default function ViewNotePage() {
         </div>
 
         {!showEditor ? (
-          loading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <Spinner label="Unrolling your note..." />
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-red-400 text-lg">Note could not be found.</p>
-            </div>
-          )
+          <div className="flex-1 flex items-center justify-center">
+            <Spinner label="Unrolling your note..." />
+          </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0">
             {actionError && (

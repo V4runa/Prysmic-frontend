@@ -57,13 +57,35 @@ export function taskHref(id: number): string {
   return `/tasks?task=${id}`;
 }
 
-/** Positive task id from `task` on the tasks page. */
-export function parseTaskFocus(search: string): number | null {
-  const raw = new URLSearchParams(search).get("task");
-  if (!raw || !/^\d+$/.test(raw)) return null;
-  const id = Number(raw);
-  if (!Number.isInteger(id) || id <= 0) return null;
+/**
+ * Positive integer id from a route segment or query value.
+ * Postgres integer keys stop at 2147483647. Anything past that cannot be a
+ * real note, task, or contract, and the API answers 500 if it is sent.
+ */
+export function parseResourceId(value: string | null | undefined): number | null {
+  if (!value || !/^\d+$/.test(value)) return null;
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0 || id > 2147483647) return null;
   return id;
+}
+
+/** Positive task id from `task` on the tasks page. Absent and malformed are both null. */
+export function parseTaskFocus(search: string): number | null {
+  return parseResourceId(new URLSearchParams(search).get("task"));
+}
+
+export type TaskParamState =
+  | { kind: "absent" }
+  | { kind: "invalid" }
+  | { kind: "id"; id: number };
+
+/** `task` on the tasks page. Absent is the list itself. An empty or bad value is invalid. */
+export function taskParamState(search: string): TaskParamState {
+  const params = new URLSearchParams(search);
+  if (!params.has("task")) return { kind: "absent" };
+  const id = parseResourceId(params.get("task"));
+  if (id == null) return { kind: "invalid" };
+  return { kind: "id", id };
 }
 
 export function habitHref(id: number, day?: string): string {

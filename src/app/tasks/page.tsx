@@ -16,7 +16,9 @@ import TaskFilters, {
 import { apiFetch } from "../hooks/useApi";
 import { useTasks, useInvalidateTasks } from "../hooks/useTasks";
 import { useTags } from "../hooks/useTags";
-import { parseTaskFocus } from "../lib/calendarDay";
+import { taskParamState } from "../lib/calendarDay";
+import { isFocusedTaskMissing } from "../lib/missingRecord";
+import MissingRecord from "../components/MissingRecord";
 import { isNoteNotFound, parseOriginNoteId } from "../notes/noteMenu";
 import { parseTagIds, tagFilterHref, taskMatchesTag } from "../lib/tagQuery";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,7 +29,8 @@ export default function TasksPage() {
   const searchParams = useSearchParams();
   const search = searchParams.toString();
   const tagId = parseTagIds(search)[0] ?? null;
-  const focusTaskId = parseTaskFocus(search);
+  const focus = taskParamState(search);
+  const focusTaskId = focus.kind === "id" ? focus.id : null;
   const originNoteId = parseOriginNoteId(searchParams.get("originNoteId"));
   const [originTitle, setOriginTitle] = useState("");
   const [originError, setOriginError] = useState("");
@@ -170,6 +173,31 @@ export default function TasksPage() {
     const timer = window.setTimeout(scrollToTask, 400);
     return () => window.clearTimeout(timer);
   }, [focusTaskId, visibleTasks]);
+
+  const taskMissing = isFocusedTaskMissing(
+    focus,
+    allTasks.isPending ? undefined : allTasks.data
+  );
+  const taskUnloaded = focus.kind === "id" && allTasks.isError && allTasks.data == null;
+
+  if (taskMissing || taskUnloaded) {
+    return (
+      <PageTransition>
+        <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
+          <GlassPanel className="app-workspace flex h-full min-h-0 flex-col">
+            <MissingRecord
+              title={taskMissing ? "Not found" : "Could not load"}
+              message={
+                taskMissing ? "This task isn't here." : "This task could not be loaded."
+              }
+              backHref="/tasks"
+              backLabel="Back to tasks"
+            />
+          </GlassPanel>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
