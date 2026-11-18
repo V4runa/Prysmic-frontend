@@ -206,7 +206,7 @@ export default function MoodPage() {
   const outerClass =
     "w-full app-page-h flex flex-col items-center px-3 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-10";
   const panelClass =
-    "app-workspace-moods h-full min-h-0 flex flex-col items-stretch justify-start relative overflow-hidden pb-6";
+    "mood-stable-glass app-workspace-moods h-full min-h-0 flex flex-col items-stretch justify-start relative overflow-hidden pb-6";
 
   return (
     <PageTransition>

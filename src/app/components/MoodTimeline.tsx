@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import clsx from "clsx";
@@ -22,6 +22,18 @@ interface MoodEntry {
   backfilled?: boolean;
 }
 
+function useFinePointer(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const query = window.matchMedia("(hover: hover) and (pointer: fine)");
+      query.addEventListener("change", notify);
+      return () => query.removeEventListener("change", notify);
+    },
+    () => window.matchMedia("(hover: hover) and (pointer: fine)").matches,
+    () => true
+  );
+}
+
 interface MoodTimelineProps {
   timeline?: MoodEntry[];
   /** YYYY-MM-DD to bring into view when opening a mood from the calendar. */
@@ -39,6 +51,7 @@ export default function MoodTimeline({
   onSaveTodayNote,
 }: MoodTimelineProps) {
   const today = useLogicalToday();
+  const finePointer = useFinePointer();
   // Count consecutive logical days that have at least one *organically logged*
   // mood entry, walking backwards from the current logical day.
   // Backfilled entries — moods added retroactively through the calendar — are
@@ -159,11 +172,11 @@ export default function MoodTimeline({
 
                 <motion.div
                   className={clsx(
-                    "min-w-0 bg-white/[0.05] border border-white/10 rounded-2xl p-3 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-all duration-300",
+                    "min-w-0 rounded-2xl border border-white/10 bg-[#14161e]/90 p-3 shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-all duration-300 sm:bg-white/[0.05] sm:p-6 sm:backdrop-blur-md",
                     cc.cardHover,
                     focused && "ring-1 ring-cyan-300/50"
                   )}
-                  whileHover={isToday ? undefined : { scale: 1.02, y: -2 }}
+                  whileHover={!finePointer || isToday ? undefined : { scale: 1.02, y: -2 }}
                 >
                   <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 sm:flex-nowrap sm:justify-between">
                     <div className="flex min-w-0 max-w-full flex-[1_1_100%] flex-wrap items-center gap-x-2.5 gap-y-0.5 sm:flex-1 sm:flex-nowrap sm:gap-3">
