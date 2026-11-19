@@ -110,7 +110,11 @@ export default function GuideRibbon({
         <button
           type="button"
           onClick={onLeave}
-          className="tap-target shrink-0 rounded-md px-1.5 py-1 text-xs uppercase tracking-wide text-slate-500 hover:text-slate-300"
+          className="tap-target relative z-10 shrink-0 rounded-full px-3 py-1.5 text-xs uppercase tracking-wide text-slate-300 hover:text-slate-100"
+          style={{
+            background: "#06070a",
+            boxShadow: "0 0 0 5px #06070a, 0 0 18px 6px rgba(6,7,10,0.95)",
+          }}
         >
           {TOUR_COPY.leave}
         </button>
