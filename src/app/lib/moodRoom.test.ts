@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { MOOD_COLOR_VALUES } from "./moodColors";
+import { DEFAULT_MOOD_COLOR, LEGACY_MOOD_META, MOOD_COLORS, MOOD_COLOR_VALUES } from "./moodColors";
 import { tagColorClasses } from "./tagColors";
 import {
+  MOOD_ROOM_ALIASES,
   MOOD_ROOM_POOL,
   MOOD_ROOM_VEIL,
   moodEntryDay,
   moodShellAccent,
   msUntilNextLogicalDay,
+  storedMoodColorTokens,
   todaysMoodColor,
   type MoodShellAccent,
 } from "./moodRoom";
@@ -108,7 +110,36 @@ test("every mood color token becomes one stable shell accent", () => {
   }
   assert.equal(moodShellAccent(null), null);
   assert.equal(moodShellAccent(""), null);
-  assert.equal(moodShellAccent("rainbow"), null);
+  assert.equal(moodShellAccent("   "), null);
+  assert.equal(moodShellAccent("rainbow"), moodShellAccent(DEFAULT_MOOD_COLOR));
+});
+
+test("every color a mood can store resolves to a tint", () => {
+  const tokens = new Set<string>([
+    ...MOOD_COLOR_VALUES,
+    ...Object.values(LEGACY_MOOD_META).map((meta) => meta.color),
+    ...Object.values(MOOD_COLORS).map((color) => color.name.toLowerCase()),
+    ...Object.keys(MOOD_ROOM_ALIASES),
+    "green",
+  ]);
+  assert.deepEqual(new Set(storedMoodColorTokens()), tokens);
+  for (const token of tokens) {
+    const accent = moodShellAccent(token);
+    assert.ok(accent, token);
+    assert.equal(moodShellAccent(token.toUpperCase()), accent);
+  }
+  const green = moodShellAccent("green");
+  assert.ok(green);
+  assert.ok(green.g > green.r && green.g > green.b);
+  assert.notEqual(green, moodShellAccent("rose"));
+  assert.notEqual(green, moodShellAccent("emerald"));
+  assert.equal(moodShellAccent("gold"), moodShellAccent("yellow"));
+  const painted = moodShellAccent("#22c55e");
+  assert.ok(painted);
+  assert.equal(painted.r, 34);
+  assert.equal(painted.g, 197);
+  assert.equal(painted.b, 94);
+  assert.equal(moodShellAccent("#22c55e"), painted);
 });
 
 test("today's mood color follows the logical day and the stored color", () => {
@@ -132,7 +163,14 @@ test("today's mood color follows the logical day and the stored color", () => {
     ),
     "violet"
   );
-  assert.equal(moodShellAccent(todaysMoodColor([{ date: "2026-11-19", color: "nope" }], "2026-11-19")), null);
+  assert.equal(
+    moodShellAccent(todaysMoodColor([{ date: "2026-11-19", color: "nope" }], "2026-11-19")),
+    moodShellAccent(DEFAULT_MOOD_COLOR)
+  );
+  assert.equal(
+    moodShellAccent(todaysMoodColor([{ date: "2026-11-19", color: "green", moodType: "Satisfied" }], "2026-11-19")),
+    moodShellAccent("green")
+  );
 
   const newer = todaysMoodColor(
     [
@@ -165,7 +203,7 @@ test("the room light ends at the rollover hour", () => {
 
 test("note text, tags, and header type keep their contrast under every mood", () => {
   const plain = readingSurface(null);
-  for (const token of MOOD_COLOR_VALUES) {
+  for (const token of storedMoodColorTokens()) {
     const accent = moodShellAccent(token);
     assert.ok(accent);
     const card = readingSurface(accent);
