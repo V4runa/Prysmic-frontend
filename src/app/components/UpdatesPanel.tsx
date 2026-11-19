@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Newspaper, X } from "lucide-react";
 import {
@@ -9,6 +10,7 @@ import {
   comingSoon,
   formatUpdateDate,
   publishedUpdates,
+  readUpdateAction,
   type ProductUpdate,
   type UpdateKind,
 } from "../../content/updates";
@@ -129,7 +131,33 @@ export function UpdatesNavButton({
   );
 }
 
-function UpdateEntry({ entry }: { entry: ProductUpdate }) {
+function UpdateActionLink({
+  entry,
+  onNavigate,
+}: {
+  entry: ProductUpdate;
+  onNavigate?: () => void;
+}) {
+  const action = readUpdateAction(entry);
+  if (!action) return null;
+  return (
+    <Link
+      href={action.href}
+      onClick={onNavigate}
+      className="mt-2 inline-block text-sm text-slate-300 underline decoration-white/20 underline-offset-4 transition-colors hover:text-slate-100 hover:decoration-white/40"
+    >
+      {action.label}
+    </Link>
+  );
+}
+
+function UpdateEntry({
+  entry,
+  onNavigate,
+}: {
+  entry: ProductUpdate;
+  onNavigate?: () => void;
+}) {
   return (
     <article className="border-b border-white/10 pb-4 last:border-b-0">
       <div className="flex flex-wrap items-center gap-2">
@@ -140,6 +168,7 @@ function UpdateEntry({ entry }: { entry: ProductUpdate }) {
       </div>
       <h3 className="selectable-text mt-1.5 text-sm font-medium text-slate-100">{entry.title}</h3>
       <p className="selectable-text mt-1 text-sm leading-relaxed text-slate-300">{entry.summary}</p>
+      <UpdateActionLink entry={entry} onNavigate={onNavigate} />
     </article>
   );
 }
@@ -221,7 +250,9 @@ function UpdatesDialog({
               {updates.length === 0 ? (
                 <p className="text-sm text-slate-400">No updates yet.</p>
               ) : (
-                updates.map((entry) => <UpdateEntry key={entry.id} entry={entry} />)
+                updates.map((entry) => (
+                  <UpdateEntry key={entry.id} entry={entry} onNavigate={onClose} />
+                ))
               )}
             </div>
           </section>
@@ -323,6 +354,7 @@ export function UpdateHighlightCard({
         </div>
         <h2 className="selectable-text mt-2 text-sm font-medium text-slate-100">{entry.title}</h2>
         <p className="selectable-text mt-1 text-sm leading-relaxed text-slate-300">{entry.summary}</p>
+        <UpdateActionLink entry={entry} />
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
