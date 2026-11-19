@@ -14,6 +14,7 @@ interface SpinnerProps {
 export default function Spinner({ label, className = "" }: SpinnerProps) {
   return (
     <div
+      data-tour-loading=""
       className={`flex flex-col items-center justify-center gap-3 text-slate-400 ${className}`}
     >
       <motion.span

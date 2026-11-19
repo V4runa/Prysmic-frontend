@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { springSoft } from "../lib/motion";
+import { TOUR_BEAT, TOUR_EASE } from "./tourBeats";
 import type { RibbonPlace } from "./tourLayout";
 import { TOUR_COPY, TOUR_STOPS, TOUR_WASH, stopAnnouncement, type TourStop } from "./tourStops";
 
@@ -17,6 +17,7 @@ export default function GuideRibbon({
   ack,
   line,
   controls = true,
+  advance = true,
   onBack,
   onNext,
   onNotToday,
@@ -30,6 +31,8 @@ export default function GuideRibbon({
   line?: string | null;
   /** Back and Next. The dots stay either way. */
   controls?: boolean;
+  /** Next and Back stay hidden until the stop has had its beat. */
+  advance?: boolean;
   onBack: () => void;
   onNext: () => void;
   onNotToday: () => void;
@@ -56,7 +59,7 @@ export default function GuideRibbon({
       initial={reduced ? { opacity: 0 } : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: reduced ? 0.15 : 0.2 }}
+      transition={{ duration: reduced ? 0.15 : TOUR_BEAT.wordsOut / 1000, ease: TOUR_EASE }}
     >
       <p className="sr-only" aria-live="polite">
         {line ? `Stop ${index + 1} of ${TOUR_STOPS.length}. ${line}` : stopAnnouncement(index)}
@@ -71,7 +74,7 @@ export default function GuideRibbon({
               style={{ textShadow: WORD_SHADOW }}
               initial={reduced ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={reduced ? { duration: 0.15 } : springSoft}
+              transition={reduced ? { duration: 0.15 } : { duration: TOUR_BEAT.wordsIn / 1000, ease: TOUR_EASE }}
             >
               {line}
             </motion.p>
@@ -84,7 +87,7 @@ export default function GuideRibbon({
                 style={{ textShadow: WORD_SHADOW }}
                 initial={reduced ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={reduced ? { duration: 0.15 } : springSoft}
+                transition={reduced ? { duration: 0.15 } : { duration: TOUR_BEAT.wordsIn / 1000, ease: TOUR_EASE }}
               >
                 {stop.title}
               </motion.h2>
@@ -98,7 +101,7 @@ export default function GuideRibbon({
                   transition={
                     reduced
                       ? { duration: 0.15 }
-                      : { ...springSoft, delay: 0.12 * (lineIndex + 1) }
+                      : { duration: TOUR_BEAT.wordsIn / 1000, ease: TOUR_EASE, delay: 0.08 * (lineIndex + 1) }
                   }
                 >
                   {sentence}
@@ -135,7 +138,13 @@ export default function GuideRibbon({
           ))}
         </div>
         {controls ? (
-          <div className="flex items-center gap-2">
+          <motion.div
+            className="flex items-center gap-2"
+            initial={false}
+            animate={{ opacity: advance ? 1 : 0 }}
+            transition={{ duration: reduced ? 0.15 : 0.35, ease: TOUR_EASE }}
+            style={{ pointerEvents: advance ? "auto" : "none" }}
+          >
             <button
               type="button"
               onClick={onBack}
@@ -160,7 +169,7 @@ export default function GuideRibbon({
                 {TOUR_COPY.next}
               </button>
             )}
-          </div>
+          </motion.div>
         ) : null}
       </div>
     </motion.div>

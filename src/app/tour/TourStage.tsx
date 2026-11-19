@@ -8,10 +8,11 @@ import GuideLantern, { type LanternPose } from "./GuideLantern";
 import GuideRibbon from "./GuideRibbon";
 import LightPool from "./LightPool";
 import TourArrival from "./TourArrival";
-import { focusables, toRect, visibleQuery } from "./tourDom";
-import { clampRect, padRect, placeRibbon, type Rect } from "./tourLayout";
+import { TOUR_BEAT, TOUR_EASE } from "./tourBeats";
+import { focusables, pageIsBusy, toRect, visibleQuery } from "./tourDom";
+import { placeRibbon, type Rect } from "./tourLayout";
 import { tourStopId, type TourState } from "./tourMachine";
-import { PAGE_EASE, SCRIM_ARRIVAL, SCRIM_STOP, TOUR_COPY, TOUR_MOTE, TOUR_STOPS, tourStopByIndex } from "./tourStops";
+import { TOUR_MOTE, TOUR_STOPS, tourStopByIndex } from "./tourStops";
 import { useTourTarget } from "./useTourTarget";
 
 type Tint = { r: number; g: number; b: number } | null;
@@ -21,6 +22,7 @@ type StageProps = {
   name: string | null;
   emailNote: boolean;
   moodTint: Tint;
+  moodToken: string | null;
   onBegin: () => void;
   onDecline: () => void;
   onLeave: () => void;
@@ -31,8 +33,6 @@ type StageProps = {
   onLightDone: () => void;
   onClosingDone: () => void;
 };
-
-const WORD_SHADOW = "0 1px 18px rgba(6,7,10,0.95), 0 0 2px rgba(6,7,10,1)";
 
 function useFrame() {
   const [frame, setFrame] = useState({
@@ -70,13 +70,6 @@ function useFrame() {
   return frame;
 }
 
-function chipFor(color: string): string | null {
-  if (color === TOUR_MOTE.notes) return "note";
-  if (color === TOUR_MOTE.tasks) return "task";
-  if (color === TOUR_MOTE.contracts) return "habit";
-  return null;
-}
-
 function guideColor(token: string | null, tint: Tint, fallback: string): string {
   const accent = moodShellAccent(token);
   if (accent) return `rgb(${accent.r} ${accent.g} ${accent.b})`;
@@ -90,21 +83,18 @@ export default function TourStage(props: StageProps) {
   const frame = useFrame();
   const stop = tourStopByIndex(state.index);
   const stopId = tourStopId(state);
-  const seeking = state.phase === "settle" || state.phase === "present" || state.phase === "ack";
-  const selectors =
-    stopId === "calendar"
-      ? ["[data-tour='calendar-grid']", "[data-tour='calendar-chips']"]
-      : stop
-        ? [stop.target]
-        : [];
+  const skipTarget = stopId === "moods" && Boolean(props.moodToken);
+  const seeking = state.phase === "settle" && !skipTarget;
+  const selectors = stop && !skipTarget ? [stop.target] : [];
   const target = useTourTarget(selectors, seeking, reduced);
   const [arrivalAnchor, setArrivalAnchor] = useState<Rect | null>(null);
   const [waypoint, setWaypoint] = useState<{ x: number; y: number } | null>(null);
-  const [headerPoint, setHeaderPoint] = useState<{ x: number; y: number } | null>(null);
-  const [lightStep, setLightStep] = useState<"color" | "rise" | "bloom">("color");
+  const [departedFor, setDepartedFor] = useState(-2);
+  const [sceneBeat, setSceneBeat] = useState<{ index: number; beat: "drift" | "words" | "ready" } | null>(null);
+  const [keptRect, setKeptRect] = useState<Rect | null>(null);
+  const [keptKey, setKeptKey] = useState("");
   const reported = useRef("");
   const actions = useRef(props);
-  const shownLight = state.phase === "light" ? lightStep : "color";
 
   useEffect(() => {
     actions.current = props;
@@ -141,12 +131,37 @@ export default function TourStage(props: StageProps) {
       reported.current = "";
       return;
     }
+    if (skipTarget) {
+      let cancelled = false;
+      let frame = 0;
+      const started = performance.now();
+      const watch = () => {
+        if (cancelled) return;
+        const waited = performance.now() - started;
+        if ((pageIsBusy() || waited < 40) && waited < 8000) {
+          frame = requestAnimationFrame(watch);
+          return;
+        }
+        const key = String(state.index);
+        if (reported.current === key) return;
+        reported.current = key;
+        actions.current.onTargetReady();
+      };
+      const fonts = document.fonts?.ready ?? Promise.resolve();
+      void fonts.then(() => {
+        if (!cancelled) frame = requestAnimationFrame(watch);
+      });
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(frame);
+      };
+    }
     if (!target.ready) return;
     const key = String(state.index);
     if (reported.current === key) return;
     reported.current = key;
     actions.current.onTargetReady();
-  }, [state.phase, state.index, target.ready]);
+  }, [state.phase, state.index, target.ready, skipTarget]);
 
   useEffect(() => {
     const lock =
@@ -154,50 +169,103 @@ export default function TourStage(props: StageProps) {
       state.phase === "travel" ||
       state.phase === "settle" ||
       state.phase === "present" ||
-      state.phase === "ack";
+      state.phase === "ack" ||
+      state.phase === "light" ||
+      state.phase === "reflect";
     if (!lock) return;
     const nodes = document.querySelectorAll(".app-header, .app-bottom-nav");
     nodes.forEach((node) => node.setAttribute("inert", ""));
     return () => nodes.forEach((node) => node.removeAttribute("inert"));
   }, [state.phase]);
 
+  const rectKey = target.rect
+    ? `${target.rect.x.toFixed(0)}|${target.rect.y.toFixed(0)}|${target.rect.width.toFixed(0)}|${target.rect.height.toFixed(0)}`
+    : "";
+  if (rectKey && rectKey !== keptKey && target.rect) {
+    setKeptRect(target.rect);
+    setKeptKey(rectKey);
+  }
+  const beat =
+    state.phase === "ack"
+      ? "ready"
+      : state.phase !== "present"
+        ? "dark"
+        : reduced
+          ? sceneBeat?.index === state.index && sceneBeat.beat === "ready"
+            ? "ready"
+            : "words"
+          : sceneBeat?.index === state.index
+            ? sceneBeat.beat
+            : "reveal";
+  const covered =
+    state.phase === "settle" ||
+    state.phase === "light" ||
+    (state.phase === "travel" && (reduced || departedFor === state.index));
+
   useEffect(() => {
-    const litLine = state.phase === "light" && state.alreadyLit;
-    if (state.phase !== "present" && state.phase !== "arrival" && !litLine) return;
+    const speaking = (state.phase === "present" || state.phase === "ack") && (beat === "words" || beat === "ready");
+    const litLine = state.phase === "closing" && (state.closing === "lit" || state.closing === "home");
+    if (state.phase !== "arrival" && !speaking && !litLine) return;
     const heading = document.getElementById("tour-heading");
     const timer = window.setTimeout(() => heading?.focus({ preventScroll: true }), reduced ? 40 : 80);
     return () => window.clearTimeout(timer);
-  }, [state.phase, state.index, state.alreadyLit, reduced]);
+  }, [state.phase, state.index, state.closing, beat, reduced]);
 
   useEffect(() => {
     if (state.phase !== "light") return;
-    const id = requestAnimationFrame(() => {
-      setLightStep("color");
-      const word = document.querySelector(".app-header h1");
-      if (word) {
-        const rect = word.getBoundingClientRect();
-        setHeaderPoint({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
-      } else {
-        setHeaderPoint({ x: frame.width / 2, y: 28 });
+    let cancelled = false;
+    let frame = 0;
+    const started = performance.now();
+    const watch = () => {
+      if (cancelled) return;
+      const room = document.querySelector("[data-tour='mood-room']");
+      const box = room?.getBoundingClientRect();
+      const present = Boolean(box && box.height > 40 && !pageIsBusy());
+      if (present || performance.now() - started > 8000) {
+        actions.current.onLightDone();
+        return;
       }
-    });
-    if (reduced) {
-      const done = window.setTimeout(() => actions.current.onLightDone(), 420);
-      return () => {
-        cancelAnimationFrame(id);
-        window.clearTimeout(done);
-      };
-    }
-    const rise = window.setTimeout(() => setLightStep("rise"), 600);
-    const bloom = window.setTimeout(() => setLightStep("bloom"), 1500);
-    const done = window.setTimeout(() => actions.current.onLightDone(), 2200);
-    return () => {
-      cancelAnimationFrame(id);
-      window.clearTimeout(rise);
-      window.clearTimeout(bloom);
-      window.clearTimeout(done);
+      frame = requestAnimationFrame(watch);
     };
-  }, [state.phase, reduced, frame.width]);
+    frame = requestAnimationFrame(watch);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [state.phase]);
+
+  useEffect(() => {
+    if (state.phase !== "travel" || reduced) return;
+    const index = state.index;
+    const timer = window.setTimeout(() => setDepartedFor(index), TOUR_BEAT.wordsOut);
+    return () => window.clearTimeout(timer);
+  }, [state.phase, state.index, reduced]);
+
+  useEffect(() => {
+    if (state.phase === "travel") return;
+    const timer = window.setTimeout(() => setDepartedFor(-2), 0);
+    return () => window.clearTimeout(timer);
+  }, [state.phase]);
+
+  useEffect(() => {
+    if (state.phase !== "present") return;
+    const index = state.index;
+    if (reduced) {
+      const ready = window.setTimeout(() => setSceneBeat({ index, beat: "ready" }), 420);
+      return () => window.clearTimeout(ready);
+    }
+    const driftAt = TOUR_BEAT.reveal;
+    const wordsAt = driftAt + TOUR_BEAT.drift + TOUR_BEAT.wordsDelay;
+    const readyAt = wordsAt + TOUR_BEAT.wordsIn + TOUR_BEAT.dwell;
+    const drift = window.setTimeout(() => setSceneBeat({ index, beat: "drift" }), driftAt);
+    const words = window.setTimeout(() => setSceneBeat({ index, beat: "words" }), wordsAt);
+    const ready = window.setTimeout(() => setSceneBeat({ index, beat: "ready" }), readyAt);
+    return () => {
+      window.clearTimeout(drift);
+      window.clearTimeout(words);
+      window.clearTimeout(ready);
+    };
+  }, [state.phase, state.index, reduced]);
 
   useEffect(() => {
     if (!(state.phase === "closing" && state.closing === "lit")) return;
@@ -240,6 +308,7 @@ export default function TourStage(props: StageProps) {
         return;
       }
       if (state.phase !== "present" && state.phase !== "ack") return;
+      if (beat !== "ready") return;
       if ((event.key === "ArrowRight" || event.key === "Enter") && !typing) {
         event.preventDefault();
         if (stopId === "moods") actions.current.onNotToday();
@@ -253,52 +322,48 @@ export default function TourStage(props: StageProps) {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [state.phase, stop, stopId]);
+  }, [state.phase, stop, stopId, beat]);
 
-  const scrimOn =
-    state.phase === "arrival" ||
-    state.phase === "travel" ||
-    state.phase === "settle" ||
-    state.phase === "present" ||
-    state.phase === "ack";
-  const strength = state.phase === "arrival" ? SCRIM_ARRIVAL : SCRIM_STOP;
-  const hole = holeFor(stopId, target.rect, frame, state.phase);
-  const showGuide = state.phase !== "closing" && state.phase !== "done" && state.phase !== "idle";
+  const veilOn = state.phase !== "idle" && state.phase !== "done";
+  const speaking =
+    (state.phase === "present" || state.phase === "ack") && (beat === "words" || beat === "ready");
+  const holding = state.phase === "travel" && !covered;
+  const glowOn = holding ? Boolean(keptRect) : beat === "reveal" || beat === "drift" || speaking;
+  const solid =
+    state.phase === "closing"
+      ? 0
+      : state.phase === "arrival" || (holding && !keptRect)
+        ? 0.9
+        : (state.phase === "travel" && covered) || state.phase === "settle" || state.phase === "light"
+          ? 1
+          : state.phase === "reflect"
+            ? 0.45
+            : 0;
+  const fadeMs = reduced
+    ? 180
+    : state.phase === "closing"
+      ? TOUR_BEAT.lift
+      : covered
+        ? TOUR_BEAT.dim
+        : TOUR_BEAT.reveal;
+  const focus = glowOn ? glowFor(target.rect ?? keptRect) : null;
+  const showGuide = state.phase !== "closing" && state.phase !== "done" && state.phase !== "idle" && state.phase !== "light";
   const pose = buildPose({
     state,
     frame,
     target: target.rect,
     arrivalAnchor,
     waypoint,
-    headerPoint,
-    lightStep: shownLight,
+    beat,
     tint: props.moodTint,
     reduced,
   });
-  const anchor = stopId === "moods" ? measure("[data-tour='mood-heading']") : null;
-  const place =
-    stop && (state.phase === "present" || state.phase === "ack")
-      ? placeRibbon({
-          stop: stop.id,
-          phone: frame.phone,
-          keyboard: frame.keyboard,
-          target: hole,
-          anchor,
-          viewport: { width: frame.width, height: frame.height },
-          header: frame.header,
-          tabbar: frame.tabbar,
-        })
-      : null;
-  const alreadyLitFinale =
-    Boolean(stop) &&
-    state.alreadyLit &&
-    (state.phase === "light" || (state.phase === "closing" && state.closing === "lit"));
-  const litPlace =
-    alreadyLitFinale && frame.width > 0
+  const ribbonPlace =
+    speaking && stop && frame.width > 0
       ? placeRibbon({
           stop: "closing",
           phone: frame.phone,
-          keyboard: false,
+          keyboard: frame.keyboard,
           target: null,
           anchor: null,
           viewport: { width: frame.width, height: frame.height },
@@ -306,31 +371,22 @@ export default function TourStage(props: StageProps) {
           tabbar: frame.tabbar,
         })
       : null;
-  const ribbonPlace = place ?? litPlace;
-  const releaseMotes =
-    state.phase === "present" && stopId === "calendar" ? gatheredColors(state.index) : null;
 
   return (
     <>
       <AnimatePresence>
-        {scrimOn ? (
+        {veilOn ? (
           <motion.div
             key="pool"
             className="pointer-events-none fixed inset-0 z-[70]"
             exit={{ opacity: 0 }}
-            transition={{ duration: reduced ? 0.15 : 0.4, ease: "easeOut" }}
+            transition={{ duration: reduced ? 0.18 : TOUR_BEAT.lift / 1000, ease: TOUR_EASE }}
           >
-            <LightPool
-              strength={strength}
-              hole={state.phase === "present" || state.phase === "ack" ? hole : null}
-              tint={props.moodTint}
-              showRing={state.phase === "present" || state.phase === "ack"}
-            />
+            <LightPool solid={solid} glow={glowOn ? 1 : 0} focus={focus} fadeMs={fadeMs} />
           </motion.div>
         ) : null}
       </AnimatePresence>
       {showGuide && frame.width > 0 ? <GuideLantern pose={pose} /> : null}
-      {releaseMotes ? <MoteFlight colors={releaseMotes} from={pose} phone={frame.phone} reduced={reduced} /> : null}
       <AnimatePresence>
         {state.phase === "arrival" ? (
           <TourArrival
@@ -353,20 +409,25 @@ export default function TourStage(props: StageProps) {
         ) : null}
         {stop && ribbonPlace ? (
           <GuideRibbon
-            key={litPlace ? "already-lit" : stop.id}
+            key={stop.id}
             stop={stop}
             index={state.index}
             place={ribbonPlace}
             ack={state.phase === "ack" ? state.ackLine : null}
-            line={litPlace ? TOUR_COPY.litLine : null}
-            controls={!litPlace}
-            onBack={props.onBack}
-            onNext={props.onNext}
-            onNotToday={props.onNotToday}
+            advance={beat === "ready"}
+            onBack={() => {
+              if (beat === "ready") props.onBack();
+            }}
+            onNext={() => {
+              if (beat === "ready") props.onNext();
+            }}
+            onNotToday={() => {
+              if (beat === "ready") props.onNotToday();
+            }}
             onLeave={props.onLeave}
           />
         ) : null}
-        {state.phase === "closing" && state.closing && state.closing !== "declined" && state.closing !== "lit" ? (
+        {state.phase === "closing" && state.closing && state.closing !== "declined" ? (
           <ClosingLine key={state.closing} kind={state.closing} onDone={props.onClosingDone} />
         ) : null}
       </AnimatePresence>
@@ -388,26 +449,9 @@ function isTyping(target: EventTarget | null): boolean {
   return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 }
 
-function measure(selector: string): Rect | null {
-  const node = visibleQuery(selector);
-  return node ? toRect(node.getBoundingClientRect()) : null;
-}
-
 function guideBeside(rect: Rect, stopId: string | null): { x: number; y: number } {
   if (stopId === "tasks") return { x: rect.x - 16, y: rect.y + 26 };
   return { x: rect.x - 14, y: rect.y - 22 };
-}
-
-function holeFor(
-  stopId: ReturnType<typeof tourStopId>,
-  rect: Rect | null,
-  frame: { width: number; height: number; phone: boolean },
-  phase: TourState["phase"]
-): Rect | null {
-  if (!rect || (phase !== "present" && phase !== "ack" && phase !== "settle")) return null;
-  const pad = stopId === "calendar" || stopId === "moods" ? 8 : 10;
-  if (frame.width < 1) return rect;
-  return clampRect(padRect(rect, pad), frame, 8);
 }
 
 function gatheredColors(index: number): string[] {
@@ -416,14 +460,23 @@ function gatheredColors(index: number): string[] {
     .filter((color): color is string => Boolean(color));
 }
 
+function glowFor(rect: Rect | null): { x: number; y: number; rx: number; ry: number } | null {
+  if (!rect) return null;
+  return {
+    x: rect.x + rect.width / 2,
+    y: rect.y + rect.height / 2,
+    rx: Math.max(rect.width * 0.62, 210),
+    ry: Math.max(rect.height * 0.75, 160),
+  };
+}
+
 function buildPose(input: {
   state: TourState;
   frame: { width: number; height: number; header: number };
   target: Rect | null;
   arrivalAnchor: Rect | null;
   waypoint: { x: number; y: number } | null;
-  headerPoint: { x: number; y: number } | null;
-  lightStep: "color" | "rise" | "bloom";
+  beat: "dark" | "reveal" | "drift" | "words" | "ready";
   tint: Tint;
   reduced: boolean;
 }): LanternPose {
@@ -456,9 +509,15 @@ function buildPose(input: {
       opacity: 1,
     };
   }
-  if (state.phase === "travel") {
-    const point = input.waypoint ?? center;
-    return { ...shared, x: point.x, y: point.y, travel: reduced ? "fade" : "arc", scale: 1, opacity: 1 };
+  if (state.phase === "travel" || state.phase === "settle") {
+    return {
+      ...shared,
+      x: center.x,
+      y: center.y,
+      travel: "wait",
+      scale: 1,
+      opacity: reduced ? 0 : 1,
+    };
   }
   if (state.phase === "reflect") {
     return {
@@ -471,115 +530,17 @@ function buildPose(input: {
       breathe: false,
     };
   }
-  if (state.phase === "light") {
-    const home = input.headerPoint ?? { x: frame.width / 2, y: frame.header / 2 };
-    const blooming = input.lightStep === "bloom";
-    return {
-      ...shared,
-      x: input.lightStep === "color" ? (input.target ? guideBeside(input.target, tourStopId(input.state)).x : center.x) : home.x,
-      y: input.lightStep === "color" ? (input.target ? guideBeside(input.target, tourStopId(input.state)).y : center.y) : home.y,
-      travel: reduced ? "fade" : blooming ? "bloom" : input.lightStep === "rise" ? "rise" : "wait",
-      scale: blooming ? 6 : 1,
-      opacity: blooming ? 0 : 1,
-      breathe: false,
-      motes: [],
-    };
+  if (state.phase === "light" || state.phase === "closing") {
+    return { ...shared, x: center.x, y: center.y, travel: "fade", scale: 1, opacity: 0, breathe: false, motes: [] };
   }
   const lit = input.target ? guideBeside(input.target, tourStopId(input.state)) : center;
+  const drifting = input.beat === "drift";
   return {
     ...shared,
     x: lit.x,
     y: lit.y,
-    travel: reduced ? "fade" : state.phase === "settle" ? "settle" : "wait",
+    travel: reduced ? "fade" : drifting ? "arc" : "wait",
     scale: 1,
     opacity: 1,
   };
-}
-
-function MoteFlight({
-  colors,
-  from,
-  phone,
-  reduced,
-}: {
-  colors: string[];
-  from: LanternPose;
-  phone: boolean;
-  reduced: boolean;
-}) {
-  const [spots, setSpots] = useState<{ color: string; x: number; y: number }[]>([]);
-  const [thread, setThread] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => {
-    const today = visibleQuery("[data-tour='calendar-today']")?.getBoundingClientRect();
-    setSpots(
-      colors.map((color, index) => {
-        const chip = chipFor(color);
-        const node = !phone && chip ? visibleQuery(`[data-tour='calendar-chip-${chip}']`) : null;
-        const rect = node?.getBoundingClientRect();
-        if (rect) return { color, x: rect.x + rect.width / 2, y: rect.y - 8 };
-        if (today) {
-          return {
-            color,
-            x: today.x + today.width / 2 + (index - (colors.length - 1) / 2) * 8,
-            y: today.y + today.height * 0.62,
-          };
-        }
-        return { color, x: from.x, y: from.y };
-      })
-    );
-    if (phone) {
-      setThread(null);
-      return;
-    }
-    const note = visibleQuery("[data-tour='calendar-chip-note']")?.getBoundingClientRect();
-    const task = visibleQuery("[data-tour='calendar-chip-task']")?.getBoundingClientRect();
-    if (!note || !task) {
-      setThread(null);
-      return;
-    }
-    setThread({
-      x1: note.x + note.width / 2,
-      y1: note.y + note.height / 2,
-      x2: task.x + task.width / 2,
-      y2: task.y + task.height / 2,
-    });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [colors, from.x, from.y, phone]);
-
-  return (
-    <div aria-hidden="true">
-      {thread ? (
-        <svg className="pointer-events-none fixed inset-0 z-[73] h-full w-full">
-          <motion.line
-            x1={thread.x1}
-            y1={thread.y1}
-            x2={thread.x2}
-            y2={thread.y2}
-            stroke={TOUR_MOTE.tags}
-            strokeWidth={1}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: reduced ? 0.75 : [0, 0.9, 0] }}
-            transition={{ duration: reduced ? 0.15 : 0.8, delay: reduced ? 0 : 0.35, ease: "easeOut" }}
-          />
-        </svg>
-      ) : null}
-      {spots.map((spot, index) => (
-        <motion.span
-          key={spot.color}
-          className="pointer-events-none fixed z-[75] h-2 w-2 rounded-full"
-          style={{ background: spot.color, boxShadow: `0 0 8px ${spot.color}`, textShadow: WORD_SHADOW }}
-          initial={{ left: from.x, top: from.y, opacity: reduced ? 1 : 0 }}
-          animate={{ left: spot.x - 4, top: spot.y - 4, opacity: 1 }}
-          transition={
-            reduced
-              ? { duration: 0.15 }
-              : { duration: 0.5, delay: 0.15 * index, ease: PAGE_EASE }
-          }
-        />
-      ))}
-    </div>
-  );
 }

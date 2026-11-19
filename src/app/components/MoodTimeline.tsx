@@ -69,7 +69,7 @@ export default function MoodTimeline({
   }, [focusDay, timeline]);
 
   return (
-    <div className="app-scroll relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 pb-24 sm:pt-32 sm:pb-20">
+    <div data-tour="mood-room" className="app-scroll relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 pb-24 sm:pt-32 sm:pb-20">
       {/* 🔥 Streak header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

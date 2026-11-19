@@ -25,6 +25,7 @@ import {
   takeTourRequest,
   type TourSeenValue,
 } from "./tourSeen";
+import { departDelay, TOUR_BEAT } from "./tourBeats";
 import { TOUR_COPY, TOUR_STOPS, routeMatches, stopIndexForPath, type TourStopId } from "./tourStops";
 
 export type TourApi = {
@@ -187,20 +188,30 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     if (state.phase !== "travel") return;
     const stop = TOUR_STOPS[state.index];
     if (!stop) return;
-    if (routeMatches(pathname, stop.route)) {
-      navigatingTo.current = null;
-      const delay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 40 : 320;
-      const timer = window.setTimeout(() => dispatch({ type: "arrived" }), delay);
-      return () => window.clearTimeout(timer);
-    }
-    navigatingTo.current = stop.route;
+    let cancelled = false;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const timer = window.setTimeout(() => {
-      if (navigatingTo.current !== stop.route) return;
+      if (cancelled) return;
+      if (routeMatches(window.location.pathname, stop.route)) {
+        navigatingTo.current = null;
+        dispatch({ type: "arrived" });
+        return;
+      }
+      navigatingTo.current = stop.route;
       router.push(stop.route);
-    }, reduced ? 150 : 420);
-    return () => window.clearTimeout(timer);
-  }, [state.phase, state.index, pathname, router]);
+    }, departDelay(reduced));
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [state.phase, state.index, router]);
+
+  useEffect(() => {
+    if (state.phase !== "travel") return;
+    if (!navigatingTo.current || !routeMatches(pathname, navigatingTo.current)) return;
+    navigatingTo.current = null;
+    dispatch({ type: "arrived" });
+  }, [state.phase, pathname]);
 
   useEffect(() => {
     if (!tourOverlayActive(state)) return;
@@ -252,7 +263,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (state.phase !== "closing") return;
-    const delay = state.closing === "declined" ? 450 : state.closing === "home" ? 7000 : 5000;
+    const delay = state.closing === "home" || state.closing === "lit" ? TOUR_BEAT.lift + 700 : TOUR_BEAT.lift + 200;
     const timer = window.setTimeout(() => dispatch({ type: "closing-done" }), delay);
     return () => window.clearTimeout(timer);
   }, [state.phase, state.closing]);
@@ -321,6 +332,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
             name={identity.username}
             emailNote={readSignupEmailNote()}
             moodTint={moodTint}
+            moodToken={room.token}
             onBegin={() => dispatch({ type: "begin" })}
             onDecline={() => dispatch({ type: "decline" })}
             onLeave={() => dispatch({ type: "leave" })}

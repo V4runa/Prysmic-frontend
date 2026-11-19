@@ -115,7 +115,7 @@ export default function TagsPage() {
         </div>
 
         {/* Tags Grid */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div data-tour="tags-codex" className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto app-scroll p-1">
             {isLoading && tags.length === 0 ? (
               <div className="wide-grid-tags grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">

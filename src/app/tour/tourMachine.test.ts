@@ -29,6 +29,11 @@ test("every stop carries its route, target, and the approved copy", () => {
     ["notes", "tags", "tasks", "contracts", "calendar", "moods"]
   );
   assert.equal(TOUR_STOPS[0]?.route, "/notes");
+  assert.equal(TOUR_STOPS[0]?.target, "[data-tour='notes-feed']");
+  assert.equal(TOUR_STOPS[1]?.target, "[data-tour='tags-codex']");
+  assert.equal(TOUR_STOPS[2]?.target, "[data-tour='tasks-add']");
+  assert.equal(TOUR_STOPS[3]?.target, "[data-tour='contracts-list']");
+  assert.equal(TOUR_STOPS[4]?.target, "[data-tour='calendar-grid']");
   assert.equal(TOUR_STOPS[1]?.route, "/tags");
   assert.equal(TOUR_STOPS[1]?.waypoint, "[data-tour='manage-tags']");
   assert.equal(TOUR_STOPS[2]?.route, "/tasks");
@@ -180,7 +185,7 @@ test("a mood already logged skips the question and lights the room", () => {
   const closing = tourReducer(settled, { type: "light-done" });
   assert.equal(closing.closing, "lit");
   assert.equal(tourHoldsMoodTimeline(closing), false);
-  assert.equal(tourHoldsMoodTimeline(settled), true);
+  assert.equal(tourHoldsMoodTimeline(settled), false);
 });
 
 test("ignored events do not skip ahead, and a replay can open again from done", () => {

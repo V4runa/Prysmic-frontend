@@ -1,20 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { scrollIntoPanel, toRect, visibleQuery, visibleRects } from "./tourDom";
+import { pageIsBusy, scrollIntoPanel, toRect, visibleQuery, visibleRects } from "./tourDom";
 import { unionRect, type Rect } from "./tourLayout";
 
 const FALLBACK = "main h1, main h2";
-const GIVE_UP_MS = 4000;
+const GIVE_UP_MS = 8000;
 
-function rectKey(box: Rect): string {
-  return [box.x, box.y, box.width, box.height].map((value) => value.toFixed(1)).join(",");
+function far(a: Rect, b: Rect): boolean {
+  return Math.abs(a.x - b.x) > 16 || Math.abs(a.y - b.y) > 16 || Math.abs(a.width - b.width) > 16 || Math.abs(a.height - b.height) > 16;
 }
 
 /**
- * Find the lit control and keep following it. The first stable reading lets
- * the stop present; measurement continues after that, because a phone layout
- * can still shift when fonts finish or the route animation settles.
+ * Measure the lit subject once it has settled. Small later shifts are ignored
+ * so the glow does not jitter while the page finishes painting.
  */
 export function useTourTarget(
   selectors: readonly string[],
@@ -37,116 +36,80 @@ export function useTourTarget(
 
     let cancelled = false;
     let frame = 0;
-    let stillSince = 0;
+    let still = 0;
     let last: Rect | null = null;
-    let lastPublished = "";
+    let locked: Rect | null = null;
     let scrolled = false;
-    let markedReady = false;
-    let observer: ResizeObserver | null = null;
-    let watching: HTMLElement | null = null;
     const started = performance.now();
 
     const publish = (box: Rect) => {
-      const nextKey = rectKey(box);
-      if (nextKey === lastPublished) return;
-      lastPublished = nextKey;
+      locked = box;
       setRect(box);
     };
 
-    const watch = (element: HTMLElement) => {
-      if (watching === element && observer) return;
-      observer?.disconnect();
-      watching = element;
-      observer = new ResizeObserver(() => {
-        const box = unionRect(visibleRects(selectors).rects);
-        if (box) publish(box);
-      });
-      let node: HTMLElement | null = element;
-      while (node) {
-        observer.observe(node);
-        node = node.parentElement;
-      }
+    const finish = (box: Rect) => {
+      publish(box);
+      setReady(true);
     };
 
     const read = () => {
-      const found = visibleRects(selectors);
-      const box = unionRect(found.rects);
-      if (found.element && box) {
-        watch(found.element);
-        const settled =
-          last !== null &&
-          Math.abs(box.x - last.x) < 0.6 &&
-          Math.abs(box.y - last.y) < 0.6 &&
-          Math.abs(box.width - last.width) < 0.6 &&
-          Math.abs(box.height - last.height) < 0.6;
-        if (settled) {
-          if (stillSince === 0) stillSince = performance.now();
-        } else {
-          stillSince = 0;
-        }
-        last = box;
-        publish(box);
-        const heldStill = stillSince !== 0 && performance.now() - stillSince >= 180;
-        // Scroll only from a settled box. A reading taken while the route is
-        // still moving would park the control, and the pool would stay there.
-        if (!scrolled && heldStill) {
-          scrolled = true;
-          const before = rectKey(box);
-          scrollIntoPanel(found.element, true);
-          const moved = unionRect(visibleRects(selectors).rects);
-          if (moved && rectKey(moved) !== before) {
-            stillSince = 0;
-            last = moved;
-            publish(moved);
-            return;
-          }
-        }
-        if (!markedReady && (heldStill || performance.now() - started >= GIVE_UP_MS)) {
-          markedReady = true;
-          setReady(true);
-        }
+      if (cancelled) return;
+      if (pageIsBusy() && performance.now() - started < GIVE_UP_MS) {
+        still = 0;
+        last = null;
+        frame = requestAnimationFrame(read);
         return;
       }
-      if (!markedReady && performance.now() - started >= GIVE_UP_MS) {
-        const fallback = visibleQuery(FALLBACK);
-        markedReady = true;
-        if (fallback) {
-          const box = toRect(fallback.getBoundingClientRect());
-          watch(fallback);
-          publish(box);
+      const found = visibleRects(selectors);
+      const box = unionRect(found.rects);
+      if (!found.element || !box) {
+        if (performance.now() - started >= GIVE_UP_MS) {
+          const fallback = visibleQuery(FALLBACK);
+          if (fallback) finish(toRect(fallback.getBoundingClientRect()));
+          else setReady(true);
+          return;
         }
-        setReady(true);
+        frame = requestAnimationFrame(read);
+        return;
       }
+      if (!scrolled) {
+        scrolled = true;
+        scrollIntoPanel(found.element, true);
+      }
+      const settled =
+        last !== null &&
+        Math.abs(box.x - last.x) < 0.6 &&
+        Math.abs(box.y - last.y) < 0.6 &&
+        Math.abs(box.width - last.width) < 0.6 &&
+        Math.abs(box.height - last.height) < 0.6;
+      still = settled ? still + 1 : 0;
+      last = box;
+      if (still >= 3 || performance.now() - started >= GIVE_UP_MS) {
+        const fonts = document.fonts?.ready ?? Promise.resolve();
+        void fonts.then(() => {
+          if (cancelled) return;
+          const again = unionRect(visibleRects(selectors).rects) ?? box;
+          finish(again);
+        });
+        return;
+      }
+      frame = requestAnimationFrame(read);
     };
 
-    const loop = () => {
-      if (cancelled) return;
-      read();
-      frame = requestAnimationFrame(loop);
+    const follow = () => {
+      if (!locked) return;
+      const next = unionRect(visibleRects(selectors).rects);
+      if (next && far(next, locked)) publish(next);
     };
-    frame = requestAnimationFrame(loop);
 
-    const onFonts = () => {
-      if (!cancelled) read();
-    };
-    document.fonts?.ready.then(onFonts).catch(() => undefined);
-
-    const follow = () => read();
-    window.addEventListener("scroll", follow, true);
+    frame = requestAnimationFrame(read);
     window.addEventListener("resize", follow);
-    window.visualViewport?.addEventListener("resize", follow);
-    window.visualViewport?.addEventListener("scroll", follow);
-
     return () => {
       cancelled = true;
       cancelAnimationFrame(frame);
-      observer?.disconnect();
-      window.removeEventListener("scroll", follow, true);
       window.removeEventListener("resize", follow);
-      window.visualViewport?.removeEventListener("resize", follow);
-      window.visualViewport?.removeEventListener("scroll", follow);
     };
-    // selectors is represented by key. `reduced` is unused; scroll is instant.
+    // selectors is represented by key. Scroll is instant; `reduced` is unused.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, key, reduced]);
 

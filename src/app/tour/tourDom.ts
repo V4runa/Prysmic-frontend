@@ -4,6 +4,18 @@ export function toRect(dom: DOMRect): Rect {
   return { x: dom.x, y: dom.y, width: dom.width, height: dom.height };
 }
 
+/** True while a page is still fetching. The tour stays dark until this is false. */
+export function pageIsBusy(): boolean {
+  if (typeof document === "undefined") return false;
+  const root = document.querySelector("main") ?? document.body;
+  if (root.querySelector("[data-tour-loading], .animate-pulse")) return true;
+  const nodes = root.querySelectorAll("div, p");
+  for (const node of nodes) {
+    if (node.childElementCount === 0 && node.textContent?.trim() === "Loading...") return true;
+  }
+  return false;
+}
+
 /** The first element that is actually on screen. Hidden desktop/phone twins are skipped. */
 export function visibleQuery(selector: string): HTMLElement | null {
   if (typeof document === "undefined") return null;

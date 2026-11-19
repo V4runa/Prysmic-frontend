@@ -398,6 +398,7 @@ export default function NotesOverviewPage() {
             </div>
           )}
 
+          <div data-tour="notes-feed" className="flex min-h-0 flex-1 flex-col">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
               <Spinner label="Gathering your thoughts..." />
@@ -527,6 +528,7 @@ export default function NotesOverviewPage() {
               </div>
             </div>
           )}
+          </div>
         </GlassPanel>
       </main>
     </div>

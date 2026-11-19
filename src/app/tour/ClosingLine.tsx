@@ -23,7 +23,7 @@ export default function ClosingLine({
   onDone: () => void;
 }) {
   const reduced = useReducedMotion();
-  const delay = kind === "home" && !reduced ? 2 : 0;
+  const delay = 0;
 
   useEffect(() => {
     const onPointer = () => onDone();

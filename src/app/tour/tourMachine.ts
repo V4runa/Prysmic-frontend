@@ -188,12 +188,12 @@ export function tourOverlayActive(state: TourState): boolean {
 }
 
 /**
- * Keep the moods timeline (and its flame) unmounted until the guide has gone.
- * The home finale releases it as the closing line is still waiting, so the
- * timeline can fade in on its own and the flame is never under the tour.
+ * The flame stays unmounted while the tour is still asking.
+ * The finale lets it mount, untouched, before the last line.
  */
 export function tourHoldsMoodTimeline(state: TourState): boolean {
   if (state.phase === "idle" || state.phase === "done") return false;
+  if (state.phase === "light") return false;
   if (state.phase === "closing" && (state.closing === "home" || state.closing === "lit")) return false;
   return true;
 }

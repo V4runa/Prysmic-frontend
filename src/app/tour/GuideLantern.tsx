@@ -2,7 +2,8 @@
 
 import { animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { useEffect } from "react";
-import { PAGE_EASE, TOUR_MOTE } from "./tourStops";
+import { TOUR_EASE } from "./tourBeats";
+import { TOUR_MOTE } from "./tourStops";
 
 export type LanternTravel = "center" | "arc" | "settle" | "fade" | "rise" | "bloom" | "wait";
 
@@ -32,6 +33,7 @@ export default function GuideLantern({ pose }: { pose: LanternPose }) {
   useEffect(() => {
     const nextX = pose.x - SIZE / 2;
     const nextY = pose.y - SIZE / 2;
+    if (pose.travel === "wait") return;
     if (reduced || pose.travel === "fade") {
       let cancelled = false;
       const out = animate(fade, 0, { duration: 0.15 });
@@ -47,13 +49,19 @@ export default function GuideLantern({ pose }: { pose: LanternPose }) {
       };
     }
     if (pose.travel === "arc") {
+      const fromX = x.get();
       const fromY = y.get();
-      const mid = Math.min(fromY, nextY) - 40;
-      const xAnim = animate(x, nextX, { duration: 0.7, ease: PAGE_EASE });
-      const yAnim = animate(y, [fromY, mid, nextY], {
+      const midY = Math.min(fromY, nextY) - 28;
+      const midX = fromX + (nextX - fromX) * 0.5;
+      const xAnim = animate(x, [fromX, midX, nextX], {
         duration: 0.7,
         times: [0, 0.5, 1],
-        ease: PAGE_EASE,
+        ease: TOUR_EASE,
+      });
+      const yAnim = animate(y, [fromY, midY, nextY], {
+        duration: 0.7,
+        times: [0, 0.5, 1],
+        ease: TOUR_EASE,
       });
       return () => {
         xAnim.stop();
@@ -61,32 +69,32 @@ export default function GuideLantern({ pose }: { pose: LanternPose }) {
       };
     }
     if (pose.travel === "center") {
-      const xAnim = animate(x, nextX, { duration: 1.2, ease: PAGE_EASE });
-      const yAnim = animate(y, nextY, { duration: 1.2, ease: PAGE_EASE });
+      const xAnim = animate(x, nextX, { duration: 1.2, ease: TOUR_EASE });
+      const yAnim = animate(y, nextY, { duration: 1.2, ease: TOUR_EASE });
       return () => {
         xAnim.stop();
         yAnim.stop();
       };
     }
     if (pose.travel === "rise") {
-      const xAnim = animate(x, nextX, { duration: 0.9, ease: PAGE_EASE });
-      const yAnim = animate(y, nextY, { duration: 0.9, ease: PAGE_EASE });
+      const xAnim = animate(x, nextX, { duration: 0.9, ease: TOUR_EASE });
+      const yAnim = animate(y, nextY, { duration: 0.9, ease: TOUR_EASE });
       return () => {
         xAnim.stop();
         yAnim.stop();
       };
     }
     if (pose.travel === "bloom") {
-      const xAnim = animate(x, nextX, { duration: 0.7, ease: PAGE_EASE });
-      const yAnim = animate(y, nextY, { duration: 0.7, ease: PAGE_EASE });
+      const xAnim = animate(x, nextX, { duration: 0.7, ease: TOUR_EASE });
+      const yAnim = animate(y, nextY, { duration: 0.7, ease: TOUR_EASE });
       return () => {
         xAnim.stop();
         yAnim.stop();
       };
     }
-    const spring = { type: "spring" as const, stiffness: 210, damping: 24 };
-    const xAnim = animate(x, nextX, pose.travel === "settle" ? spring : { duration: 0.45, ease: PAGE_EASE });
-    const yAnim = animate(y, nextY, pose.travel === "settle" ? spring : { duration: 0.45, ease: PAGE_EASE });
+    const glide = { duration: 0.6, ease: TOUR_EASE };
+    const xAnim = animate(x, nextX, glide);
+    const yAnim = animate(y, nextY, glide);
     return () => {
       xAnim.stop();
       yAnim.stop();
@@ -103,11 +111,7 @@ export default function GuideLantern({ pose }: { pose: LanternPose }) {
       initial={false}
       animate={{ scale: reduced ? 1 : pose.scale, opacity: reduced ? undefined : pose.opacity }}
       transition={
-        reduced || pose.travel === "fade"
-          ? { duration: 0.15 }
-          : pose.travel === "bloom"
-            ? { duration: 0.7, ease: PAGE_EASE }
-            : { type: "spring", stiffness: 210, damping: 24 }
+        { duration: reduced || pose.travel === "fade" ? 0.15 : 0.6, ease: TOUR_EASE }
       }
     >
       <motion.div
@@ -147,7 +151,7 @@ export default function GuideLantern({ pose }: { pose: LanternPose }) {
               x: Math.cos(angle) * 22,
               y: Math.sin(angle) * 22,
             }}
-            transition={reduced ? { duration: 0.15 } : { type: "spring", stiffness: 210, damping: 24 }}
+            transition={reduced ? { duration: 0.15 } : { duration: 0.6, ease: TOUR_EASE }}
           />
         );
       })}
