@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { springSoft } from "../lib/motion";
 import type { RibbonPlace } from "./tourLayout";
-import { TOUR_COPY, TOUR_STOPS, stopAnnouncement, type TourStop } from "./tourStops";
+import { TOUR_COPY, TOUR_STOPS, TOUR_WASH, stopAnnouncement, type TourStop } from "./tourStops";
 
 const WORD_SHADOW = "0 1px 18px rgba(6,7,10,0.95), 0 0 2px rgba(6,7,10,1)";
 
@@ -45,6 +45,7 @@ export default function GuideRibbon({
         bottom: place.bottom,
         left: place.left,
         width: place.width,
+        ...TOUR_WASH,
       }}
       initial={reduced ? { opacity: 0 } : { opacity: 0 }}
       animate={{ opacity: 1 }}

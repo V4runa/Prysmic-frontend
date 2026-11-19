@@ -49,6 +49,7 @@ export const TOUR_COPY = {
   leave: "Leave tour",
   leftLine: "The tour is in Settings whenever you want it.",
   homeLine: "Welcome home. You can walk this again anytime from Settings.",
+  litLine: "Your mood already lights the room.",
   back: "Back",
   next: "Next",
 } as const;
@@ -145,7 +146,7 @@ export const TOUR_STOPS: readonly TourStop[] = [
     target: "[data-tour='mood-grid']",
     waypoint: "[data-tour-nav='/moods']",
     title: "Last stop",
-    body: "How are you feeling today?",
+    body: "One small thing before you settle in.",
     ack: null,
     optional: "mood",
     mote: null,
@@ -172,8 +173,19 @@ export function stopIndexForPath(pathname: string): number {
 
 export function welcomeHeading(name: string | null | undefined): string {
   const trimmed = name?.trim() ?? "";
-  return trimmed ? `Welcome, ${trimmed}.` : "Welcome.";
+  if (!trimmed) return "Welcome.";
+  const shown = trimmed.charAt(0).toLocaleUpperCase() + trimmed.slice(1);
+  return `Welcome, ${shown}.`;
 }
+
+/** Soft near-black behind tour words. A gradient, not a blur, so phones stay steady. */
+export const TOUR_WASH = {
+  background:
+    "linear-gradient(180deg, rgba(6,7,10,0.97) 0%, rgba(8,10,14,0.96) 72%, rgba(6,7,10,0.94) 100%)",
+  borderRadius: 18,
+  padding: "14px 16px 12px",
+  boxSizing: "border-box" as const,
+} as const;
 
 export function stopAnnouncement(index: number): string {
   const stop = tourStopByIndex(index);

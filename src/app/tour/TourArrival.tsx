@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { SIGNUP_EMAIL_NOTE } from "../lib/authMessages";
 import { springSoft } from "../lib/motion";
-import { TOUR_COPY, welcomeHeading } from "./tourStops";
+import { TOUR_COPY, TOUR_WASH, welcomeHeading } from "./tourStops";
 
 const WORD_SHADOW = "0 1px 18px rgba(6,7,10,0.95), 0 0 2px rgba(6,7,10,1)";
 
@@ -52,7 +52,7 @@ export default function TourArrival({
       aria-labelledby="tour-heading"
       className="pointer-events-none fixed inset-0 z-[80]"
     >
-      <div className="pointer-events-auto fixed" style={panelStyle}>
+      <div className="pointer-events-auto fixed" style={{ ...panelStyle, ...TOUR_WASH }}>
       <p className="sr-only" aria-live="polite">
         {welcomeHeading(name)} {TOUR_COPY.welcomeLead}
       </p>
@@ -63,7 +63,7 @@ export default function TourArrival({
         style={{ textShadow: WORD_SHADOW }}
         initial={reduced ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ ...rise, delay: delay(1.4) }}
+        transition={{ ...rise, delay: delay(0.35) }}
       >
         {welcomeHeading(name)}
       </motion.h2>
@@ -72,7 +72,7 @@ export default function TourArrival({
         style={{ textShadow: WORD_SHADOW }}
         initial={reduced ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ ...rise, delay: delay(1.7) }}
+        transition={{ ...rise, delay: delay(0.55) }}
       >
         {TOUR_COPY.welcomeLead}
       </motion.p>
@@ -81,7 +81,7 @@ export default function TourArrival({
         style={{ textShadow: WORD_SHADOW }}
         initial={reduced ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ ...rise, delay: delay(2.1) }}
+        transition={{ ...rise, delay: delay(0.75) }}
       >
         {TOUR_COPY.welcomeAsk}
       </motion.p>
@@ -91,7 +91,7 @@ export default function TourArrival({
           style={{ textShadow: WORD_SHADOW }}
           initial={reduced ? false : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ ...rise, delay: delay(2.3) }}
+          transition={{ ...rise, delay: delay(0.9) }}
         >
           {SIGNUP_EMAIL_NOTE}
         </motion.p>
@@ -101,7 +101,7 @@ export default function TourArrival({
           className="mt-6 flex flex-row items-center gap-3"
           initial={reduced ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ ...rise, delay: delay(2.5) }}
+          transition={{ ...rise, delay: delay(1.05) }}
         >
           <Choice onBegin={onBegin} onDecline={onDecline} stacked={false} />
         </motion.div>
@@ -113,7 +113,7 @@ export default function TourArrival({
           style={{ bottom: "calc(var(--bottomnav-h, 0px) + 12px)" }}
           initial={reduced ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ ...rise, delay: delay(2.5) }}
+          transition={{ ...rise, delay: delay(1.05) }}
         >
           <Choice onBegin={onBegin} onDecline={onDecline} stacked />
         </motion.div>

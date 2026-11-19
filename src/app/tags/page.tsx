@@ -91,7 +91,7 @@ export default function TagsPage() {
       <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
       <GlassPanel className="app-workspace flex flex-col gap-4 sm:gap-6 h-full min-h-0">
         {/* Header */}
-        <h2 className="text-slate-100 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-wide">
+        <h2 data-tour-heading tabIndex={-1} className="text-slate-100 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-wide outline-none">
           Tag Codex
         </h2>
 

@@ -224,7 +224,7 @@ export default function CalendarPage() {
           <GlassPanel className="flex-1 min-h-0 flex flex-col gap-3 sm:gap-4">
             {/* Header */}
             <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
-              <h2 className="text-lg sm:text-2xl font-bold text-slate-100 tracking-wide">
+              <h2 data-tour-heading tabIndex={-1} className="text-lg sm:text-2xl font-bold text-slate-100 tracking-wide outline-none">
                 {title}
               </h2>
               <div className="flex items-center gap-1.5 sm:gap-2">

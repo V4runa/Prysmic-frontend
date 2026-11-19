@@ -167,6 +167,7 @@ export default function QuickTaskInput({
 
   return (
     <motion.div
+      data-tour="tasks-add"
       className="mb-6 w-full flex flex-col gap-3"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -181,7 +182,7 @@ export default function QuickTaskInput({
         </p>
       )}
       {/* Title row — inline actions on desktop, stacked compose on mobile */}
-      <div data-tour="tasks-add" className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <TextField
           ref={titleRef}
           placeholder="Add a new task..."

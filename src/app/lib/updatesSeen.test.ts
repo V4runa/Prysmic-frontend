@@ -172,7 +172,7 @@ test("tidier tags on busy notes is unread for someone caught up through the prev
   assert.equal(newest?.title, "A walk through your notebook");
   assert.equal(
     newest?.summary,
-    "A short tour can show you notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings."
+    "A short tour walks you through notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings."
   );
   assert.deepEqual(readUpdateAction(newest!), { label: "Take the tour", href: "/notes?tour=1" });
   assert.equal(mood?.title, "Your mood colors the room");
@@ -245,7 +245,7 @@ test("the published changelog is newest first and ready for a public page", () =
   assert.equal(changelog.updates[0]?.title, "A walk through your notebook");
   assert.equal(
     changelog.updates[0]?.summary,
-    "A short tour can show you notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings."
+    "A short tour walks you through notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings."
   );
   assert.deepEqual(changelog.updates[0]?.action, { label: "Take the tour", href: "/notes?tour=1" });
   assert.equal(changelog.updates[1]?.id, "mood-colors-the-room");

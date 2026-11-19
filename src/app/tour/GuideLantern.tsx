@@ -27,14 +27,24 @@ export default function GuideLantern({ pose }: { pose: LanternPose }) {
   const reduced = useReducedMotion();
   const x = useMotionValue(48);
   const y = useMotionValue(72);
+  const fade = useMotionValue(1);
 
   useEffect(() => {
     const nextX = pose.x - SIZE / 2;
     const nextY = pose.y - SIZE / 2;
     if (reduced || pose.travel === "fade") {
-      x.set(nextX);
-      y.set(nextY);
-      return;
+      let cancelled = false;
+      const out = animate(fade, 0, { duration: 0.15 });
+      void out.then(() => {
+        if (cancelled) return;
+        x.set(nextX);
+        y.set(nextY);
+        animate(fade, pose.opacity, { duration: 0.15 });
+      });
+      return () => {
+        cancelled = true;
+        out.stop();
+      };
     }
     if (pose.travel === "arc") {
       const fromY = y.get();
@@ -81,7 +91,7 @@ export default function GuideLantern({ pose }: { pose: LanternPose }) {
       xAnim.stop();
       yAnim.stop();
     };
-  }, [pose.travel, pose.x, pose.y, reduced, x, y]);
+  }, [pose.travel, pose.x, pose.y, pose.opacity, reduced, x, y, fade]);
 
   const glow = pose.color || TOUR_MOTE.guide;
 
@@ -89,9 +99,9 @@ export default function GuideLantern({ pose }: { pose: LanternPose }) {
     <motion.div
       aria-hidden="true"
       className="pointer-events-none fixed left-0 top-0 z-[74]"
-      style={{ x, y, width: SIZE, height: SIZE }}
+      style={{ x, y, width: SIZE, height: SIZE, opacity: reduced ? fade : undefined }}
       initial={false}
-      animate={{ scale: reduced ? 1 : pose.scale, opacity: pose.opacity }}
+      animate={{ scale: reduced ? 1 : pose.scale, opacity: reduced ? undefined : pose.opacity }}
       transition={
         reduced || pose.travel === "fade"
           ? { duration: 0.15 }

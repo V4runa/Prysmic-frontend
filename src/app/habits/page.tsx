@@ -135,7 +135,7 @@ export default function HabitsPage() {
       <GlassPanel className="app-workspace flex h-full min-h-0 flex-col gap-4 sm:gap-6">
         <div data-tour="contracts-heading" className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Your Contracts</h2>
+            <h2 data-tour-heading tabIndex={-1} className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide outline-none">Your Contracts</h2>
             <p className="text-slate-400 text-sm sm:text-base">Personal commitments you can check in on.</p>
           </div>
           <motion.button

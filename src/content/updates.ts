@@ -67,7 +67,7 @@ export const productUpdates = [
     kind: "new",
     title: "A walk through your notebook",
     summary:
-      "A short tour can show you notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings.",
+      "A short tour walks you through notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings.",
     action: { label: "Take the tour", href: "/notes?tour=1" },
   },
   {

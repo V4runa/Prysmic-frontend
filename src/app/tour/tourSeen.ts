@@ -150,6 +150,22 @@ export function clearTourSignup(storage: Storage, userId: number | null): void {
   }
 }
 
+/**
+ * A direct load of `?tour=1` must open once. The same serial must not open
+ * again when the walk ends, even if the query string is still there.
+ * A later visit (Settings, Updates) is a new serial and may open.
+ */
+export function takeTourRequest(input: {
+  serial: number;
+  handled: number;
+  /** idle and done can open. Anything else is a walk already on screen. */
+  phase: "idle" | "done" | "active";
+}): { start: boolean; handled: number } {
+  if (input.serial <= input.handled) return { start: false, handled: input.handled };
+  if (input.phase === "active") return { start: false, handled: input.handled };
+  return { start: true, handled: input.serial };
+}
+
 /** Body for PATCH /users/me/tour. `{seen:true}` sets the timestamp. `{seen:false}` clears it. */
 export function tourSeenRequestBody(seen: boolean): { seen: boolean } {
   return { seen };

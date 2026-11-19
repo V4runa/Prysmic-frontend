@@ -50,12 +50,13 @@ test("every stop carries its route, target, and the approved copy", () => {
     TOUR_STOPS[4]?.body,
     "Everything meets here. Tasks, contracts, events and moods, day by day."
   );
-  assert.equal(TOUR_STOPS[5]?.body, "How are you feeling today?");
+  assert.equal(TOUR_STOPS[5]?.body, "One small thing before you settle in.");
   assert.equal(TOUR_STOPS[1]?.optional, "tag");
   assert.equal(TOUR_STOPS[2]?.optional, "task");
   assert.equal(TOUR_STOPS[5]?.optional, "mood");
   assert.equal(TOUR_STOPS[3]?.optional, null);
-  assert.equal(welcomeHeading("anu"), "Welcome, anu.");
+  assert.equal(welcomeHeading("anu"), "Welcome, Anu.");
+  assert.equal(welcomeHeading("Ada"), "Welcome, Ada.");
   assert.equal(welcomeHeading("  "), "Welcome.");
   assert.equal(stopAnnouncement(2), `Stop 3 of 6, Tasks. ${TOUR_STOPS[2]?.body}`);
 });
@@ -163,6 +164,23 @@ test("Not today, Leave, and looking alone all end as seen", () => {
   assert.equal(declined.closing, "declined");
   assert.equal(declined.persistSeen, true);
   assert.equal(tourReducer(declined, { type: "closing-done" }).phase, "done");
+});
+
+test("a mood already logged skips the question and lights the room", () => {
+  const moods = walkTo(5);
+  const lit = tourReducer(moods, { type: "target-ready", todayMood: "emerald" });
+  assert.equal(lit.phase, "present");
+  const settled = tourReducer(
+    { ...moods, phase: "settle" },
+    { type: "target-ready", todayMood: "emerald" }
+  );
+  assert.equal(settled.phase, "light");
+  assert.equal(settled.alreadyLit, true);
+  assert.equal(settled.moodColor, "emerald");
+  const closing = tourReducer(settled, { type: "light-done" });
+  assert.equal(closing.closing, "lit");
+  assert.equal(tourHoldsMoodTimeline(closing), false);
+  assert.equal(tourHoldsMoodTimeline(settled), true);
 });
 
 test("ignored events do not skip ahead, and a replay can open again from done", () => {

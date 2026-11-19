@@ -206,6 +206,21 @@ export default function TourStage(props: StageProps) {
         return;
       }
       const typing = isTyping(event.target);
+      if (event.key === "Tab" && (state.phase === "arrival" || state.phase === "present" || state.phase === "ack")) {
+        const ribbon = document.getElementById("tour-ribbon");
+        const targetNode = stop ? visibleQuery(stop.target) : null;
+        const items = uniqueFocusables([...focusables(ribbon), ...focusables(targetNode)]);
+        if (items.length === 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const current = active ? items.findIndex((item) => item === active || item.contains(active)) : -1;
+        const nextIndex = event.shiftKey
+          ? (current <= 0 ? items.length : current) - 1
+          : (current + 1) % items.length;
+        items[nextIndex]?.focus();
+        return;
+      }
       if (state.phase === "arrival" && event.key === "Enter" && !typing) {
         event.preventDefault();
         actions.current.onBegin();
@@ -221,23 +236,10 @@ export default function TourStage(props: StageProps) {
       if (event.key === "ArrowLeft" && !typing) {
         event.preventDefault();
         actions.current.onBack();
-        return;
-      }
-      if (event.key === "Tab") {
-        const ribbon = document.getElementById("tour-ribbon");
-        const targetNode = stop ? visibleQuery(stop.target) : null;
-        const items = [...focusables(ribbon), ...focusables(targetNode)];
-        if (items.length === 0) return;
-        event.preventDefault();
-        const current = items.indexOf(document.activeElement as HTMLElement);
-        const nextIndex = event.shiftKey
-          ? (current <= 0 ? items.length : current) - 1
-          : (current + 1) % items.length;
-        items[nextIndex]?.focus();
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [state.phase, stop, stopId]);
 
   const scrimOn =
@@ -339,6 +341,15 @@ export default function TourStage(props: StageProps) {
   );
 }
 
+function uniqueFocusables(nodes: HTMLElement[]): HTMLElement[] {
+  const seen = new Set<HTMLElement>();
+  return nodes.filter((node) => {
+    if (seen.has(node) || node.getClientRects().length === 0) return false;
+    seen.add(node);
+    return true;
+  });
+}
+
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
@@ -349,6 +360,11 @@ function measure(selector: string): Rect | null {
   return node ? toRect(node.getBoundingClientRect()) : null;
 }
 
+function guideBeside(rect: Rect, stopId: string | null): { x: number; y: number } {
+  if (stopId === "tasks") return { x: rect.x - 16, y: rect.y + 26 };
+  return { x: rect.x - 14, y: rect.y - 22 };
+}
+
 function holeFor(
   stopId: ReturnType<typeof tourStopId>,
   rect: Rect | null,
@@ -356,10 +372,9 @@ function holeFor(
   phase: TourState["phase"]
 ): Rect | null {
   if (!rect || (phase !== "present" && phase !== "ack" && phase !== "settle")) return null;
-  const extra = stopId === "notes" ? (frame.phone ? 120 : 36) : 0;
-  const pad = stopId === "calendar" || stopId === "moods" ? 10 : 14;
+  const pad = stopId === "calendar" || stopId === "moods" ? 8 : 10;
   if (frame.width < 1) return rect;
-  return clampRect(padRect(rect, pad, extra), frame, 8);
+  return clampRect(padRect(rect, pad), frame, 8);
 }
 
 function gatheredColors(index: number): string[] {
@@ -428,8 +443,8 @@ function buildPose(input: {
     const blooming = input.lightStep === "bloom";
     return {
       ...shared,
-      x: input.lightStep === "color" ? (input.target ? input.target.x + 20 : center.x) : home.x,
-      y: input.lightStep === "color" ? (input.target ? input.target.y : center.y) : home.y,
+      x: input.lightStep === "color" ? (input.target ? guideBeside(input.target, tourStopId(input.state)).x : center.x) : home.x,
+      y: input.lightStep === "color" ? (input.target ? guideBeside(input.target, tourStopId(input.state)).y : center.y) : home.y,
       travel: reduced ? "fade" : blooming ? "bloom" : input.lightStep === "rise" ? "rise" : "wait",
       scale: blooming ? 6 : 1,
       opacity: blooming ? 0 : 1,
@@ -437,9 +452,7 @@ function buildPose(input: {
       motes: [],
     };
   }
-  const lit = input.target
-    ? { x: input.target.x + Math.min(22, input.target.width / 3), y: input.target.y }
-    : center;
+  const lit = input.target ? guideBeside(input.target, tourStopId(input.state)) : center;
   return {
     ...shared,
     x: lit.x,
@@ -472,7 +485,7 @@ function MoteFlight({
         const chip = chipFor(color);
         const node = !phone && chip ? visibleQuery(`[data-tour='calendar-chip-${chip}']`) : null;
         const rect = node?.getBoundingClientRect();
-        if (rect) return { color, x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+        if (rect) return { color, x: rect.x + rect.width / 2, y: rect.y - 8 };
         if (today) {
           return {
             color,

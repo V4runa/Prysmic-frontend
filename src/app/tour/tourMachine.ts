@@ -21,7 +21,7 @@ export type TourPhase =
   | "closing"
   | "done";
 
-export type ClosingKind = "home" | "left" | "not-today" | "declined";
+export type ClosingKind = "home" | "lit" | "left" | "not-today" | "declined";
 
 export type TourState = {
   phase: TourPhase;
@@ -33,6 +33,8 @@ export type TourState = {
   moodColor: string | null;
   /** True once this run should be stored as seen. */
   persistSeen: boolean;
+  /** Today's mood was already logged, so the finale does not ask again. */
+  alreadyLit: boolean;
 };
 
 export const initialTourState: TourState = {
@@ -42,6 +44,7 @@ export const initialTourState: TourState = {
   closing: null,
   moodColor: null,
   persistSeen: false,
+  alreadyLit: false,
 };
 
 export type TourEvent =
@@ -49,7 +52,8 @@ export type TourEvent =
   | { type: "begin" }
   | { type: "decline" }
   | { type: "arrived" }
-  | { type: "target-ready" }
+  | { type: "target-ready"; todayMood?: string | null }
+  | { type: "mood-already"; color: string }
   | { type: "next" }
   | { type: "back" }
   | { type: "align"; index: number }
@@ -90,9 +94,19 @@ export function tourReducer(state: TourState, event: TourEvent): TourState {
       if (state.phase !== "travel") return state;
       return { ...state, phase: "settle" };
 
-    case "target-ready":
+    case "target-ready": {
       if (state.phase !== "settle") return state;
+      const stop = TOUR_STOPS[state.index];
+      if (stop?.id === "moods" && event.todayMood) {
+        return { ...state, phase: "light", moodColor: event.todayMood, alreadyLit: true, ackLine: null };
+      }
       return { ...state, phase: "present" };
+    }
+
+    case "mood-already":
+      if ((state.phase !== "present" && state.phase !== "settle") || !event.color) return state;
+      if (TOUR_STOPS[state.index]?.id !== "moods") return state;
+      return { ...state, phase: "light", moodColor: event.color, alreadyLit: true, ackLine: null };
 
     case "next": {
       if (state.phase !== "present" && state.phase !== "ack") return state;
@@ -153,7 +167,7 @@ export function tourReducer(state: TourState, event: TourEvent): TourState {
 
     case "light-done":
       if (state.phase !== "light") return state;
-      return close(state, "home");
+      return close(state, state.alreadyLit ? "lit" : "home");
 
     case "closing-done":
       if (state.phase !== "closing") return state;
@@ -180,7 +194,7 @@ export function tourOverlayActive(state: TourState): boolean {
  */
 export function tourHoldsMoodTimeline(state: TourState): boolean {
   if (state.phase === "idle" || state.phase === "done") return false;
-  if (state.phase === "closing" && state.closing === "home") return false;
+  if (state.phase === "closing" && (state.closing === "home" || state.closing === "lit")) return false;
   return true;
 }
 

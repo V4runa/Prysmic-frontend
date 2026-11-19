@@ -5,7 +5,6 @@ import { scrollIntoPanel, toRect, visibleQuery, visibleRects } from "./tourDom";
 import { unionRect, type Rect } from "./tourLayout";
 
 const FALLBACK = "main h1, main h2";
-const STABLE_FRAMES = 4;
 const GIVE_UP_MS = 4000;
 
 /**
@@ -33,7 +32,7 @@ export function useTourTarget(
 
     let cancelled = false;
     let frame = 0;
-    let stable = 0;
+    let stillSince = 0;
     let last: Rect | null = null;
     let scrolled = false;
     let observer: ResizeObserver | null = null;
@@ -78,7 +77,7 @@ export function useTourTarget(
 
       if (!scrolled) {
         scrolled = true;
-        scrollIntoPanel(found.element, reduced);
+        scrollIntoPanel(found.element, true);
       }
 
       const settled =
@@ -87,11 +86,16 @@ export function useTourTarget(
         Math.abs(box.y - last.y) < 0.6 &&
         Math.abs(box.width - last.width) < 0.6 &&
         Math.abs(box.height - last.height) < 0.6;
-      stable = settled ? stable + 1 : 0;
+      if (settled) {
+        if (stillSince === 0) stillSince = performance.now();
+      } else {
+        stillSince = 0;
+      }
       last = box;
       publish(box);
 
-      if (stable >= STABLE_FRAMES || performance.now() - started >= GIVE_UP_MS) {
+      const heldStill = stillSince !== 0 && performance.now() - stillSince >= 180;
+      if (heldStill || performance.now() - started >= GIVE_UP_MS) {
         finish(found.element, box);
         return;
       }

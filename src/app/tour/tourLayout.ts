@@ -77,11 +77,19 @@ export function placeRibbon(input: {
     };
   }
 
+  if (!phone && input.stop === "contracts") {
+    return {
+      bottom: Math.max(72, tabbar + 28),
+      left: Math.max(gutter, input.target?.x ?? gutter),
+      width: Math.min(440, viewport.width * 0.4),
+    };
+  }
+
   if (!phone && input.stop === "calendar" && input.target) {
     return {
-      bottom: 24,
-      left: Math.max(gutter, input.target.x + 12),
-      width: Math.min(480, Math.max(240, input.target.width - 24)),
+      bottom: Math.max(88, tabbar + 36),
+      left: Math.max(gutter, input.target.x + 16),
+      width: Math.min(460, Math.max(240, input.target.width - 48)),
     };
   }
 
@@ -98,7 +106,7 @@ export function placeRibbon(input: {
 
   if (input.stop === "closing" || (phone && !input.keyboard)) {
     return {
-      bottom: tabbar + 12,
+      bottom: tabbar + 20,
       left: phone ? gutter : Math.max(gutter, (viewport.width - Math.min(560, width)) / 2),
       width: phone ? width : Math.min(560, viewport.width - gutter * 2),
     };

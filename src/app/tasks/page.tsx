@@ -208,7 +208,7 @@ export default function TasksPage() {
         <GlassPanel className="app-workspace flex h-full min-h-0 flex-col gap-4 sm:gap-6 max-sm:overflow-y-auto max-sm:app-scroll">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <h1 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
+              <h1 data-tour-heading tabIndex={-1} className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide outline-none">
                 Your Tasks
               </h1>
               {activeTab === "active" && (

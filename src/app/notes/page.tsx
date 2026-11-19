@@ -286,7 +286,7 @@ export default function NotesOverviewPage() {
       <main data-tour="notes-panel" className="flex min-h-0 min-w-0 flex-1 flex-col">
         <GlassPanel className="flex h-full min-h-0 w-full min-w-0 flex-col gap-4 sm:gap-6">
           <div className="flex justify-between items-center flex-wrap gap-4">
-            <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
+            <h2 data-tour-heading tabIndex={-1} className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide outline-none">
               Your Notes
             </h2>
             <div className="flex items-center gap-2">

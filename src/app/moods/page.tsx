@@ -217,11 +217,14 @@ export default function MoodPage() {
 
   return (
     <PageTransition>
-      <div className={outerClass}>
+      <div className={outerClass} data-tour-heading tabIndex={-1}>
         <GlassPanel className={panelClass}>
           <AnimatePresence mode="wait">
             {/* 🌞 Pick Phase */}
-            {phase === MoodPhase.PICK && (
+            {phase === MoodPhase.PICK && todayEntry && !replacing ? (
+              <div key="mood-quiet" className="h-full w-full flex-1" />
+            ) : null}
+            {phase === MoodPhase.PICK && (!todayEntry || replacing) && (
               <motion.div
                 key="picker"
                 initial={{ opacity: 0, y: 10 }}

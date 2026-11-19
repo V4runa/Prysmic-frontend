@@ -2,13 +2,14 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect } from "react";
-import { TOUR_COPY } from "./tourStops";
+import { TOUR_COPY, TOUR_WASH } from "./tourStops";
 import type { ClosingKind } from "./tourMachine";
 
 const WORD_SHADOW = "0 1px 18px rgba(6,7,10,0.95), 0 0 2px rgba(6,7,10,1)";
 
 const LINE: Record<Exclude<ClosingKind, "declined">, string> = {
   home: TOUR_COPY.homeLine,
+  lit: TOUR_COPY.litLine,
   left: TOUR_COPY.leftLine,
   "not-today": TOUR_COPY.notTodayLine,
 };
@@ -38,10 +39,11 @@ export default function ClosingLine({
   return (
     <motion.p
       role="status"
-      className="pointer-events-none fixed z-[80] left-4 right-4 text-center text-sm leading-relaxed text-slate-200 sm:left-1/2 sm:w-full sm:max-w-xl sm:-translate-x-1/2 sm:text-base"
+      className="pointer-events-none fixed z-[80] left-4 right-4 text-center text-sm leading-relaxed text-slate-200 sm:left-1/2 sm:right-auto sm:w-full sm:max-w-xl sm:-translate-x-1/2 sm:text-base"
       style={{
-        bottom: "calc(var(--bottomnav-h, 0px) + 1.25rem)",
+        bottom: "max(6.5rem, calc(var(--bottomnav-h, 0px) + 1.5rem))",
         textShadow: WORD_SHADOW,
+        ...TOUR_WASH,
       }}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}

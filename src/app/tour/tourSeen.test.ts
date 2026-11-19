@@ -6,6 +6,7 @@ import {
   TOUR_SIGNUP_KEY,
   clearTourSignup,
   decideTourStart,
+  takeTourRequest,
   forgetLocalSeen,
   markTourSignup,
   readLocalSeen,
@@ -186,6 +187,17 @@ test("the local mirror is per account and the signup flag clears when the tour i
   assert.equal(storage.getItem(TOUR_SIGNUP_KEY), "8");
   clearTourSignup(storage, 8);
   assert.equal(storage.getItem(TOUR_SIGNUP_KEY), null);
+});
+
+test("a direct tour link opens once and does not restart when the walk ends", () => {
+  const first = takeTourRequest({ serial: 1, handled: 0, phase: "idle" });
+  assert.deepEqual(first, { start: true, handled: 1 });
+  const stillThere = takeTourRequest({ serial: 1, handled: first.handled, phase: "done" });
+  assert.deepEqual(stillThere, { start: false, handled: 1 });
+  const whileWalking = takeTourRequest({ serial: 2, handled: 1, phase: "active" });
+  assert.deepEqual(whileWalking, { start: false, handled: 1 });
+  const again = takeTourRequest({ serial: 2, handled: 1, phase: "done" });
+  assert.deepEqual(again, { start: true, handled: 2 });
 });
 
 test("PATCH /users/me/tour is sent as {seen:true} and a failure still mirrors locally", () => {
