@@ -20,6 +20,12 @@ export const UPDATE_KIND_LABELS: Record<UpdateKind, string> = {
   fixed: "Fixed",
 };
 
+/** Optional quiet link on an entry. In-app paths only. */
+export type UpdateAction = {
+  label: string;
+  href: string;
+};
+
 export type ProductUpdate = {
   /** Stable id. Do not reuse or rename an id after it ships. */
   id: string;
@@ -31,7 +37,22 @@ export type ProductUpdate = {
   summary: string;
   /** One-time card the first time someone opens the app after this entry. */
   highlight?: boolean;
+  /** A plain text link, such as "Try it now". Omit when there is nowhere to go. */
+  action?: UpdateAction;
 };
+
+/**
+ * An in-app link, or null when the entry has none or the href is not a path.
+ * Future entries can set `action` without a new field.
+ */
+export function readUpdateAction(entry: {
+  action?: { label?: string; href?: string } | null;
+}): UpdateAction | null {
+  const label = entry.action?.label?.trim() ?? "";
+  const href = entry.action?.href?.trim() ?? "";
+  if (!label || !href.startsWith("/") || href.startsWith("//")) return null;
+  return { label, href };
+}
 
 export type PlannedUpdate = {
   id: string;
@@ -40,6 +61,15 @@ export type PlannedUpdate = {
 };
 
 export const productUpdates = [
+  {
+    id: "mood-colors-the-room",
+    date: "2026-11-19",
+    kind: "new",
+    title: "Your mood colors the room",
+    summary:
+      "Log a mood for today and the notebook takes on that color until your day rolls over. If you have not logged one, nothing changes.",
+    action: { label: "Try it now", href: "/moods" },
+  },
   {
     id: "contract-record",
     date: "2026-11-18",
@@ -249,6 +279,7 @@ export type PublicChangelogEntry = {
   title: string;
   summary: string;
   highlight: boolean;
+  action: UpdateAction | null;
 };
 
 export type PublicChangelogPlan = {
@@ -272,6 +303,7 @@ export function toPublicChangelog(): PublicChangelog {
       title: entry.title,
       summary: entry.summary,
       highlight: entry.highlight === true,
+      action: readUpdateAction(entry),
     })),
     comingSoon: comingSoon.map((item) => ({
       id: item.id,

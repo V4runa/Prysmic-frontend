@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import EmailVerificationPrompt, { syncVerificationProfile } from "./EmailVerificationPrompt";
@@ -15,6 +15,8 @@ import { readSelf } from "../lib/accountProfile";
 import { requestLogout } from "../lib/logout";
 import { syncPersonalCache } from "../lib/personalCache";
 import { usePreferences } from "../hooks/usePreferences";
+import { useMoodRoom } from "../hooks/useMoodRoom";
+import type { MoodShellAccent } from "../lib/moodRoom";
 import { publishSessionProfile } from "../lib/sessionIdentity";
 import {
   clearDraftIfOtherUser,
@@ -33,12 +35,26 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+function moodRoomStyle(paint: MoodShellAccent): CSSProperties {
+  return {
+    "--mood-room-r": String(paint.r),
+    "--mood-room-g": String(paint.g),
+    "--mood-room-b": String(paint.b),
+    "--mood-room-veil": String(paint.veil),
+    "--mood-room-pool": String(paint.pool),
+    "--mood-room-pool-bottom": String(paint.poolBottom),
+    "--mood-room-edge": String(paint.edge),
+    "--mood-room-chrome": String(paint.chrome),
+  } as CSSProperties;
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const { username } = useSessionIdentity();
   const { avatar } = usePreferences();
+  const moodRoom = useMoodRoom();
   const { unread: updatesUnread, highlight: updateHighlight } = useUpdatesSeen();
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const updatesOpenerRef = useRef<HTMLElement | null>(null);
@@ -121,13 +137,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const wanderingLabel = username ? `Wandering as ${username}` : "Account";
 
   return (
-    <div className="min-h-[100dvh] text-slate-100 font-sans relative overflow-hidden">
+    <div
+      className="app-shell min-h-[100dvh] text-slate-100 font-sans relative overflow-hidden"
+      data-mood-lit={moodRoom.accent ? "true" : undefined}
+      data-mood-room={moodRoom.token ?? undefined}
+      style={moodRoom.paint ? moodRoomStyle(moodRoom.paint) : undefined}
+    >
       {/* Scrim over the app-wide prism backdrop (rendered once in
           ClientShellWrapper). Darkens and vignettes the living prism so it
-          recedes into ambience behind dense content while still breathing. */}
+          recedes into ambience behind dense content while still breathing.
+          Today's mood, when there is one, lays a soft wash on top of that —
+          light in the room, not a new theme. */}
       <div className="no-print fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute inset-0 bg-[#06070a]/55" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,7,10,0)_35%,rgba(6,7,10,0.72)_100%)]" />
+        <div
+          className="mood-room-wash absolute inset-0"
+          data-lit={moodRoom.accent ? "true" : "false"}
+          aria-hidden="true"
+        />
       </div>
 
       {/* Top Navigation Bar */}

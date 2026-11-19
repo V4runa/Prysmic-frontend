@@ -357,6 +357,78 @@ select option {
     0 12px 32px -16px rgba(0, 0, 0, 0.5);
 }
 
+/* Today's mood, as room light.
+   One flat gradient. No blur and no filter — those flickered on Android
+   Chrome. The pools fade out before the middle of the page, so notes,
+   tags, and buttons sit on the thin veil only. Channels animate because
+   they are registered custom properties; opacity fades the light in and out. */
+@property --mood-room-r {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --mood-room-g {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --mood-room-b {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.app-shell {
+  transition:
+    --mood-room-r 1.6s ease,
+    --mood-room-g 1.6s ease,
+    --mood-room-b 1.6s ease;
+}
+
+.mood-room-wash {
+  opacity: 0;
+  background:
+    radial-gradient(
+      130% 46% at 50% -16%,
+      rgba(var(--mood-room-r), var(--mood-room-g), var(--mood-room-b), var(--mood-room-pool)) 0%,
+      transparent 68%
+    ),
+    radial-gradient(
+      130% 32% at 50% 118%,
+      rgba(var(--mood-room-r), var(--mood-room-g), var(--mood-room-b), var(--mood-room-pool-bottom)) 0%,
+      transparent 70%
+    ),
+    linear-gradient(
+      rgba(var(--mood-room-r), var(--mood-room-g), var(--mood-room-b), var(--mood-room-veil)),
+      rgba(var(--mood-room-r), var(--mood-room-g), var(--mood-room-b), var(--mood-room-veil))
+    );
+  transition: opacity 1.6s ease;
+}
+
+.mood-room-wash[data-lit="true"] {
+  opacity: 1;
+}
+
+.app-header,
+.app-bottom-nav {
+  transition:
+    border-color 1.6s ease,
+    box-shadow 1.6s ease;
+}
+
+[data-mood-lit] .app-header {
+  border-bottom-color: rgba(var(--mood-room-r), var(--mood-room-g), var(--mood-room-b), var(--mood-room-edge));
+  box-shadow:
+    0 1px 2px 0 rgb(0 0 0 / 0.05),
+    inset 0 0 36px rgba(var(--mood-room-r), var(--mood-room-g), var(--mood-room-b), var(--mood-room-chrome));
+}
+
+[data-mood-lit] .app-bottom-nav {
+  border-top-color: rgba(var(--mood-room-r), var(--mood-room-g), var(--mood-room-b), var(--mood-room-edge));
+  box-shadow: inset 0 0 28px
+    rgba(var(--mood-room-r), var(--mood-room-g), var(--mood-room-b), var(--mood-room-chrome));
+}
+
 /* Reveal hover-gated affordances (remove buttons, quick-add "+", etc.) on
    touch devices, where :hover never fires and the control would otherwise be
    permanently invisible. Pair with `opacity-0 group-hover:opacity-100`. */
