@@ -40,12 +40,16 @@ test("privacy and terms are indexable and listed in the sitemap", async () => {
   assert.equal(privacy.includes("November 9, 2026"), false);
 
   const terms = readFileSync(new URL("../(marketing)/terms/page.tsx", import.meta.url), "utf8");
-  assert.match(terms, /November 9, 2026/);
+  assert.match(terms, /November 19, 2026/);
+  assert.equal(terms.includes("November 9, 2026"), false);
   assert.match(terms, /href="\/privacy"/);
-  assert.match(
-    terms,
-    /Accounts created during early access will keep free access to the features they had during early access\./,
-  );
+  assert.match(terms, /Prysmic is in early access\. Features may change/);
+  assert.match(terms, /our total liability for any claim is limited to US\$50/);
+  assert.equal(terms.includes("Paid plans"), false);
+  assert.equal(/\bfree\b/i.test(terms), false);
+  assert.equal(/\bpaid\b/i.test(terms), false);
+  assert.equal(/\bprice\b/i.test(terms), false);
+  assert.equal(/\bcharg/i.test(terms), false);
 
   const signup = readFileSync(new URL("../signup/page.tsx", import.meta.url), "utf8");
   assert.match(signup, /By creating an account, you agree to the/);

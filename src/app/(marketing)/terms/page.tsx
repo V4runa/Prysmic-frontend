@@ -5,7 +5,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "The terms for using Prysmic. Your writing stays yours, early access is free, and you can delete your account at any time.",
+    "The terms for using Prysmic. Your writing stays yours, and you can delete your account at any time.",
   alternates: { canonical: "/terms" },
 };
 
@@ -33,7 +33,7 @@ export default function TermsPage() {
   return (
     <article className="mx-auto max-w-2xl px-5 py-16 sm:px-8 sm:py-20">
       <h1 className="text-4xl font-semibold text-slate-50">Terms of Service</h1>
-      <p className="mt-3 text-sm text-slate-400">Last updated: November 9, 2026</p>
+      <p className="mt-3 text-sm text-slate-400">Last updated: November 19, 2026</p>
       <div className="mt-8 space-y-8 text-base leading-relaxed text-slate-300">
         <p>
           {`These terms are an agreement between you and Eduardo Martin Gargani ("we"), who runs Prysmic. By creating an account, you agree to them.`}
@@ -67,13 +67,7 @@ export default function TermsPage() {
 
         <Section title="Early access">
           <p>
-            {`Prysmic is in early access and is free. Features may change, and the service may sometimes be unavailable. We back up data nightly, but we can't promise it will never be lost, so please download a copy of anything important.`}
-          </p>
-        </Section>
-
-        <Section title="Paid plans">
-          <p>
-            No price has been set. If we introduce paid plans, we will update these terms and tell you before any charge. Nothing will be charged without your explicit agreement. Accounts created during early access will keep free access to the features they had during early access.
+            {`Prysmic is in early access. Features may change, and the service may sometimes be unavailable. We back up data nightly, but we can't promise it will never be lost, so please download a copy of anything important.`}
           </p>
         </Section>
 
@@ -91,7 +85,7 @@ export default function TermsPage() {
 
         <Section title="Limitation of liability">
           <p>
-            {`To the extent the law allows, we are not liable for indirect, incidental or consequential damages, or for loss of data, and our total liability for any claim is limited to the greater of the amount you paid us in the 12 months before the claim or US$50. Some places don't allow these limits, so they may not fully apply to you. Nothing here limits rights you have under consumer protection laws that cannot be waived.`}
+            {`To the extent the law allows, we are not liable for indirect, incidental or consequential damages, or for loss of data, and our total liability for any claim is limited to US$50. Some places don't allow these limits, so they may not fully apply to you. Nothing here limits rights you have under consumer protection laws that cannot be waived.`}
           </p>
         </Section>
 
