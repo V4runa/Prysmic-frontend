@@ -11,7 +11,7 @@ import TourArrival from "./TourArrival";
 import { focusables, toRect, visibleQuery } from "./tourDom";
 import { clampRect, padRect, placeRibbon, type Rect } from "./tourLayout";
 import { tourStopId, type TourState } from "./tourMachine";
-import { PAGE_EASE, SCRIM_ARRIVAL, SCRIM_STOP, TOUR_MOTE, TOUR_STOPS, tourStopByIndex } from "./tourStops";
+import { PAGE_EASE, SCRIM_ARRIVAL, SCRIM_STOP, TOUR_COPY, TOUR_MOTE, TOUR_STOPS, tourStopByIndex } from "./tourStops";
 import { useTourTarget } from "./useTourTarget";
 
 type Tint = { r: number; g: number; b: number } | null;
@@ -162,11 +162,12 @@ export default function TourStage(props: StageProps) {
   }, [state.phase]);
 
   useEffect(() => {
-    if (state.phase !== "present" && state.phase !== "arrival") return;
+    const litLine = state.phase === "light" && state.alreadyLit;
+    if (state.phase !== "present" && state.phase !== "arrival" && !litLine) return;
     const heading = document.getElementById("tour-heading");
     const timer = window.setTimeout(() => heading?.focus({ preventScroll: true }), reduced ? 40 : 80);
     return () => window.clearTimeout(timer);
-  }, [state.phase, state.index, reduced]);
+  }, [state.phase, state.index, state.alreadyLit, reduced]);
 
   useEffect(() => {
     if (state.phase !== "light") return;
@@ -197,6 +198,18 @@ export default function TourStage(props: StageProps) {
       window.clearTimeout(done);
     };
   }, [state.phase, reduced, frame.width]);
+
+  useEffect(() => {
+    if (!(state.phase === "closing" && state.closing === "lit")) return;
+    const onPointer = () => actions.current.onClosingDone();
+    const timer = window.setTimeout(() => {
+      window.addEventListener("pointerdown", onPointer);
+    }, 400);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pointerdown", onPointer);
+    };
+  }, [state.phase, state.closing]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -276,6 +289,24 @@ export default function TourStage(props: StageProps) {
           tabbar: frame.tabbar,
         })
       : null;
+  const alreadyLitFinale =
+    Boolean(stop) &&
+    state.alreadyLit &&
+    (state.phase === "light" || (state.phase === "closing" && state.closing === "lit"));
+  const litPlace =
+    alreadyLitFinale && frame.width > 0
+      ? placeRibbon({
+          stop: "closing",
+          phone: frame.phone,
+          keyboard: false,
+          target: null,
+          anchor: null,
+          viewport: { width: frame.width, height: frame.height },
+          header: frame.header,
+          tabbar: frame.tabbar,
+        })
+      : null;
+  const ribbonPlace = place ?? litPlace;
   const releaseMotes =
     state.phase === "present" && stopId === "calendar" ? gatheredColors(state.index) : null;
 
@@ -320,20 +351,22 @@ export default function TourStage(props: StageProps) {
             onDecline={props.onDecline}
           />
         ) : null}
-        {stop && place ? (
+        {stop && ribbonPlace ? (
           <GuideRibbon
-            key={stop.id}
+            key={litPlace ? "already-lit" : stop.id}
             stop={stop}
             index={state.index}
-            place={place}
+            place={ribbonPlace}
             ack={state.phase === "ack" ? state.ackLine : null}
+            line={litPlace ? TOUR_COPY.litLine : null}
+            controls={!litPlace}
             onBack={props.onBack}
             onNext={props.onNext}
             onNotToday={props.onNotToday}
             onLeave={props.onLeave}
           />
         ) : null}
-        {state.phase === "closing" && state.closing && state.closing !== "declined" ? (
+        {state.phase === "closing" && state.closing && state.closing !== "declined" && state.closing !== "lit" ? (
           <ClosingLine key={state.closing} kind={state.closing} onDone={props.onClosingDone} />
         ) : null}
       </AnimatePresence>
