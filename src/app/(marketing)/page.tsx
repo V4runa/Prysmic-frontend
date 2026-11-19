@@ -87,9 +87,6 @@ export default function HomePage() {
                 Sign in
               </Link>
             </div>
-            <p className="mt-4 text-sm text-slate-400">
-              Free while Prysmic is in early access.
-            </p>
           </div>
           <figure>
             <div className={frame}>
@@ -258,9 +255,6 @@ export default function HomePage() {
             </Link>
           </p>
         </div>
-        <p className="mt-4 text-sm text-slate-400">
-          Free while Prysmic is in early access.
-        </p>
       </section>
     </>
   );
