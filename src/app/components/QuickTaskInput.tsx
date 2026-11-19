@@ -181,7 +181,7 @@ export default function QuickTaskInput({
         </p>
       )}
       {/* Title row — inline actions on desktop, stacked compose on mobile */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <div data-tour="tasks-add" className="flex flex-col sm:flex-row sm:items-center gap-3">
         <TextField
           ref={titleRef}
           placeholder="Add a new task..."

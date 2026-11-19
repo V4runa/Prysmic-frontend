@@ -94,6 +94,7 @@ function DesktopMonth({
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
+        data-tour="calendar-grid"
         className="flex-1 min-h-0 grid grid-rows-6 gap-1"
       >
         {weeks.map((week, wi) => {
@@ -125,6 +126,7 @@ function DesktopMonth({
                   return (
                     <div
                       key={cell.key}
+                      data-tour={isToday ? "calendar-today" : undefined}
                       onClick={() => onSelectDay(cell.key)}
                       className={clsx(
                         "group relative flex flex-col rounded-lg border px-1.5 pt-1 pb-1.5 overflow-hidden cursor-pointer transition-colors",
@@ -279,6 +281,7 @@ function MobileMonth({
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
+        data-tour="calendar-grid"
         className="flex-1 overflow-y-auto app-scroll min-h-0 grid grid-rows-6 gap-1"
       >
         {weeks.map((week, wi) => (
@@ -303,6 +306,7 @@ function MobileMonth({
               return (
                 <button
                   key={cell.key}
+                  data-tour={isToday ? "calendar-today" : undefined}
                   onClick={() => onSelectDay(cell.key)}
                   className={clsx(
                     "relative flex flex-col items-center justify-start gap-1 rounded-lg border py-1.5 overflow-hidden transition-colors",

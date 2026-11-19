@@ -7,7 +7,8 @@ import { track } from "@vercel/analytics";
 import GlassPanel from "../components/GlassPanel";
 import { ApiError, apiFetch } from "../hooks/useApi";
 import PageTransition from "../components/PageTransition";
-import { markOnboardingPending } from "../components/OnboardingModal";
+import { readSessionClaims } from "../hooks/useAuth";
+import { markTourSignup } from "../tour/tourSeen";
 import { TextField, FormButton } from "../components/forms";
 import PasswordHints from "../components/PasswordHints";
 import { interpretSignupError } from "../lib/authMessages";
@@ -47,7 +48,11 @@ export default function SignupPage() {
         emailVerified: res.emailVerified,
         signedUp: res.emailVerified !== true,
       });
-      markOnboardingPending();
+      try {
+        markTourSignup(localStorage, readSessionClaims()?.userId ?? null);
+      } catch {
+        // The tour still starts once the profile says it has not been seen.
+      }
       track("signup");
       clearTimeout(slowTimer);
       router.push(landingHref());

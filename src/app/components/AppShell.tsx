@@ -16,6 +16,7 @@ import { requestLogout } from "../lib/logout";
 import { syncPersonalCache } from "../lib/personalCache";
 import { usePreferences } from "../hooks/usePreferences";
 import { useMoodRoom } from "../hooks/useMoodRoom";
+import { useTour } from "../tour/TourProvider";
 import type { MoodShellAccent } from "../lib/moodRoom";
 import { publishSessionProfile } from "../lib/sessionIdentity";
 import {
@@ -55,6 +56,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { username } = useSessionIdentity();
   const { avatar } = usePreferences();
   const moodRoom = useMoodRoom();
+  const tour = useTour();
   const { unread: updatesUnread, highlight: updateHighlight } = useUpdatesSeen();
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const updatesOpenerRef = useRef<HTMLElement | null>(null);
@@ -183,9 +185,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.label}
                   href={item.href}
+                  data-tour-nav={item.href}
                   className={`text-xs sm:text-sm hover:text-cyan-300 transition whitespace-nowrap ${
-                    isActive(item.href) ? "text-cyan-300" : "text-slate-300"
-                  }`}
+                    isActive(item.href) || tour.litHref === item.href
+                      ? "text-cyan-300"
+                      : "text-slate-300"
+                  } ${tour.litHref === item.href ? "drop-shadow-[0_0_8px_rgba(103,232,249,0.7)]" : ""}`}
                 >
                   {item.label}
                 </Link>
@@ -225,12 +230,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="app-main relative z-10">
-        <EmailVerificationPrompt />
+        {tour.overlay ? null : <EmailVerificationPrompt />}
         {children}
       </main>
 
       <UpdatesSheet open={updatesOpen} onClose={closeUpdates} returnFocusRef={updatesOpenerRef} />
-      {updateHighlight && !updatesOpen ? (
+      {updateHighlight && !updatesOpen && !tour.overlay ? (
         <UpdateHighlightCard
           entry={updateHighlight}
           onOpen={() => openUpdates(null)}
@@ -256,11 +261,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             );
           }
           const Icon = item.icon!;
-          const active = isActive(item.href);
+          const active = isActive(item.href) || tour.litHref === item.href;
           return (
             <Link
               key={item.label}
               href={item.href}
+              data-tour-nav={item.href}
               className="relative flex min-w-[3.25rem] flex-1 basis-0 flex-col items-center justify-center gap-0.5 pt-1.5"
             >
               {active && (

@@ -20,11 +20,13 @@ import { tactileSubtle } from "../lib/motion";
 import { leastUsedTagColor, tagColorClasses, tagColorKey } from "../lib/tagColors";
 import { notesTagHref, tagDeleteErrorMessage, tagUsageLabel, tasksTagHref } from "../lib/tagQuery";
 import { TextField, FormButton } from "../components/forms";
+import { useTour } from "../tour/TourProvider";
 
 export default function TagsPage() {
   const { data: tags = [], isError, isLoading } = useTags();
   const invalidateTags = useInvalidateTags();
   const createTag = useCreateTag();
+  const tour = useTour();
   const [newTagName, setNewTagName] = useState("");
   const [pickedColor, setPickedColor] = useState<string | null>(null);
   const newTagColor = pickedColor ?? leastUsedTagColor(tags);
@@ -44,6 +46,7 @@ export default function TagsPage() {
     try {
       await createTag(name, newTagColor);
       setNewTagName("");
+      tour.notifyTagCreated();
     } catch (err) {
       setError(tagCreateErrorMessage(err));
     }
@@ -92,6 +95,7 @@ export default function TagsPage() {
           Tag Codex
         </h2>
 
+        <div data-tour="tags-create" className="flex flex-col gap-4">
         {/* Tag creation */}
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <div className="flex-grow min-w-[150px] sm:min-w-[200px]">
@@ -108,6 +112,7 @@ export default function TagsPage() {
         </div>
 
         <TagColorChoices value={newTagColor} onChange={setPickedColor} />
+        </div>
 
         {/* Tags Grid */}
         <div className="flex-1 flex flex-col min-h-0">
@@ -130,6 +135,11 @@ export default function TagsPage() {
                 transition={{ duration: 0.4 }}
                 className="wide-grid-tags grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6"
               >
+                {tags.length === 0 && !isLoading ? (
+                  <p className="col-span-full px-2 py-8 text-center text-slate-400">
+                    No tags yet. A name and a color are enough to start.
+                  </p>
+                ) : null}
                 {tags.map((tag, i) => {
                 const colorClass = tagColorClasses[tagColorKey(tag.color, "cyan")];
                 return (

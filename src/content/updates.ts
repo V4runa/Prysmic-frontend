@@ -62,6 +62,15 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "guided-tour",
+    date: "2026-11-19",
+    kind: "new",
+    title: "A walk through your notebook",
+    summary:
+      "A short tour can show you notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings.",
+    action: { label: "Take the tour", href: "/notes?tour=1" },
+  },
+  {
     id: "mood-colors-the-room",
     date: "2026-11-19",
     kind: "new",

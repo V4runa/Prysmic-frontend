@@ -35,6 +35,7 @@ import DayAgenda from "./components/DayAgenda";
 import ViewSwitcher from "./components/ViewSwitcher";
 import EventModal from "./components/EventModal";
 import CalendarFilters from "./components/CalendarFilters";
+import { useTour } from "../tour/TourProvider";
 
 const SOURCES_STORAGE_KEY = "prysmic.calendarSources";
 
@@ -47,6 +48,9 @@ export default function CalendarPage() {
   const [echoDay, setEchoDay] = useState<string | null>(null);
   const [trackedUrlDay, setTrackedUrlDay] = useState(linkedDay);
   const [view, setView] = useState<CalendarView>(() => (linkedDay ? "day" : "month"));
+  const tour = useTour();
+  // The tour lights the month grid. Keep that view up without writing over theirs.
+  const shownView: CalendarView = tour.stopId === "calendar" ? "month" : view;
   const [anchor, setAnchor] = useState(() => linkedDay ?? localToday());
   const [selectedDay, setSelectedDay] = useState(() => linkedDay ?? localToday());
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -149,31 +153,31 @@ export default function CalendarPage() {
 
   // Fetch window depends on the active view.
   const range = useMemo(() => {
-    if (view === "month") return monthGridRange(anchor);
-    if (view === "week") return weekRange(anchor);
+    if (shownView === "month") return monthGridRange(anchor);
+    if (shownView === "week") return weekRange(anchor);
     return { from: anchor, to: anchor };
-  }, [view, anchor]);
+  }, [shownView, anchor]);
 
   const { data, isLoading, isError } = useCalendarFeed(range.from, range.to);
   const index = useMemo(() => indexFeed(data?.items ?? []), [data]);
 
   const title =
-    view === "month" ? monthLabel(anchor) : view === "week" ? weekLabel(anchor) : dayLabel(anchor);
+    shownView === "month" ? monthLabel(anchor) : shownView === "week" ? weekLabel(anchor) : dayLabel(anchor);
 
   const goPrev = () => {
     const next =
-      view === "month" ? shiftMonth(anchor, -1) : view === "week" ? shiftWeek(anchor, -1) : shiftDay(anchor, -1);
+      shownView === "month" ? shiftMonth(anchor, -1) : shownView === "week" ? shiftWeek(anchor, -1) : shiftDay(anchor, -1);
     setAnchor(next);
-    if (view === "day") {
+    if (shownView === "day") {
       setSelectedDay(next);
       writeDay(next);
     }
   };
   const goNext = () => {
     const next =
-      view === "month" ? shiftMonth(anchor, 1) : view === "week" ? shiftWeek(anchor, 1) : shiftDay(anchor, 1);
+      shownView === "month" ? shiftMonth(anchor, 1) : shownView === "week" ? shiftWeek(anchor, 1) : shiftDay(anchor, 1);
     setAnchor(next);
-    if (view === "day") {
+    if (shownView === "day") {
       setSelectedDay(next);
       writeDay(next);
     }
@@ -210,7 +214,7 @@ export default function CalendarPage() {
     [index, anchor]
   );
 
-  const showSidePanel = view !== "day";
+  const showSidePanel = shownView !== "day";
 
   return (
     <PageTransition>
@@ -247,11 +251,11 @@ export default function CalendarPage() {
                   </button>
                 </div>
 
-                <ViewSwitcher views={availableViews} value={view} onChange={changeView} />
+                <ViewSwitcher views={availableViews} value={shownView} onChange={changeView} />
 
                 <motion.button
                   {...tactile}
-                  onClick={() => openCreate(view === "day" ? anchor : selectedDay)}
+                  onClick={() => openCreate(shownView === "day" ? anchor : selectedDay)}
                   className="tap-target flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-300/30 text-cyan-200 rounded-lg text-xs font-medium"
                 >
                   <Plus className="h-4 w-4" />
@@ -279,7 +283,7 @@ export default function CalendarPage() {
                 <div className="flex-1 flex items-center justify-center">
                   <p className="text-rose-400 text-center">Could not load your calendar.</p>
                 </div>
-              ) : view === "month" ? (
+              ) : shownView === "month" ? (
                 <MonthView
                   anchor={anchor}
                   index={index}
@@ -289,7 +293,7 @@ export default function CalendarPage() {
                   onCreateEvent={openCreate}
                   onOpenEvent={openEvent}
                 />
-              ) : view === "week" ? (
+              ) : shownView === "week" ? (
                 <WeekView
                   anchor={anchor}
                   index={index}
@@ -332,7 +336,7 @@ export default function CalendarPage() {
       {typeof document !== "undefined" &&
         createPortal(
           <AnimatePresence>
-            {sheetOpen && showSidePanel && (
+            {sheetOpen && showSidePanel && tour.stopId !== "calendar" && (
               <motion.div
                 className="xl:hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
                 initial={{ opacity: 0 }}

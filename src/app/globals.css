@@ -453,6 +453,13 @@ select option {
     0 0 0 4px rgba(103, 232, 249, 0.5);
 }
 
+/* The tour heading is focused for keyboard users, but it is not a control. */
+#tour-heading:focus,
+#tour-heading:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
 /* Form controls with .focus-band handle their own glow. */
 input.focus-band:focus-visible,
 textarea.focus-band:focus-visible,
