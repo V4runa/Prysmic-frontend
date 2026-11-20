@@ -843,6 +843,21 @@ function PreferencesSection() {
   );
 }
 
+function TourSection() {
+  const router = useRouter();
+  return (
+    <GlassPanel>
+      <h2 className="text-base font-medium tracking-wide text-slate-100">Tour</h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-400">
+        A one-minute walk through Prysmic.
+      </p>
+      <FormButton type="button" variant="secondary" className="mt-4" onClick={() => router.push("/notes?tour=1")}>
+        Walk the tour again
+      </FormButton>
+    </GlassPanel>
+  );
+}
+
 function DataSection() {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
@@ -901,6 +916,7 @@ export default function SettingsPage() {
           <ProfileSection userId={identity.userId} />
           <SecuritySection userId={identity.userId} />
           <PreferencesSection />
+          <TourSection />
           <DataSection />
         </div>
       </div>

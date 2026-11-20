@@ -22,9 +22,11 @@ import MissingRecord from "../components/MissingRecord";
 import { isNoteNotFound, parseOriginNoteId } from "../notes/noteMenu";
 import { parseTagIds, tagFilterHref, taskMatchesTag } from "../lib/tagQuery";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTour } from "../tour/TourProvider";
 
 export default function TasksPage() {
   const router = useRouter();
+  const tour = useTour();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.toString();
@@ -102,6 +104,7 @@ export default function TasksPage() {
 
   const handleTaskCreated = () => {
     setOriginError("");
+    tour.notifyTaskCreated();
     fetchTasks();
     if (originNoteId != null) {
       void queryClient.invalidateQueries({ queryKey: ["notes"] });
@@ -205,7 +208,7 @@ export default function TasksPage() {
         <GlassPanel className="app-workspace flex h-full min-h-0 flex-col gap-4 sm:gap-6 max-sm:overflow-y-auto max-sm:app-scroll">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <h1 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
+              <h1 data-tour-heading tabIndex={-1} className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide outline-none">
                 Your Tasks
               </h1>
               {activeTab === "active" && (
@@ -313,7 +316,7 @@ export default function TasksPage() {
                           {filtering
                             ? "No tasks match your filters."
                             : activeTab === "active"
-                            ? "No active tasks. Create one above!"
+                            ? "No tasks yet. Add one above when you want to."
                             : activeTab === "completed"
                             ? "No completed tasks yet."
                             : "No archived tasks."}

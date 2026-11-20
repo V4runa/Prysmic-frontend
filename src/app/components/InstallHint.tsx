@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import FormButton from "./forms/FormButton";
+import { useTour } from "../tour/TourProvider";
 import {
   INSTALL_PROMPT_EVENT,
   currentInstallHintMode,
@@ -32,7 +33,8 @@ function subscribe(listener: () => void): () => void {
  */
 export default function InstallHint() {
   const mode = useSyncExternalStore(subscribe, currentInstallHintMode, () => SERVER_MODE);
-  if (mode === "hidden") return null;
+  const tour = useTour();
+  if (mode === "hidden" || tour.overlay) return null;
 
   const message =
     mode === "ios"

@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import AppShell from "./AppShell";
-import OnboardingModal from "./OnboardingModal";
 import PrismBackdrop from "./PrismBackdrop";
+import TourProvider from "../tour/TourProvider";
 import { SessionToastProvider, useSessionToast } from "./SessionToastContext";
 import { isPublicPath } from "../lib/publicPaths";
 import { isAccessTokenCurrent, refreshAccessSession } from "../lib/refreshSession";
@@ -67,10 +67,9 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
       {isPublic ? (
         children
       ) : (
-        <AppShell>
-          {children}
-          <OnboardingModal />
-        </AppShell>
+        <TourProvider>
+          <AppShell>{children}</AppShell>
+        </TourProvider>
       )}
     </>
   );

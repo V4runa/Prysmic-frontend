@@ -436,8 +436,8 @@ test("confirmation and reset pages are public, noindex, and do not leak referrer
   assert.match(login, /href="\/forgot-password"/);
   const signup = readFileSync(new URL("../signup/page.tsx", import.meta.url), "utf8");
   assert.match(signup, /signedUp: res\.emailVerified !== true/);
-  const onboarding = readFileSync(new URL("../components/OnboardingModal.tsx", import.meta.url), "utf8");
-  assert.match(onboarding, /SIGNUP_EMAIL_NOTE/);
+  const arrival = readFileSync(new URL("../tour/TourArrival.tsx", import.meta.url), "utf8");
+  assert.match(arrival, /SIGNUP_EMAIL_NOTE/);
   const prompt = readFileSync(new URL("../components/EmailVerificationPrompt.tsx", import.meta.url), "utf8");
   assert.match(prompt, /dismissVerifyPrompt/);
   assert.match(prompt, /shouldShowVerificationPrompt/);

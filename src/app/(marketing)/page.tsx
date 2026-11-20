@@ -231,7 +231,7 @@ export default function HomePage() {
           Start with one note.
         </h2>
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300">
-          When you create an account, Prysmic adds a few sample notes, tags and contracts so you can see how things fit together. A Start Here note waits at the top of your Notes. Edit or delete the samples whenever you like.
+          When you create an account, a short walk offers to show you through your notebook. You can take it then, or anytime from Settings.
         </p>
         <ol className="mt-8 max-w-2xl list-decimal space-y-2 pl-5 text-base leading-relaxed text-slate-300">
           <li>Write a note and give it a tag of your own.</li>

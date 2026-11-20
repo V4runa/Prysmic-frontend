@@ -167,6 +167,7 @@ export default function QuickTaskInput({
 
   return (
     <motion.div
+      data-tour="tasks-add"
       className="mb-6 w-full flex flex-col gap-3"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -184,6 +185,7 @@ export default function QuickTaskInput({
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <TextField
           ref={titleRef}
+          data-tour="tasks-field"
           placeholder="Add a new task..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}

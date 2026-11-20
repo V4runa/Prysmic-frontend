@@ -31,6 +31,7 @@ import { parseTagIds, tagFilterHref } from "../lib/tagQuery";
 import TagChipRow from "../components/TagChipRow";
 import NoteActionsMenu from "../components/NoteActionsMenu";
 import { notesForList, type OriginatedTaskRef } from "./noteMenu";
+import { useTour } from "../tour/TourProvider";
 
 interface Note {
   id: number;
@@ -53,6 +54,7 @@ interface TagData {
 
 export default function NotesOverviewPage() {
   const router = useRouter();
+  const tour = useTour();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.toString();
@@ -281,17 +283,22 @@ export default function NotesOverviewPage() {
       )}
 
       {/* Main content */}
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <main data-tour="notes-panel" className="flex min-h-0 min-w-0 flex-1 flex-col">
         <GlassPanel className="flex h-full min-h-0 w-full min-w-0 flex-col gap-4 sm:gap-6">
           <div className="flex justify-between items-center flex-wrap gap-4">
-            <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
+            <h2 data-tour-heading tabIndex={-1} className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide outline-none">
               Your Notes
             </h2>
             <div className="flex items-center gap-2">
               <motion.div {...tactile} className="inline-flex">
                 <Link
                   href="/tags"
-                  className="tap-target flex items-center gap-1.5 px-3 py-2 text-slate-300 rounded-md border border-white/10 hover:bg-white/10 transition-colors text-sm"
+                  data-tour="manage-tags"
+                  className={`tap-target flex items-center gap-1.5 px-3 py-2 rounded-md border transition-colors text-sm ${
+                    tour.litHref === "/tags"
+                      ? "border-cyan-300/40 text-cyan-300"
+                      : "border-white/10 text-slate-300 hover:bg-white/10"
+                  }`}
                 >
                   <Tag className="h-4 w-4" />
                   <span className="hidden sm:inline">Manage tags</span>
@@ -300,6 +307,7 @@ export default function NotesOverviewPage() {
               <motion.div {...tactile} className="inline-flex">
                 <Link
                   href="/notes/new"
+                  data-tour="notes-create"
                   className="tap-target inline-flex items-center justify-center px-5 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 rounded-md border border-cyan-300/20 hover:shadow-[0_0_18px_rgba(103,232,249,0.2)] transition-shadow text-sm"
                 >
                   + New Note
@@ -390,6 +398,7 @@ export default function NotesOverviewPage() {
             </div>
           )}
 
+          <div data-tour="notes-feed" className="flex min-h-0 flex-1 flex-col">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
               <Spinner label="Gathering your thoughts..." />
@@ -403,7 +412,9 @@ export default function NotesOverviewPage() {
               <p className="text-slate-400 text-center text-lg">
                 {archived && activeTagIds.length === 0
                   ? "No archived notes."
-                  : "No notes match your filter."}
+                  : activeTagIds.length > 0
+                    ? "No notes match your filter."
+                    : "Nothing written yet. A note can be a sentence, or a whole page."}
               </p>
             </div>
           ) : (
@@ -517,6 +528,7 @@ export default function NotesOverviewPage() {
               </div>
             </div>
           )}
+          </div>
         </GlassPanel>
       </main>
     </div>

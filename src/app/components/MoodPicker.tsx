@@ -141,6 +141,7 @@ export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
               </button>
             )}
             <motion.h2
+              data-tour="mood-heading"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -174,6 +175,7 @@ export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
           <p className="text-slate-400 mt-10">Loading your moods...</p>
         ) : (
           <motion.div
+            data-tour="mood-grid"
             className="wide-mood-grid grid w-full max-w-5xl grid-cols-3 place-items-center gap-3 sm:grid-cols-4 sm:gap-5 md:grid-cols-5"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
