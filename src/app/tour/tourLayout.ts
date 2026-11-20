@@ -41,6 +41,13 @@ export const RIBBON_ESTIMATE = 168;
  */
 export const PHONE_RIBBON_BOTTOM = "calc(var(--bottomnav-h) + 1.75rem)";
 
+/**
+ * Space the phone calendar keeps clear above the tab bar while its panel is
+ * up. The month lays out in what remains, so the lower weeks stay visible.
+ * 11.5rem covers the compact panel; 1.75rem is the gap under it.
+ */
+export const PHONE_CALENDAR_DOCK = "calc(11.5rem + 1.75rem)";
+
 export function unionRect(rects: readonly Rect[]): Rect | null {
   if (rects.length === 0) return null;
   const x = Math.min(...rects.map((rect) => rect.x));

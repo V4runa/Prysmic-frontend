@@ -10,7 +10,7 @@ import LightPool from "./LightPool";
 import TourArrival from "./TourArrival";
 import { TOUR_BEAT, TOUR_EASE } from "./tourBeats";
 import { focusables, pageIsBusy, toRect, visibleQuery } from "./tourDom";
-import { RIBBON_ESTIMATE, glowFor, lanternAnchor, placeRibbon, type Rect } from "./tourLayout";
+import { PHONE_CALENDAR_DOCK, RIBBON_ESTIMATE, glowFor, lanternAnchor, placeRibbon, unionRect, type Rect } from "./tourLayout";
 import { tourStopId, type TourState } from "./tourMachine";
 import { TOUR_COPY, TOUR_MOTE, TOUR_STOPS, tourStopByIndex } from "./tourStops";
 import { useTourTarget } from "./useTourTarget";
@@ -98,7 +98,6 @@ export default function TourStage(props: StageProps) {
   const [keptKey, setKeptKey] = useState("");
   const [flameReady, setFlameReady] = useState(false);
   const [finaleAdvance, setFinaleAdvance] = useState(false);
-  const [skipAdvance, setSkipAdvance] = useState(false);
   const [leaveStage, setLeaveStage] = useState<"line" | "lift" | null>(null);
   const reported = useRef("");
   const actions = useRef(props);
@@ -271,16 +270,6 @@ export default function TourStage(props: StageProps) {
     return () => window.clearTimeout(timer);
   }, [state.phase, flameReady, reduced]);
 
-  if ((state.finale !== "skip" || state.phase !== "present") && skipAdvance) {
-    setSkipAdvance(false);
-  }
-
-  useEffect(() => {
-    if (state.finale !== "skip" || state.phase !== "present") return;
-    const timer = window.setTimeout(() => setSkipAdvance(true), reduced ? 0 : TOUR_BEAT.dwell);
-    return () => window.clearTimeout(timer);
-  }, [state.finale, state.phase, reduced]);
-
   useEffect(() => {
     const midTour =
       state.phase === "closing" &&
@@ -377,7 +366,6 @@ export default function TourStage(props: StageProps) {
         return;
       }
       if (state.finale === "skip" && state.phase === "present") {
-        if (!skipAdvance) return;
         if ((event.key === "Enter" || event.key === "ArrowRight") && !typing) {
           event.preventDefault();
           actions.current.onFinaleDone();
@@ -404,7 +392,7 @@ export default function TourStage(props: StageProps) {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [state.phase, state.finale, stop, stopId, beat, finaleAdvance, skipAdvance]);
+  }, [state.phase, state.finale, stop, stopId, beat, finaleAdvance]);
 
   const veilOn = state.phase !== "idle" && state.phase !== "done";
   const speaking =
@@ -443,7 +431,9 @@ export default function TourStage(props: StageProps) {
     ? glowFor(state.phase === "present" || state.phase === "ack" ? (target.rect ?? keptRect) : keptRect)
     : null;
   const flame = useVisibleBox("[data-tour='mood-flame']", finaleShown);
-  const desktopTarget = finaleShown ? flame : (target.rect ?? keptRect);
+  const todayCard = useVisibleBox("[data-tour='mood-today']", finaleShown);
+  const finaleTarget = finaleShown ? unionRect([flame, todayCard].filter((box): box is Rect => box !== null)) : null;
+  const desktopTarget = finaleShown ? finaleTarget : (target.rect ?? keptRect);
   const spoken =
     stop && stop.id === "contracts" && target.marker === "contracts-create" && stop.emptyBody
       ? stop.emptyBody
@@ -485,6 +475,24 @@ export default function TourStage(props: StageProps) {
     }, reduced ? 40 : 420);
     return () => window.clearTimeout(timer);
   }, [frame.phone, frame.height, stopId, state.phase, state.finale, state.index, beat, reduced, panelHeight]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const dock =
+      frame.phone &&
+      stopId === "calendar" &&
+      state.phase !== "idle" &&
+      state.phase !== "done" &&
+      state.phase !== "closing";
+    if (!dock) {
+      root.style.removeProperty("--tour-dock");
+      return;
+    }
+    root.style.setProperty("--tour-dock", PHONE_CALENDAR_DOCK);
+    return () => {
+      root.style.removeProperty("--tour-dock");
+    };
+  }, [frame.phone, stopId, state.phase]);
 
   const showGuide = state.phase !== "closing" && state.phase !== "done" && state.phase !== "idle" && state.phase !== "light";
   const pose = buildPose({
@@ -568,11 +576,12 @@ export default function TourStage(props: StageProps) {
             solid={leavingPanel}
             lifting={finaleLifting || leaveLifting || skipLifting}
             dimCopy={leavingPanel && leaveStage === null}
+            compact={frame.phone && stop.id === "calendar" && !finaleShown && !skipShown}
             advance={
               finaleShown
                 ? finaleAdvance || finaleLifting
                 : skipShown
-                  ? skipAdvance || skipLifting
+                  ? true
                   : leavingPanel
                     ? false
                     : beat === "ready"

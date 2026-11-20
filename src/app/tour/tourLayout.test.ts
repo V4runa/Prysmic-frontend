@@ -81,6 +81,31 @@ test("desktop copy sits below the lit control and stays inside the screen", () =
   assert.equal(ribbonHitsTarget(place, target, RIBBON_ESTIMATE, desktop.height), false);
 });
 
+test("the finale sits below the flame and clear of today's mood card", () => {
+  const flame = { x: 607, y: 225, width: 225, height: 156 };
+  const card = { x: 336, y: 410, width: 768, height: 148 };
+  const target = {
+    x: Math.min(flame.x, card.x),
+    y: flame.y,
+    width: Math.max(flame.x + flame.width, card.x + card.width) - Math.min(flame.x, card.x),
+    height: card.y + card.height - flame.y,
+  };
+  const place = placeRibbon({
+    stop: "closing",
+    phone: false,
+    keyboard: false,
+    target,
+    anchor: null,
+    viewport: desktop,
+    header: 64,
+    tabbar: 0,
+    panelHeight: 120,
+  });
+  assert.ok(place.top! >= card.y + card.height);
+  assert.equal(ribbonHitsTarget(place, card, 120, desktop.height), false);
+  assert.equal(ribbonHitsTarget(place, flame, 120, desktop.height), false);
+});
+
 test("a target near the bottom keeps the panel above it", () => {
   const target = { x: 400, y: 760, width: 80, height: 64 };
   const place = placeRibbon({

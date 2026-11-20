@@ -19,6 +19,7 @@ export default function GuideRibbon({
   line,
   controls = true,
   advance = true,
+  compact = false,
   done = false,
   solid = false,
   lifting = false,
@@ -40,6 +41,8 @@ export default function GuideRibbon({
   controls?: boolean;
   /** Next and Back stay hidden until the stop has had its beat. */
   advance?: boolean;
+  /** Shorter type and padding, so a phone calendar can keep its weeks clear. */
+  compact?: boolean;
   /** The primary control says Done and ends the finale. */
   done?: boolean;
   /** Solid fill, so page text cannot show through the panel. */
@@ -71,6 +74,7 @@ export default function GuideRibbon({
         left: place.left,
         width: place.width,
         ...TOUR_WASH,
+        ...(compact ? { padding: "10px 14px 8px" } : {}),
         // The finale sits on the timeline. A solid fill keeps that text out of
         // the panel; the gradient on the other stops stays as it is.
         ...(done || solid ? { background: "#06070a" } : {}),
@@ -116,7 +120,7 @@ export default function GuideRibbon({
               <motion.h2
                 id="tour-heading"
                 tabIndex={-1}
-                className="text-xl font-semibold tracking-wide text-slate-100 outline-none sm:text-2xl"
+                className={`font-semibold tracking-wide text-slate-100 outline-none ${compact ? "text-lg" : "text-xl sm:text-2xl"}`}
                 style={{ textShadow: WORD_SHADOW }}
                 initial={reduced ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -127,7 +131,7 @@ export default function GuideRibbon({
               {lines.map((sentence, lineIndex) => (
                 <motion.p
                   key={sentence}
-                  className="mt-2 text-sm leading-relaxed text-slate-300 sm:text-base"
+                  className={`mt-2 text-sm text-slate-300 sm:text-base ${compact ? "leading-snug" : "leading-relaxed"}`}
                   style={{ textShadow: WORD_SHADOW }}
                   initial={reduced ? false : { opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -155,7 +159,7 @@ export default function GuideRibbon({
           {TOUR_COPY.leave}
         </button>
       </div>
-      <div className={`flex flex-nowrap items-center gap-3 ${controls ? "mt-4 justify-between" : "mt-3"}`}>
+      <div className={`flex flex-nowrap items-center gap-3 ${controls ? (compact ? "mt-2 justify-between" : "mt-4 justify-between") : "mt-3"}`}>
         <div className="flex items-center gap-1.5" aria-hidden="true">
           {TOUR_STOPS.map((item, dot) => (
             <span

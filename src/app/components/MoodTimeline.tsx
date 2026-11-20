@@ -159,6 +159,7 @@ export default function MoodTimeline({
                 </div>
 
                 <motion.div
+                  data-tour={isToday ? "mood-today" : undefined}
                   className={clsx(
                     "min-w-0 bg-white/[0.05] border border-white/10 rounded-2xl p-3 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-all duration-300",
                     cc.cardHover,
