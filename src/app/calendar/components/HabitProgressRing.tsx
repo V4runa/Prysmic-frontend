@@ -39,8 +39,8 @@ export default function HabitProgressRing({
   return (
     <span
       className={clsx("relative inline-flex items-center justify-center", className)}
-      title={`${done}/${total} habits`}
-      aria-label={`${done} of ${total} habits done`}
+      title={`${done}/${total} contracts`}
+      aria-label={`${done} of ${total} contracts done`}
     >
       <svg width={size} height={size} className={clsx(perfect && "drop-shadow-[0_0_5px_rgba(251,191,36,0.6)]")}>
         <circle

@@ -135,7 +135,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
           </button>
         </div>
         <p id="delete-account-warning" className="text-sm text-slate-300 leading-relaxed">
-          This permanently deletes all of your notes, tags, habits, tasks, and moods.
+          This permanently deletes all of your notes, tags, contracts, tasks, and moods.
           It can&apos;t be undone.
         </p>
         <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4" noValidate>

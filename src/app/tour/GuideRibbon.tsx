@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { TOUR_BEAT, TOUR_EASE } from "./tourBeats";
 import type { RibbonPlace } from "./tourLayout";
-import { TOUR_COPY, TOUR_STOPS, TOUR_WASH, stopAnnouncement, type TourStop } from "./tourStops";
+import { TOUR_COPY, TOUR_STOPS, TOUR_WASH, type TourStop } from "./tourStops";
 
 const WORD_SHADOW = "0 1px 18px rgba(6,7,10,0.95), 0 0 2px rgba(6,7,10,1)";
 
@@ -13,11 +13,13 @@ const WORD_SHADOW = "0 1px 18px rgba(6,7,10,0.95), 0 0 2px rgba(6,7,10,1)";
 export default function GuideRibbon({
   stop,
   index,
+  body,
   place,
   ack,
   line,
   controls = true,
   advance = true,
+  compact = false,
   done = false,
   solid = false,
   lifting = false,
@@ -29,6 +31,8 @@ export default function GuideRibbon({
 }: {
   stop: TourStop;
   index: number;
+  /** Spoken line for this visit. Falls back to the stop's usual body. */
+  body?: string;
   place: RibbonPlace;
   ack: string | null;
   /** One line in place of the stop's title and body. */
@@ -37,6 +41,8 @@ export default function GuideRibbon({
   controls?: boolean;
   /** Next and Back stay hidden until the stop has had its beat. */
   advance?: boolean;
+  /** Shorter type and padding, so a phone calendar can keep its weeks clear. */
+  compact?: boolean;
   /** The primary control says Done and ends the finale. */
   done?: boolean;
   /** Solid fill, so page text cannot show through the panel. */
@@ -51,7 +57,8 @@ export default function GuideRibbon({
   onLeave: () => void;
 }) {
   const reduced = useReducedMotion();
-  const lines = [stop.body, ack].filter((sentence): sentence is string => Boolean(sentence));
+  const spoken = body || stop.body;
+  const lines = [spoken, ack].filter((sentence): sentence is string => Boolean(sentence));
   const moods = stop.id === "moods";
 
   return (
@@ -60,13 +67,14 @@ export default function GuideRibbon({
       role="dialog"
       aria-modal="false"
       aria-labelledby="tour-heading"
-      className="fixed z-[80] pointer-events-auto"
+      className="fixed z-[90] pointer-events-auto"
       style={{
         top: place.top,
         bottom: place.bottom,
         left: place.left,
         width: place.width,
         ...TOUR_WASH,
+        ...(compact ? { padding: "10px 14px 8px" } : {}),
         // The finale sits on the timeline. A solid fill keeps that text out of
         // the panel; the gradient on the other stops stays as it is.
         ...(done || solid ? { background: "#06070a" } : {}),
@@ -81,7 +89,7 @@ export default function GuideRibbon({
       }
     >
       <p className="sr-only" aria-live="polite">
-        {line ? `Stop ${index + 1} of ${TOUR_STOPS.length}. ${line}` : stopAnnouncement(index)}
+        {line ? `Stop ${index + 1} of ${TOUR_STOPS.length}. ${line}` : `Stop ${index + 1} of ${TOUR_STOPS.length}, ${stop.label}. ${spoken}`}
       </p>
       <div className="flex items-start justify-between gap-3">
         <div
@@ -112,7 +120,7 @@ export default function GuideRibbon({
               <motion.h2
                 id="tour-heading"
                 tabIndex={-1}
-                className="text-xl font-semibold tracking-wide text-slate-100 outline-none sm:text-2xl"
+                className={`font-semibold tracking-wide text-slate-100 outline-none ${compact ? "text-lg" : "text-xl sm:text-2xl"}`}
                 style={{ textShadow: WORD_SHADOW }}
                 initial={reduced ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -123,7 +131,7 @@ export default function GuideRibbon({
               {lines.map((sentence, lineIndex) => (
                 <motion.p
                   key={sentence}
-                  className="mt-2 text-sm leading-relaxed text-slate-300 sm:text-base"
+                  className={`mt-2 text-sm text-slate-300 sm:text-base ${compact ? "leading-snug" : "leading-relaxed"}`}
                   style={{ textShadow: WORD_SHADOW }}
                   initial={reduced ? false : { opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -151,7 +159,7 @@ export default function GuideRibbon({
           {TOUR_COPY.leave}
         </button>
       </div>
-      <div className={`flex items-center gap-3 ${controls ? "mt-4 justify-between" : "mt-3"}`}>
+      <div className={`flex flex-nowrap items-center gap-3 ${controls ? (compact ? "mt-2 justify-between" : "mt-4 justify-between") : "mt-3"}`}>
         <div className="flex items-center gap-1.5" aria-hidden="true">
           {TOUR_STOPS.map((item, dot) => (
             <span
@@ -168,7 +176,7 @@ export default function GuideRibbon({
         </div>
         {controls ? (
           <motion.div
-            className="flex items-center gap-2"
+            className="flex shrink-0 flex-nowrap items-center gap-2"
             initial={false}
             animate={{ opacity: advance ? 1 : 0 }}
             transition={{ duration: reduced ? 0.15 : 0.35, ease: TOUR_EASE }}

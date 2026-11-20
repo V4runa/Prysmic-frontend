@@ -10,7 +10,7 @@ import LightPool from "./LightPool";
 import TourArrival from "./TourArrival";
 import { TOUR_BEAT, TOUR_EASE } from "./tourBeats";
 import { focusables, pageIsBusy, toRect, visibleQuery } from "./tourDom";
-import { placeRibbon, type Rect } from "./tourLayout";
+import { PHONE_CALENDAR_DOCK, RIBBON_ESTIMATE, glowFor, lanternAnchor, placeRibbon, unionRect, type Rect } from "./tourLayout";
 import { tourStopId, type TourState } from "./tourMachine";
 import { TOUR_COPY, TOUR_MOTE, TOUR_STOPS, tourStopByIndex } from "./tourStops";
 import { useTourTarget } from "./useTourTarget";
@@ -29,6 +29,8 @@ type StageProps = {
   onNext: () => void;
   onBack: () => void;
   onNotToday: () => void;
+  onFinaleBack: () => void;
+  onFinaleDone: () => void;
   onTargetReady: () => void;
   onLightDone: () => void;
   onClosingDone: () => void;
@@ -213,22 +215,31 @@ export default function TourStage(props: StageProps) {
     (state.phase === "travel" && (reduced || departedFor === state.index));
 
   const finaleShown =
-    state.alreadyLit &&
     flameReady &&
-    (state.phase === "light" || state.phase === "closing");
+    (state.phase === "light" ||
+      (state.phase === "closing" && (state.closing === "home" || state.closing === "lit")));
   const finaleLifting = finaleShown && state.phase === "closing";
+  const skipShown =
+    state.finale === "skip" && (state.phase === "present" || state.phase === "closing");
+  const skipLifting = skipShown && state.phase === "closing";
+  const finaleLine =
+    state.alreadyLit || state.closing === "lit" ? TOUR_COPY.litLine : TOUR_COPY.homeLine;
   const leavingPanel =
-    !finaleShown && state.phase === "closing" && state.closing === "left" && Boolean(stop);
+    !finaleShown &&
+    !skipShown &&
+    state.phase === "closing" &&
+    state.closing === "left" &&
+    Boolean(stop);
   const leaveLifting = leavingPanel && leaveStage === "lift";
 
   useEffect(() => {
     const speaking = (state.phase === "present" || state.phase === "ack") && (beat === "words" || beat === "ready");
-    const litLine = state.phase === "closing" && state.closing === "home";
-    if (state.phase !== "arrival" && !speaking && !litLine && !finaleShown) return;
+    const litLine = finaleShown || (state.phase === "closing" && state.closing === "home");
+    if (state.phase !== "arrival" && !speaking && !litLine && !finaleShown && !skipShown) return;
     const heading = document.getElementById("tour-heading");
     const timer = window.setTimeout(() => heading?.focus({ preventScroll: true }), reduced ? 40 : 80);
     return () => window.clearTimeout(timer);
-  }, [state.phase, state.index, state.closing, beat, reduced, finaleShown]);
+  }, [state.phase, state.index, state.closing, beat, reduced, finaleShown, skipShown]);
 
   useEffect(() => {
     if (state.phase !== "light") return;
@@ -241,8 +252,7 @@ export default function TourStage(props: StageProps) {
       const box = room?.getBoundingClientRect();
       const present = Boolean(box && box.height > 40 && !pageIsBusy());
       if (present || performance.now() - started > 8000) {
-        if (state.alreadyLit) setFlameReady(true);
-        else actions.current.onLightDone();
+        setFlameReady(true);
         return;
       }
       frame = requestAnimationFrame(watch);
@@ -255,10 +265,10 @@ export default function TourStage(props: StageProps) {
   }, [state.phase, state.alreadyLit]);
 
   useEffect(() => {
-    if (!(state.alreadyLit && state.phase === "light" && flameReady)) return;
+    if (!(state.phase === "light" && flameReady)) return;
     const timer = window.setTimeout(() => setFinaleAdvance(true), reduced ? 0 : TOUR_BEAT.dwell);
     return () => window.clearTimeout(timer);
-  }, [state.alreadyLit, state.phase, flameReady, reduced]);
+  }, [state.phase, flameReady, reduced]);
 
   useEffect(() => {
     const midTour =
@@ -350,6 +360,23 @@ export default function TourStage(props: StageProps) {
         actions.current.onBegin();
         return;
       }
+      if (state.phase === "light" && finaleAdvance && (event.key === "Enter" || event.key === "ArrowRight") && !typing) {
+        event.preventDefault();
+        actions.current.onLightDone();
+        return;
+      }
+      if (state.finale === "skip" && state.phase === "present") {
+        if ((event.key === "Enter" || event.key === "ArrowRight") && !typing) {
+          event.preventDefault();
+          actions.current.onFinaleDone();
+          return;
+        }
+        if (event.key === "ArrowLeft" && !typing) {
+          event.preventDefault();
+          actions.current.onFinaleBack();
+        }
+        return;
+      }
       if (state.phase !== "present" && state.phase !== "ack") return;
       if (beat !== "ready") return;
       if ((event.key === "ArrowRight" || event.key === "Enter") && !typing) {
@@ -365,7 +392,7 @@ export default function TourStage(props: StageProps) {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [state.phase, stop, stopId, beat]);
+  }, [state.phase, state.finale, stop, stopId, beat, finaleAdvance]);
 
   const veilOn = state.phase !== "idle" && state.phase !== "done";
   const speaking =
@@ -390,9 +417,7 @@ export default function TourStage(props: StageProps) {
         ? 0.9
         : (state.phase === "travel" && covered) || state.phase === "settle" || state.phase === "light"
           ? 1
-          : state.phase === "reflect"
-            ? 0.45
-            : 0;
+          : 0;
   const fadeMs = reduced
     ? 180
     : leavingPanel || state.phase === "closing"
@@ -403,11 +428,72 @@ export default function TourStage(props: StageProps) {
           ? TOUR_BEAT.dim
           : TOUR_BEAT.reveal;
   const focus = glowOn
-    ? glowFor(
-        state.phase === "present" || state.phase === "ack" ? (target.rect ?? keptRect) : keptRect,
-        frame.height || window.innerHeight
-      )
+    ? glowFor(state.phase === "present" || state.phase === "ack" ? (target.rect ?? keptRect) : keptRect)
     : null;
+  const flame = useVisibleBox("[data-tour='mood-flame']", finaleShown);
+  const todayCard = useVisibleBox("[data-tour='mood-today']", finaleShown);
+  const finaleTarget = finaleShown ? unionRect([flame, todayCard].filter((box): box is Rect => box !== null)) : null;
+  const desktopTarget = finaleShown ? finaleTarget : (target.rect ?? keptRect);
+  const spoken =
+    stop && stop.id === "contracts" && target.marker === "contracts-create" && stop.emptyBody
+      ? stop.emptyBody
+      : (stop?.body ?? "");
+  const [panelHeight, setPanelHeight] = useState(RIBBON_ESTIMATE);
+  useEffect(() => {
+    const frameId = requestAnimationFrame(() => {
+      const node = document.getElementById("tour-ribbon");
+      if (!node || (!node.style.top && !node.style.bottom)) return;
+      const next = Math.ceil(node.getBoundingClientRect().height);
+      // Ignore a frame where the panel has not been placed yet and stretches
+      // to the viewport. That number would pin every later stop in the wrong spot.
+      if (next < 40 || next > window.innerHeight * 0.7) return;
+      setPanelHeight((current) => (Math.abs(current - next) > 6 ? next : current));
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [state.index, state.phase, spoken, frame.width, frame.height]);
+
+  useEffect(() => {
+    if (!frame.phone || stopId !== "moods") return;
+    if (state.phase !== "present" || state.finale === "skip") return;
+    const timer = window.setTimeout(() => {
+      const button = [...document.querySelectorAll("button")].find((node) =>
+        node.textContent?.includes("Your own")
+      );
+      const ribbon = document.getElementById("tour-ribbon");
+      if (!(button instanceof HTMLElement) || !ribbon) return;
+      const overlap = button.getBoundingClientRect().bottom - (ribbon.getBoundingClientRect().top - 12);
+      if (overlap <= 0) return;
+      const joyful = [...document.querySelectorAll("button")].find((node) => node.textContent?.includes("Joyful"));
+      const headerBottom = document.querySelector(".app-header")?.getBoundingClientRect().bottom ?? 64;
+      const room = joyful ? joyful.getBoundingClientRect().top - headerBottom - 8 : overlap;
+      const delta = Math.min(overlap, Math.max(0, room));
+      if (delta <= 1) return;
+      const scroller = button.closest(".app-scroll");
+      if (scroller instanceof HTMLElement) {
+        scroller.scrollBy({ top: delta, behavior: reduced ? "auto" : "smooth" });
+      }
+    }, reduced ? 40 : 420);
+    return () => window.clearTimeout(timer);
+  }, [frame.phone, frame.height, stopId, state.phase, state.finale, state.index, beat, reduced, panelHeight]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const dock =
+      frame.phone &&
+      stopId === "calendar" &&
+      state.phase !== "idle" &&
+      state.phase !== "done" &&
+      state.phase !== "closing";
+    if (!dock) {
+      root.style.removeProperty("--tour-dock");
+      return;
+    }
+    root.style.setProperty("--tour-dock", PHONE_CALENDAR_DOCK);
+    return () => {
+      root.style.removeProperty("--tour-dock");
+    };
+  }, [frame.phone, stopId, state.phase]);
+
   const showGuide = state.phase !== "closing" && state.phase !== "done" && state.phase !== "idle" && state.phase !== "light";
   const pose = buildPose({
     state,
@@ -420,16 +506,17 @@ export default function TourStage(props: StageProps) {
     reduced,
   });
   const ribbonPlace =
-    (speaking || finaleShown || leavingPanel) && stop && frame.width > 0
+    (speaking || finaleShown || leavingPanel || skipShown) && stop && frame.width > 0
       ? placeRibbon({
-          stop: "closing",
+          stop: finaleShown ? "closing" : stop.id,
           phone: frame.phone,
           keyboard: frame.keyboard,
-          target: null,
+          target: frame.phone ? null : desktopTarget,
           anchor: null,
           viewport: { width: frame.width, height: frame.height },
           header: frame.header,
           tabbar: frame.tabbar,
+          panelHeight,
         })
       : null;
 
@@ -473,18 +560,44 @@ export default function TourStage(props: StageProps) {
             key={finaleShown ? "finale" : stop.id}
             stop={stop}
             index={state.index}
+            body={spoken}
             place={ribbonPlace}
             ack={state.phase === "ack" ? state.ackLine : null}
-            line={finaleShown ? TOUR_COPY.litLine : leavingPanel && leaveStage !== null ? TOUR_COPY.leftLine : null}
-            done={finaleShown}
+            line={
+              skipShown
+                ? TOUR_COPY.notTodayLine
+                : finaleShown
+                  ? finaleLine
+                  : leavingPanel && leaveStage !== null
+                    ? TOUR_COPY.leftLine
+                    : null
+            }
+            done={finaleShown || skipShown}
             solid={leavingPanel}
-            lifting={finaleLifting || leaveLifting}
+            lifting={finaleLifting || leaveLifting || skipLifting}
             dimCopy={leavingPanel && leaveStage === null}
-            advance={finaleShown ? finaleAdvance || finaleLifting : leavingPanel ? false : beat === "ready"}
+            compact={frame.phone && stop.id === "calendar" && !finaleShown && !skipShown}
+            advance={
+              finaleShown
+                ? finaleAdvance || finaleLifting
+                : skipShown
+                  ? true
+                  : leavingPanel
+                    ? false
+                    : beat === "ready"
+            }
             onBack={() => {
+              if (state.finale === "skip") {
+                props.onFinaleBack();
+                return;
+              }
               if (beat === "ready") props.onBack();
             }}
             onNext={() => {
+              if (skipShown) {
+                props.onFinaleDone();
+                return;
+              }
               if (finaleShown) {
                 props.onLightDone();
                 return;
@@ -497,7 +610,13 @@ export default function TourStage(props: StageProps) {
             onLeave={props.onLeave}
           />
         ) : null}
-        {state.phase === "closing" && state.closing && state.closing !== "declined" && state.closing !== "lit" && !leavingPanel ? (
+        {state.phase === "closing" &&
+        state.closing &&
+        state.closing !== "declined" &&
+        state.closing !== "lit" &&
+        state.closing !== "home" &&
+        state.closing !== "not-today" &&
+        !leavingPanel ? (
           <ClosingLine key={state.closing} kind={state.closing} onDone={props.onClosingDone} />
         ) : null}
       </AnimatePresence>
@@ -519,29 +638,29 @@ function isTyping(target: EventTarget | null): boolean {
   return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 }
 
-function guideBeside(rect: Rect, stopId: string | null): { x: number; y: number } {
-  if (stopId === "tasks") return { x: rect.x - 16, y: rect.y + 26 };
-  return { x: rect.x - 14, y: rect.y - 22 };
-}
-
 function gatheredColors(index: number): string[] {
   return TOUR_STOPS.slice(0, index + 1)
     .map((item) => item.mote)
     .filter((color): color is string => Boolean(color));
 }
 
-function glowFor(
-  rect: Rect | null,
-  viewportHeight: number
-): { x: number; y: number; rx: number; ry: number } | null {
-  if (!rect) return null;
-  const tall = rect.height > Math.max(520, viewportHeight * 0.72);
-  return {
-    x: rect.x + rect.width / 2,
-    y: tall ? rect.y + Math.min(200, rect.height * 0.22) : rect.y + rect.height / 2,
-    rx: Math.min(Math.max(rect.width * 0.5 + 72, 120), 380),
-    ry: Math.min(Math.max(tall ? 150 : rect.height * 0.55 + 56, 88), 220),
-  };
+function useVisibleBox(selector: string, enabled: boolean): Rect | null {
+  const [box, setBox] = useState<Rect | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let frame = 0;
+    const read = () => {
+      const node = visibleQuery(selector);
+      setBox(node ? toRect(node.getBoundingClientRect()) : null);
+    };
+    frame = requestAnimationFrame(read);
+    window.addEventListener("resize", read);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", read);
+    };
+  }, [selector, enabled]);
+  return enabled ? box : null;
 }
 
 function buildPose(input: {
@@ -594,20 +713,22 @@ function buildPose(input: {
     };
   }
   if (state.phase === "reflect") {
+    // Stay put and fade. A move would park the orb in a corner of the reflection.
     return {
       ...shared,
-      x: Math.max(24, frame.width - 32),
-      y: frame.header + 28,
-      travel: reduced ? "fade" : "settle",
-      scale: 0.7,
-      opacity: 0.9,
+      x: center.x,
+      y: center.y,
+      travel: "wait",
+      scale: 1,
+      opacity: 0,
       breathe: false,
+      motes: [],
     };
   }
   if (state.phase === "light" || state.phase === "closing") {
     return { ...shared, x: center.x, y: center.y, travel: "fade", scale: 1, opacity: 0, breathe: false, motes: [] };
   }
-  const lit = input.target ? guideBeside(input.target, tourStopId(input.state)) : center;
+  const lit = input.target ? lanternAnchor(input.target, tourStopId(input.state)) : center;
   const drifting = input.beat === "drift";
   return {
     ...shared,

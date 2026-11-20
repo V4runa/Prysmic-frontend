@@ -6,7 +6,7 @@ export const PREFERENCES_KEY = "prysmic.preferences";
 export const LANDING_PAGES = [
   { id: "notes", href: "/notes", label: "Notes" },
   { id: "calendar", href: "/calendar", label: "Calendar" },
-  { id: "habits", href: "/habits", label: "Habits" },
+  { id: "habits", href: "/habits", label: "Contracts" },
   { id: "tasks", href: "/tasks", label: "Tasks" },
   { id: "moods", href: "/moods", label: "Moods" },
 ] as const;

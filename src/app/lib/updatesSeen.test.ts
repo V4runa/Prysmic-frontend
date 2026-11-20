@@ -17,6 +17,8 @@ import {
   isEntryUnread,
   markUpdatesViewed,
   parseUpdatesSeen,
+  accountCreatedDay,
+  highlightPredatesAccount,
   pendingHighlight,
 } from "./updatesSeen";
 
@@ -129,6 +131,32 @@ test("entries newer than the last one viewed light the dot, and opening Updates 
   assert.equal(seen.lastSeenId, "tags");
   assert.equal(hasUnread(entries, seen), false);
   assert.equal(pendingHighlight(entries, seen), null);
+});
+
+test("a highlight dated before the account stays quiet, and one from that day still speaks", () => {
+  const created = "2026-11-20T18:00:00.000Z";
+  const day = accountCreatedDay(created);
+  assert.ok(day);
+  assert.equal(highlightPredatesAccount("2026-11-10", created), true);
+  assert.equal(highlightPredatesAccount(day, created), false);
+  assert.equal(highlightPredatesAccount("2026-11-10", null), false);
+  assert.equal(accountCreatedDay("2026-11-09"), "2026-11-09");
+  assert.equal(highlightPredatesAccount("2026-11-08", "2026-11-09"), true);
+  assert.equal(highlightPredatesAccount("2026-11-09", "2026-11-09"), false);
+
+  const unseen = {
+    v: 1 as const,
+    lastSeenId: "settings",
+    lastSeenDate: "2026-11-01",
+    dismissedHighlightIds: [] as string[],
+  };
+  const older = entries.map((entry) =>
+    entry.id === "tags" ? { ...entry, date: "2026-11-10" } : entry
+  );
+  assert.equal(pendingHighlight(older, unseen, created), null);
+  const sameDay = older.map((entry) => (entry.id === "tags" ? { ...entry, date: day } : entry));
+  assert.equal(pendingHighlight(sameDay, unseen, created)?.id, "tags");
+  assert.equal(pendingHighlight(entries, baselineState(entries))?.id, "tags");
 });
 
 test("a same-day entry written above the last one viewed is unread", () => {

@@ -51,7 +51,7 @@ export default function HabitsPage() {
   const lastCheckDate = useRef<string>(today);
 
   useEffect(() => {
-    if (isError) setError("Failed to load habits");
+    if (isError) setError("Failed to load contracts");
   }, [isError]);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function HabitsPage() {
       queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
         (prev ?? []).map((h) => (h.id === habitId ? previousState : h))
       );
-      setError("Failed to mark habit complete.");
+      setError("Failed to mark contract complete.");
       setAnimatingId(null);
     }
   };
@@ -140,6 +140,7 @@ export default function HabitsPage() {
           </div>
           <motion.button
             {...tactile}
+            data-tour={habits.length === 0 && !isLoading ? "contracts-create" : undefined}
             onClick={() => router.push("/habits/new")}
             className="px-3 sm:px-4 py-2 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-400/10 hover:shadow-[0_0_18px_rgba(103,232,249,0.25)] rounded-md text-sm sm:text-base transition-shadow"
           >
@@ -165,7 +166,7 @@ export default function HabitsPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
-                data-tour="contracts-list"
+                data-tour={habits.length > 0 ? "contracts-list" : undefined}
                 className="wide-grid-contracts grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3"
               >
                 {habits.length === 0 ? (

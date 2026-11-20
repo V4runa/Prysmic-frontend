@@ -4,8 +4,10 @@ import test from "node:test";
 import {
   TOUR_SEEN_KEY,
   TOUR_SIGNUP_KEY,
+  QUIET_CHROME_MEMORY,
   clearTourSignup,
   decideTourStart,
+  nextChromeQuiet,
   takeTourRequest,
   forgetLocalSeen,
   markTourSignup,
@@ -13,6 +15,7 @@ import {
   readSignupFresh,
   readTourSeenAt,
   rememberTourSeen,
+  tourQuietsChrome,
   tourSeenRequestBody,
 } from "./tourSeen";
 
@@ -198,6 +201,43 @@ test("a direct tour link opens once and does not restart when the walk ends", ()
   assert.deepEqual(whileWalking, { start: false, handled: 1 });
   const again = takeTourRequest({ serial: 2, handled: 1, phase: "done" });
   assert.deepEqual(again, { start: true, handled: 2 });
+});
+
+test("fresh-account chrome stays quiet until the tour ends and the route changes", () => {
+  const fresh = {
+    seenAt: null,
+    userLoaded: true,
+    phase: "idle" as const,
+    pathname: "/notes",
+    landing: QUIET_CHROME_MEMORY,
+  };
+  assert.equal(tourQuietsChrome(fresh), true);
+  assert.equal(tourQuietsChrome({ ...fresh, phase: "active", pathname: "/moods" }), true);
+  assert.equal(tourQuietsChrome({ ...fresh, userLoaded: false, seenAt: undefined }), true);
+
+  const landed = nextChromeQuiet(QUIET_CHROME_MEMORY, "done", "/moods");
+  assert.equal(landed.landingPath, "/moods");
+  assert.equal(
+    tourQuietsChrome({ ...fresh, phase: "done", pathname: "/moods", landing: landed }),
+    true
+  );
+  const left = nextChromeQuiet(landed, "done", "/notes");
+  assert.equal(left.released, true);
+  assert.equal(left.landingPath, null);
+  assert.equal(
+    tourQuietsChrome({ ...fresh, phase: "done", pathname: "/notes", landing: left, seenAt: null }),
+    false
+  );
+  assert.equal(nextChromeQuiet(left, "done", "/calendar").landingPath, null);
+
+  const seen = tourQuietsChrome({
+    seenAt: "2026-11-19T00:00:00.000Z",
+    userLoaded: true,
+    phase: "idle",
+    pathname: "/moods",
+    landing: QUIET_CHROME_MEMORY,
+  });
+  assert.equal(seen, false);
 });
 
 test("PATCH /users/me/tour is sent as {seen:true} and a failure still mirrors locally", () => {

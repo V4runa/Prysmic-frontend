@@ -16,6 +16,7 @@ import { resolveMoodVisual } from "../lib/moodColors";
 import { useLogicalToday } from "../hooks/usePreferences";
 import { calendarQueryKey } from "../hooks/useCalendar";
 import { MoodOption, useMoodOptions } from "../hooks/useMoodOptions";
+import { setMoodRoomPreview } from "../hooks/useMoodRoom";
 import { useTour } from "../tour/TourProvider";
 
 enum MoodPhase {
@@ -68,6 +69,8 @@ export default function MoodPage() {
 
   const todayKey = useLogicalToday();
 
+  useEffect(() => () => setMoodRoomPreview(null), []);
+
   const {
     data: moodsRaw = [],
     isLoading: loading,
@@ -119,6 +122,7 @@ export default function MoodPage() {
   // 🎭 When a mood is picked
   const handleMoodSelect = (mood: MoodOption) => {
     phaseLocked.current = true;
+    setMoodRoomPreview(mood.color);
     setSelectedMood(mood);
     setPhase(MoodPhase.REFLECT);
     tour.notifyMoodPicked();
@@ -130,12 +134,14 @@ export default function MoodPage() {
   // failures (cold starts / flaky network) before giving up.
   const beginChange = () => {
     phaseLocked.current = true;
+    setMoodRoomPreview(null);
     setReplacing(true);
     setSelectedMood(null);
     setPhase(MoodPhase.PICK);
   };
 
   const cancelChange = () => {
+    setMoodRoomPreview(null);
     setReplacing(false);
     setSelectedMood(null);
     setPhase(MoodPhase.TIMELINE);

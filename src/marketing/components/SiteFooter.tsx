@@ -18,7 +18,7 @@ export function SiteFooter() {
           <span className="text-sm font-medium">Prysmic</span>
         </div>
         <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
-          A private notebook for notes, habits and moods, organized on one calendar.
+          A private notebook for notes, contracts and moods, organized on one calendar.
         </p>
         <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
           {links.map((link) => (

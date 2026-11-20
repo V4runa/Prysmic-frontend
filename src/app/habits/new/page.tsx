@@ -117,7 +117,7 @@ export default function NewHabitPage() {
         <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
           <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
             <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Forge a New Contract</h2>
-            <p className="text-slate-400 text-sm sm:text-base">Name the habit and why you want to keep it.</p>
+            <p className="text-slate-400 text-sm sm:text-base">Name the contract and why you want to keep it.</p>
           </div>
           {originTitle && originNoteId != null && (
             <p className="text-sm text-slate-400">
@@ -172,7 +172,7 @@ export default function NewHabitPage() {
                 <TextArea
                   id="new-habit-description"
                   rows={2}
-                  placeholder="What does this habit involve? (optional)"
+                  placeholder="What does this contract involve? (optional)"
                   value={form.description}
                   onChange={(e) => handleChange("description", e.target.value)}
                 />

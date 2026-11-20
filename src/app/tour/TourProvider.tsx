@@ -18,11 +18,15 @@ import {
 import {
   decideTourStart,
   forgetLocalSeen,
+  nextChromeQuiet,
+  QUIET_CHROME_MEMORY,
   readLocalSeen,
   readSignupFresh,
   readTourSeenAt,
   rememberTourSeen,
   takeTourRequest,
+  tourQuietsChrome,
+  type ChromeQuietMemory,
   type TourSeenValue,
 } from "./tourSeen";
 import { departDelay, TOUR_BEAT } from "./tourBeats";
@@ -37,6 +41,13 @@ export type TourApi = {
   litHref: string | null;
   /** The room currently being walked, when the tour is underway. */
   stopId: TourStopId | null;
+  /**
+   * Hide the email banner and Updates highlight cards: before a fresh tour
+   * starts, during the walk, and on the landing screen until the route changes.
+   */
+  quietChrome: boolean;
+  /** First-run walk only. The Updates dot returns when the tour ends or is left. */
+  suppressUpdatesDot: boolean;
   notifyTagCreated: () => void;
   notifyTaskCreated: () => void;
   notifyMoodPicked: () => void;
@@ -48,6 +59,8 @@ const INACTIVE: TourApi = {
   holdsMoodTimeline: false,
   litHref: null,
   stopId: null,
+  quietChrome: false,
+  suppressUpdatesDot: false,
   notifyTagCreated: () => {},
   notifyTaskCreated: () => {},
   notifyMoodPicked: () => {},
@@ -108,6 +121,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   const saved = useRef(false);
   const autoOpened = useRef(false);
   const handledRequest = useRef(0);
+  const [landing, setLanding] = useState<ChromeQuietMemory>(QUIET_CHROME_MEMORY);
 
   const onTourQuery = useCallback((event: { rising: boolean }) => {
     if (event.rising) setRequestSerial((value) => value + 1);
@@ -285,6 +299,10 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   }, [state.phase]);
 
   const onBack = useCallback(() => {
+    if (state.finale === "skip" && state.phase === "present") {
+      dispatch({ type: "finale-back" });
+      return;
+    }
     if (state.phase !== "present" && state.phase !== "ack") return;
     if (state.index <= 0) {
       dispatch({ type: "back" });
@@ -295,7 +313,20 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     window.setTimeout(() => {
       if (window.location.pathname === pathAtBack) dispatch({ type: "back" });
     }, 280);
-  }, [pathname, router, state.index, state.phase]);
+  }, [pathname, router, state.finale, state.index, state.phase]);
+
+  const phaseKind = state.phase === "idle" || state.phase === "done" ? state.phase : "active";
+  const nextLanding = nextChromeQuiet(landing, phaseKind, pathname);
+  if (nextLanding.landingPath !== landing.landingPath || nextLanding.released !== landing.released) {
+    setLanding(nextLanding);
+  }
+  const quietChrome = tourQuietsChrome({
+    seenAt,
+    userLoaded: identity.userId == null ? true : userLoaded,
+    phase: phaseKind,
+    pathname,
+    landing: nextLanding,
+  });
 
   const api = useMemo<TourApi>(
     () => ({
@@ -303,12 +334,14 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       holdsMoodTimeline: tourHoldsMoodTimeline(state),
       litHref: state.phase === "travel" ? (TOUR_STOPS[state.index]?.navHref ?? null) : null,
       stopId: tourStopId(state),
+      quietChrome,
+      suppressUpdatesDot: tourOverlayActive(state) && typeof seenAt !== "string",
       notifyTagCreated: () => dispatch({ type: "action", line: TOUR_COPY.tagAck }),
       notifyTaskCreated: () => dispatch({ type: "action", line: TOUR_COPY.taskAck }),
       notifyMoodPicked: () => dispatch({ type: "mood-picked" }),
       notifyMoodKept: (color) => dispatch({ type: "mood-kept", color }),
     }),
-    [state]
+    [state, quietChrome, seenAt]
   );
 
   const room = useMoodRoom();
@@ -338,6 +371,8 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
             onNext={() => dispatch({ type: "next" })}
             onBack={onBack}
             onNotToday={() => dispatch({ type: "not-today" })}
+            onFinaleBack={() => dispatch({ type: "finale-back" })}
+            onFinaleDone={() => dispatch({ type: "finale-done" })}
             onTargetReady={() => dispatch({ type: "target-ready", todayMood: room.token })}
             onLightDone={() => dispatch({ type: "light-done" })}
             onClosingDone={() => dispatch({ type: "closing-done" })}

@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "Prysmic",
     short_name: "Prysmic",
-    description: "A private notebook for notes, habits, and moods.",
+    description: "A private notebook for notes, contracts, and moods.",
     start_url: "/",
     scope: "/",
     display: "standalone",

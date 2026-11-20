@@ -21,6 +21,15 @@ type UpdatesSnapshot = {
 
 const HIDDEN: UpdatesSnapshot = { unread: false, highlightId: null };
 let current: UpdatesSnapshot = HIDDEN;
+/** undefined until the profile answers. Null means the account has no timestamp. */
+let accountCreatedAt: string | null | undefined = undefined;
+
+/** Hold highlight toasts until this is called, then apply the account-age rule. */
+export function publishAccountCreatedAt(value: string | null): void {
+  if (accountCreatedAt === value) return;
+  accountCreatedAt = value;
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(UPDATES_SEEN_EVENT));
+}
 
 function readSnapshot(): UpdatesSnapshot {
   const entries = publishedUpdates();
@@ -31,7 +40,8 @@ function readSnapshot(): UpdatesSnapshot {
     raw = null;
   }
   const resolved = (raw ? parseUpdatesSeen(raw) : null) ?? baselineState(entries);
-  const highlight = pendingHighlight(entries, resolved);
+  const highlight =
+    accountCreatedAt === undefined ? null : pendingHighlight(entries, resolved, accountCreatedAt);
   const next: UpdatesSnapshot = {
     unread: hasUnread(entries, resolved),
     highlightId: highlight?.id ?? null,

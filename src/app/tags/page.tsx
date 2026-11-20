@@ -111,7 +111,12 @@ export default function TagsPage() {
           </FormButton>
         </div>
 
-        <TagColorChoices value={newTagColor} onChange={setPickedColor} />
+        <div className="flex flex-col gap-2">
+          <p id="new-tag-color" className="text-xs font-medium tracking-wide text-slate-500">
+            Color
+          </p>
+          <TagColorChoices value={newTagColor} onChange={setPickedColor} labelledBy="new-tag-color" />
+        </div>
         </div>
 
         {/* Tags Grid */}

@@ -212,7 +212,7 @@ export default function HabitDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["habits"] });
       router.push("/habits");
     } catch {
-      setError("Failed to delete habit");
+      setError("Failed to delete contract");
     }
   };
 
@@ -264,7 +264,7 @@ export default function HabitDetailPage() {
         >
           <div className="flex justify-between items-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-100 tracking-wide">
-              {edit ? "Edit Contract" : "Habit Contract"}
+              {edit ? "Edit Contract" : "Contract"}
             </h2>
             <motion.button
               {...tactile}
@@ -315,7 +315,7 @@ export default function HabitDetailPage() {
                         rows={2}
                         value={form.description || ""}
                         onChange={(e) => handleChange("description", e.target.value)}
-                        placeholder="What does this habit involve?"
+                        placeholder="What does this contract involve?"
                       />
                     </Field>
                     <Field label="Intent" htmlFor="habit-intent">

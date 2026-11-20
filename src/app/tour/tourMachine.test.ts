@@ -31,9 +31,11 @@ test("every stop carries its route, target, and the approved copy", () => {
   assert.equal(TOUR_STOPS[0]?.route, "/notes");
   assert.equal(TOUR_STOPS[0]?.target, "[data-tour='notes-create']");
   assert.equal(TOUR_STOPS[1]?.target, "[data-tour='tags-create']");
-  assert.equal(TOUR_STOPS[2]?.target, "[data-tour='tasks-field']");
-  assert.equal(TOUR_STOPS[3]?.target, "[data-tour='contracts-list']");
+  assert.equal(TOUR_STOPS[2]?.target, "[data-tour='tasks-add']");
+  assert.equal(TOUR_STOPS[3]?.target, "[data-tour='contracts-create'], [data-tour='contracts-list']");
+  assert.equal(TOUR_STOPS[3]?.emptyBody, "A contract is a small promise to yourself. One is enough to begin.");
   assert.equal(TOUR_STOPS[4]?.target, "[data-tour='calendar-today']");
+  assert.equal(TOUR_STOPS[5]?.target, "[data-tour='mood-picker']");
   assert.equal(TOUR_STOPS[1]?.route, "/tags");
   assert.equal(TOUR_STOPS[1]?.waypoint, "[data-tour='manage-tags']");
   assert.equal(TOUR_STOPS[2]?.route, "/tasks");
@@ -151,12 +153,20 @@ test("a mood pick steps back, then lighting the room ends as seen", () => {
   assert.equal(tourHoldsMoodTimeline(done), false);
 });
 
-test("Not today, Leave, and looking alone all end as seen", () => {
+test("Not today waits for Done, and Leave and looking alone end as seen", () => {
   const moods = walkTo(5);
   const skipped = tourReducer(moods, { type: "not-today" });
-  assert.equal(skipped.closing, "not-today");
-  assert.equal(skipped.persistSeen, true);
+  assert.equal(skipped.phase, "present");
+  assert.equal(skipped.finale, "skip");
+  assert.equal(skipped.persistSeen, false);
   assert.equal(tourHoldsMoodTimeline(skipped), true);
+  const returned = tourReducer(skipped, { type: "finale-back" });
+  assert.equal(returned.finale, null);
+  assert.equal(returned.phase, "present");
+  const closed = tourReducer(skipped, { type: "finale-done" });
+  assert.equal(closed.closing, "not-today");
+  assert.equal(closed.persistSeen, true);
+  assert.equal(tourReducer(moods, { type: "finale-done" }), moods);
 
   const notes = walkTo(0);
   const left = tourReducer(notes, { type: "leave" });

@@ -46,7 +46,7 @@ export function exportErrorMessage(kind: ExportFailureKind): string {
 }
 
 export const EXPORT_ABOUT =
-  "Downloads a JSON file of this account: writing, tags, tasks, habits, moods, and calendar events. Attachment files are not included. This is not a backup of those files, and Prysmic does not import it.";
+  "Downloads a JSON file of this account: writing, tags, tasks, contracts, moods, and calendar events. Attachment files are not included. This is not a backup of those files, and Prysmic does not import it.";
 
 export const EXPORT_DOWNLOAD_MESSAGE =
   "JSON file download started. Attachment files are not included.";
