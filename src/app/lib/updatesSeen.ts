@@ -1,4 +1,5 @@
 import type { ProductUpdate } from "../../content/updates";
+import { localDateKey } from "./date";
 
 /** Per-browser record of the last changelog entry this person viewed. */
 export const UPDATES_SEEN_KEY = "prysmic_updates_seen";
@@ -92,13 +93,45 @@ export function hasUnread(entries: readonly ProductUpdate[], state: UpdatesSeenS
   return entries.some((entry) => isEntryUnread(entry, entries, state));
 }
 
-/** Newest highlighted entry this browser has not viewed and has not dismissed. */
+const DATE_ONLY = /^(\d{4}-\d{2}-\d{2})$/;
+
+/**
+ * Calendar day of an account's createdAt. A date-only value stays on that
+ * day. A timestamp uses the local calendar day, the same rule as notes.
+ */
+export function accountCreatedDay(createdAt: string | null | undefined): string | null {
+  const trimmed = createdAt?.trim() ?? "";
+  if (!trimmed) return null;
+  const dateOnly = DATE_ONLY.exec(trimmed);
+  if (dateOnly) return dateOnly[1];
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return localDateKey(parsed);
+}
+
+/** An update dated before the account existed. Same day still counts as new. */
+export function highlightPredatesAccount(
+  entryDate: string,
+  createdAt: string | null | undefined
+): boolean {
+  const createdDay = accountCreatedDay(createdAt);
+  if (!createdDay) return false;
+  return entryDate < createdDay;
+}
+
+/**
+ * Newest highlighted entry this browser has not viewed and has not dismissed.
+ * A highlight dated before `createdAt` is skipped. Omit `createdAt` to keep
+ * the previous rule for callers that do not know the account yet.
+ */
 export function pendingHighlight(
   entries: readonly ProductUpdate[],
-  state: UpdatesSeenState
+  state: UpdatesSeenState,
+  createdAt?: string | null
 ): ProductUpdate | null {
   for (const entry of entries) {
     if (!entry.highlight) continue;
+    if (highlightPredatesAccount(entry.date, createdAt)) continue;
     if (state.dismissedHighlightIds.includes(entry.id)) continue;
     if (!isEntryUnread(entry, entries, state)) continue;
     return entry;

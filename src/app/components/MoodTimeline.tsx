@@ -72,6 +72,7 @@ export default function MoodTimeline({
     <div data-tour="mood-room" className="app-scroll relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 pb-24 sm:pt-32 sm:pb-20">
       {/* 🔥 Streak header */}
       <motion.div
+        data-tour="mood-flame"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}

@@ -6,6 +6,7 @@ import {
   interpretProfileWrite,
   newPasswordIssue,
   passwordPolicyView,
+  readAccountCreatedAt,
   readPublicUser,
   readSelf,
 } from "./accountProfile";
@@ -34,6 +35,9 @@ test("a public user is read from the response, including a one-item list", () =>
   });
   assert.equal(readSelf([user], 7)?.username, "Ada");
   assert.equal(readSelf([user], 8), null);
+  assert.equal(readAccountCreatedAt([user], 7), "2026-11-09T00:00:00.000Z");
+  assert.equal(readAccountCreatedAt([user], 8), null);
+  assert.equal(readAccountCreatedAt([{ id: 7, username: "Ada", email: "ada@prysmic.test" }], 7), null);
 });
 
 test("profile updates send a password only when the email changes", () => {

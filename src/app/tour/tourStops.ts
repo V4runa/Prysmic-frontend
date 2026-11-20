@@ -28,6 +28,8 @@ export type TourStop = {
   waypoint: string;
   title: string;
   body: string;
+  /** Body used when this stop's page is still empty. */
+  emptyBody?: string;
   /** Shown for a moment after the optional action. */
   ack: string | null;
   optional: TourOptional;
@@ -70,6 +72,11 @@ export const TOUR_MOTE = {
 
 export const SCRIM_ARRIVAL = 0.88;
 export const SCRIM_STOP = 0.62;
+/**
+ * Resting dim once a stop has revealed. Lighter than the route-change veil
+ * so the notebook stays faintly readable, still a dim room.
+ */
+export const TOUR_REST_DIM = 0.64;
 
 /** PageTransition's curve. Flights use it so the guide and the page agree. */
 export const PAGE_EASE = [0.22, 1, 0.36, 1] as const;
@@ -105,7 +112,7 @@ export const TOUR_STOPS: readonly TourStop[] = [
     id: "tasks",
     route: "/tasks",
     navHref: "/tasks",
-    target: "[data-tour='tasks-field']",
+    target: "[data-tour='tasks-add']",
     waypoint: "[data-tour-nav='/tasks']",
     title: "Tasks",
     body: "Things to do, kept short. Type one and press Enter.",
@@ -118,10 +125,11 @@ export const TOUR_STOPS: readonly TourStop[] = [
     id: "contracts",
     route: "/habits",
     navHref: "/habits",
-    target: "[data-tour='contracts-list']",
+    target: "[data-tour='contracts-create'], [data-tour='contracts-list']",
     waypoint: "[data-tour-nav='/habits']",
     title: "Contracts",
     body: "A contract is a small promise to yourself. Check in each day and watch it hold.",
+    emptyBody: "A contract is a small promise to yourself. One is enough to begin.",
     ack: null,
     optional: null,
     mote: TOUR_MOTE.contracts,
@@ -144,7 +152,7 @@ export const TOUR_STOPS: readonly TourStop[] = [
     id: "moods",
     route: "/moods",
     navHref: "/moods",
-    target: "[data-tour='mood-grid']",
+    target: "[data-tour='mood-picker']",
     waypoint: "[data-tour-nav='/moods']",
     title: "Last stop",
     body: "One small thing before you settle in.",

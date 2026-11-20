@@ -107,6 +107,23 @@ export function readPublicUser(body: unknown): PublicProfile | null {
   return { id, username, email, emailVerified };
 }
 
+/**
+ * `createdAt` from GET /users for this account, or null when the payload
+ * has no usable timestamp. Does not change the public profile shape.
+ */
+export function readAccountCreatedAt(body: unknown, userId: number): string | null {
+  const list = Array.isArray(body) ? body : [body];
+  for (const item of list) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    if (record.id !== userId) continue;
+    return typeof record.createdAt === "string" && record.createdAt.trim()
+      ? record.createdAt.trim()
+      : null;
+  }
+  return null;
+}
+
 /** GET /users returns the caller as a one-item list. A single object is accepted too. */
 export function readSelf(body: unknown, userId: number): PublicProfile | null {
   const list = Array.isArray(body) ? body : [body];

@@ -170,3 +170,61 @@ export function takeTourRequest(input: {
 export function tourSeenRequestBody(seen: boolean): { seen: boolean } {
   return { seen };
 }
+
+export type ChromeQuietMemory = {
+  /** Route the tour landed on when it ended this session. */
+  landingPath: string | null;
+  /** The person already left that landing, so chrome may return. */
+  released: boolean;
+};
+
+export const QUIET_CHROME_MEMORY: ChromeQuietMemory = {
+  landingPath: null,
+  released: false,
+};
+
+/**
+ * Remember the post-tour landing until the route changes.
+ * A later navigation does not capture a new landing while the phase stays done.
+ */
+export function nextChromeQuiet(
+  memory: ChromeQuietMemory,
+  phase: "idle" | "active" | "done",
+  pathname: string
+): ChromeQuietMemory {
+  if (phase !== "done") return QUIET_CHROME_MEMORY;
+  if (!memory.released && memory.landingPath === null) {
+    return { landingPath: pathname, released: false };
+  }
+  if (memory.landingPath && pathname !== memory.landingPath) {
+    return { landingPath: null, released: true };
+  }
+  return memory;
+}
+
+/**
+ * Email confirmation and Updates highlight cards stay out:
+ * before a fresh account's tour starts, throughout the tour, and on the
+ * landing screen until the route changes. A reload starts idle again and
+ * is not this landing.
+ */
+export function tourQuietsChrome(input: {
+  seenAt: TourSeenValue;
+  userLoaded: boolean;
+  /** idle before and after, done once the walk has finished, otherwise active. */
+  phase: "idle" | "active" | "done";
+  pathname: string;
+  landing: ChromeQuietMemory;
+}): boolean {
+  if (input.phase === "active") return true;
+  if (
+    input.phase === "done" &&
+    input.landing.landingPath != null &&
+    input.pathname === input.landing.landingPath
+  ) {
+    return true;
+  }
+  if (!input.userLoaded && input.phase === "idle") return true;
+  if (input.seenAt === null && input.phase !== "done") return true;
+  return false;
+}

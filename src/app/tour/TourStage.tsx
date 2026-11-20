@@ -10,7 +10,7 @@ import LightPool from "./LightPool";
 import TourArrival from "./TourArrival";
 import { TOUR_BEAT, TOUR_EASE } from "./tourBeats";
 import { focusables, pageIsBusy, toRect, visibleQuery } from "./tourDom";
-import { placeRibbon, type Rect } from "./tourLayout";
+import { RIBBON_ESTIMATE, glowFor, lanternAnchor, placeRibbon, type Rect } from "./tourLayout";
 import { tourStopId, type TourState } from "./tourMachine";
 import { TOUR_COPY, TOUR_MOTE, TOUR_STOPS, tourStopByIndex } from "./tourStops";
 import { useTourTarget } from "./useTourTarget";
@@ -390,9 +390,7 @@ export default function TourStage(props: StageProps) {
         ? 0.9
         : (state.phase === "travel" && covered) || state.phase === "settle" || state.phase === "light"
           ? 1
-          : state.phase === "reflect"
-            ? 0.45
-            : 0;
+          : 0;
   const fadeMs = reduced
     ? 180
     : leavingPanel || state.phase === "closing"
@@ -403,11 +401,27 @@ export default function TourStage(props: StageProps) {
           ? TOUR_BEAT.dim
           : TOUR_BEAT.reveal;
   const focus = glowOn
-    ? glowFor(
-        state.phase === "present" || state.phase === "ack" ? (target.rect ?? keptRect) : keptRect,
-        frame.height || window.innerHeight
-      )
+    ? glowFor(state.phase === "present" || state.phase === "ack" ? (target.rect ?? keptRect) : keptRect)
     : null;
+  const flame = useVisibleBox("[data-tour='mood-flame']", finaleShown);
+  const desktopTarget = finaleShown ? flame : (target.rect ?? keptRect);
+  const spoken =
+    stop && stop.id === "contracts" && target.marker === "contracts-create" && stop.emptyBody
+      ? stop.emptyBody
+      : (stop?.body ?? "");
+  const [panelHeight, setPanelHeight] = useState(RIBBON_ESTIMATE);
+  useEffect(() => {
+    const frameId = requestAnimationFrame(() => {
+      const node = document.getElementById("tour-ribbon");
+      if (!node || (!node.style.top && !node.style.bottom)) return;
+      const next = Math.ceil(node.getBoundingClientRect().height);
+      // Ignore a frame where the panel has not been placed yet and stretches
+      // to the viewport. That number would pin every later stop in the wrong spot.
+      if (next < 40 || next > window.innerHeight * 0.7) return;
+      setPanelHeight((current) => (Math.abs(current - next) > 6 ? next : current));
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [state.index, state.phase, spoken, frame.width, frame.height]);
   const showGuide = state.phase !== "closing" && state.phase !== "done" && state.phase !== "idle" && state.phase !== "light";
   const pose = buildPose({
     state,
@@ -422,14 +436,15 @@ export default function TourStage(props: StageProps) {
   const ribbonPlace =
     (speaking || finaleShown || leavingPanel) && stop && frame.width > 0
       ? placeRibbon({
-          stop: "closing",
+          stop: finaleShown ? "closing" : stop.id,
           phone: frame.phone,
           keyboard: frame.keyboard,
-          target: null,
+          target: frame.phone ? null : desktopTarget,
           anchor: null,
           viewport: { width: frame.width, height: frame.height },
           header: frame.header,
           tabbar: frame.tabbar,
+          panelHeight,
         })
       : null;
 
@@ -473,6 +488,7 @@ export default function TourStage(props: StageProps) {
             key={finaleShown ? "finale" : stop.id}
             stop={stop}
             index={state.index}
+            body={spoken}
             place={ribbonPlace}
             ack={state.phase === "ack" ? state.ackLine : null}
             line={finaleShown ? TOUR_COPY.litLine : leavingPanel && leaveStage !== null ? TOUR_COPY.leftLine : null}
@@ -519,29 +535,29 @@ function isTyping(target: EventTarget | null): boolean {
   return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 }
 
-function guideBeside(rect: Rect, stopId: string | null): { x: number; y: number } {
-  if (stopId === "tasks") return { x: rect.x - 16, y: rect.y + 26 };
-  return { x: rect.x - 14, y: rect.y - 22 };
-}
-
 function gatheredColors(index: number): string[] {
   return TOUR_STOPS.slice(0, index + 1)
     .map((item) => item.mote)
     .filter((color): color is string => Boolean(color));
 }
 
-function glowFor(
-  rect: Rect | null,
-  viewportHeight: number
-): { x: number; y: number; rx: number; ry: number } | null {
-  if (!rect) return null;
-  const tall = rect.height > Math.max(520, viewportHeight * 0.72);
-  return {
-    x: rect.x + rect.width / 2,
-    y: tall ? rect.y + Math.min(200, rect.height * 0.22) : rect.y + rect.height / 2,
-    rx: Math.min(Math.max(rect.width * 0.5 + 72, 120), 380),
-    ry: Math.min(Math.max(tall ? 150 : rect.height * 0.55 + 56, 88), 220),
-  };
+function useVisibleBox(selector: string, enabled: boolean): Rect | null {
+  const [box, setBox] = useState<Rect | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let frame = 0;
+    const read = () => {
+      const node = visibleQuery(selector);
+      setBox(node ? toRect(node.getBoundingClientRect()) : null);
+    };
+    frame = requestAnimationFrame(read);
+    window.addEventListener("resize", read);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", read);
+    };
+  }, [selector, enabled]);
+  return enabled ? box : null;
 }
 
 function buildPose(input: {
@@ -594,20 +610,22 @@ function buildPose(input: {
     };
   }
   if (state.phase === "reflect") {
+    // Stay put and fade. A move would park the orb in a corner of the reflection.
     return {
       ...shared,
-      x: Math.max(24, frame.width - 32),
-      y: frame.header + 28,
-      travel: reduced ? "fade" : "settle",
-      scale: 0.7,
-      opacity: 0.9,
+      x: center.x,
+      y: center.y,
+      travel: "wait",
+      scale: 1,
+      opacity: 0,
       breathe: false,
+      motes: [],
     };
   }
   if (state.phase === "light" || state.phase === "closing") {
     return { ...shared, x: center.x, y: center.y, travel: "fade", scale: 1, opacity: 0, breathe: false, motes: [] };
   }
-  const lit = input.target ? guideBeside(input.target, tourStopId(input.state)) : center;
+  const lit = input.target ? lanternAnchor(input.target, tourStopId(input.state)) : center;
   const drifting = input.beat === "drift";
   return {
     ...shared,

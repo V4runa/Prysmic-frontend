@@ -19,8 +19,9 @@ export function useTourTarget(
   selectors: readonly string[],
   enabled: boolean,
   reduced: boolean
-): { rect: Rect | null; ready: boolean } {
+): { rect: Rect | null; ready: boolean; marker: string | null } {
   const [rect, setRect] = useState<Rect | null>(null);
+  const [marker, setMarker] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const key = selectors.join("|");
   const session = enabled ? key : "";
@@ -29,6 +30,7 @@ export function useTourTarget(
     setTracked(session);
     setReady(false);
     setRect(null);
+    setMarker(null);
   }
 
   useEffect(() => {
@@ -42,13 +44,14 @@ export function useTourTarget(
     let scrolled = false;
     const started = performance.now();
 
-    const publish = (box: Rect) => {
+    const publish = (box: Rect, node: HTMLElement | null) => {
       locked = box;
       setRect(box);
+      setMarker(node?.getAttribute("data-tour") ?? null);
     };
 
-    const finish = (box: Rect) => {
-      publish(box);
+    const finish = (box: Rect, node: HTMLElement | null) => {
+      publish(box, node);
       setReady(true);
     };
 
@@ -65,7 +68,7 @@ export function useTourTarget(
       if (!found.element || !box) {
         if (performance.now() - started >= GIVE_UP_MS) {
           const fallback = visibleQuery(FALLBACK);
-          if (fallback) finish(toRect(fallback.getBoundingClientRect()));
+          if (fallback) finish(toRect(fallback.getBoundingClientRect()), fallback);
           else setReady(true);
           return;
         }
@@ -88,8 +91,8 @@ export function useTourTarget(
         const fonts = document.fonts?.ready ?? Promise.resolve();
         void fonts.then(() => {
           if (cancelled) return;
-          const again = unionRect(visibleRects(selectors).rects) ?? box;
-          finish(again);
+          const again = visibleRects(selectors);
+          finish(unionRect(again.rects) ?? box, again.element);
         });
         return;
       }
@@ -98,8 +101,9 @@ export function useTourTarget(
 
     const follow = () => {
       if (!locked) return;
-      const next = unionRect(visibleRects(selectors).rects);
-      if (next && far(next, locked)) publish(next);
+      const next = visibleRects(selectors);
+      const box = unionRect(next.rects);
+      if (box && far(box, locked)) publish(box, next.element);
     };
 
     frame = requestAnimationFrame(read);
@@ -113,5 +117,5 @@ export function useTourTarget(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, key, reduced]);
 
-  return { rect, ready };
+  return { rect, ready, marker };
 }

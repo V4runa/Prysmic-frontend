@@ -54,7 +54,12 @@ export function scrollIntoPanel(element: HTMLElement, reduced: boolean): void {
   const above = rect.top < frame.top + 12;
   const below = rect.bottom > frame.bottom - 12;
   if (!above && !below) return;
-  const delta = rect.top - frame.top - frame.height / 2 + rect.height / 2;
+  // A subject taller than the panel keeps its top in view. Centering it
+  // would scroll the heading away and leave the first row in shadow.
+  const delta =
+    rect.height > frame.height - 24
+      ? rect.top - frame.top - 8
+      : rect.top - frame.top - frame.height / 2 + rect.height / 2;
   scroller.scrollBy({ top: delta, behavior: reduced ? "auto" : "smooth" });
 }
 

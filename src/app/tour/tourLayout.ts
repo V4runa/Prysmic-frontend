@@ -1,6 +1,6 @@
 /**
- * Where the words sit. Phone copy docks clear of the tab bar and the keyboard.
- * Desktop copy sits beside the lit control. No measured DOM in here.
+ * Where the words and the light sit. Phone copy docks above the tab bar.
+ * Desktop copy sits near the lit control. No measured DOM in here.
  */
 
 import type { TourStopId } from "./tourStops";
@@ -14,10 +14,32 @@ export type Rect = {
 
 export type RibbonPlace = {
   top?: number;
-  bottom?: number;
+  /** Pixels, or a CSS length such as a safe-area calc. */
+  bottom?: number | string;
   left: number;
   width: number;
 };
+
+/** Soft halo derived from a target's box. The rect is the fully lit core. */
+export type GlowFocus = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Blur radius, in px. The falloff lives outside the core. */
+  feather: number;
+  radius: number;
+};
+
+/** Rough height of a stop panel, used only to keep it inside the viewport. */
+export const RIBBON_ESTIMATE = 168;
+
+/**
+ * Phone panels sit this far above the tab bar. The CSS variable already
+ * includes the safe-area inset, so a short or notched phone cannot tuck
+ * Back / Not today under the bar.
+ */
+export const PHONE_RIBBON_BOTTOM = "calc(var(--bottomnav-h) + 1.75rem)";
 
 export function unionRect(rects: readonly Rect[]): Rect | null {
   if (rects.length === 0) return null;
@@ -45,6 +67,42 @@ export function clampRect(rect: Rect, viewport: { width: number; height: number 
   return { x, y, width, height };
 }
 
+/**
+ * A feathered halo that follows the target's box.
+ * The returned rect is expanded so a blur of `feather` still leaves the
+ * real control fully bright, with the falloff outside it.
+ */
+export function glowFor(rect: Rect | null): GlowFocus | null {
+  if (!rect || rect.width < 1 || rect.height < 1) return null;
+  const feather = Math.round(Math.max(28, Math.min(56, Math.max(rect.width, rect.height) * 0.06 + 26)));
+  const expand = Math.round(feather * 0.85);
+  const width = rect.width + expand * 2;
+  const height = rect.height + expand * 2;
+  return {
+    x: rect.x - expand,
+    y: rect.y - expand,
+    width,
+    height,
+    feather,
+    radius: Math.min(32, height / 2, width / 2),
+  };
+}
+
+/**
+ * Where the guide rests once a stop is lit.
+ * Calendar stays inside today's cell. Other stops keep a corner perch.
+ */
+export function lanternAnchor(rect: Rect, stopId: string | null): { x: number; y: number } {
+  if (stopId === "calendar") {
+    return {
+      x: rect.x + rect.width / 2,
+      y: rect.y + Math.min(20, Math.max(14, rect.height * 0.22)),
+    };
+  }
+  if (stopId === "tasks") return { x: rect.x - 16, y: rect.y + 26 };
+  return { x: rect.x - 14, y: rect.y - 22 };
+}
+
 export function placeRibbon(input: {
   stop: TourStopId | "closing";
   phone: boolean;
@@ -54,92 +112,86 @@ export function placeRibbon(input: {
   viewport: { width: number; height: number };
   header: number;
   tabbar: number;
+  panelHeight?: number;
 }): RibbonPlace {
-  const { viewport, phone, header, tabbar } = input;
+  const { viewport, phone, header, keyboard } = input;
   const gutter = 16;
-  const width = Math.min(phone ? viewport.width - gutter * 2 : 420, viewport.width - gutter * 2);
+  const width = Math.min(phone ? viewport.width - gutter * 2 : 440, Math.max(160, viewport.width - gutter * 2));
+  const panel = input.panelHeight ?? RIBBON_ESTIMATE;
 
-  if (!phone && input.stop === "notes" && input.target) {
-    const gap = 168;
-    const copyWidth = Math.min(340, Math.max(220, input.target.x - gutter - gap));
-    return {
-      top: Math.max(header + 8, input.target.y - 4),
-      left: Math.max(gutter, input.target.x - copyWidth - gap),
-      width: copyWidth,
-    };
-  }
-
-  if (!phone && (input.stop === "tags" || input.stop === "tasks") && input.target) {
-    return {
-      bottom: 36,
-      left: Math.max(gutter, input.target.x),
-      width: Math.min(480, Math.max(240, input.target.width)),
-    };
-  }
-
-  if (!phone && input.stop === "contracts") {
-    return {
-      bottom: Math.max(72, tabbar + 28),
-      left: Math.max(gutter, input.target?.x ?? gutter),
-      width: Math.min(440, viewport.width * 0.4),
-    };
-  }
-
-  if (!phone && input.stop === "calendar" && input.target) {
-    return {
-      bottom: Math.max(88, tabbar + 36),
-      left: Math.max(gutter, input.target.x + 16),
-      width: Math.min(460, Math.max(240, input.target.width - 48)),
-    };
-  }
-
-  if (!phone && input.stop === "moods" && (input.target || input.anchor)) {
-    const box = input.target ?? input.anchor;
-    if (box) {
-      return {
-        top: Math.min(box.y + box.height + 18, viewport.height - 150),
-        left: Math.max(gutter, box.x),
-        width: Math.min(440, box.width),
-      };
-    }
-  }
-
-  if (input.stop === "closing" || (phone && !input.keyboard)) {
-    return {
-      bottom: tabbar + 20,
-      left: phone ? gutter : Math.max(gutter, (viewport.width - Math.min(560, width)) / 2),
-      width: phone ? width : Math.min(560, viewport.width - gutter * 2),
-    };
-  }
-
-  if (phone) {
+  if (phone && keyboard) {
     return { top: header + 12, left: gutter, width };
   }
 
-  const target = input.anchor ?? input.target;
-  if (!target) {
+  if (phone) {
     return {
-      top: Math.max(header + 24, viewport.height * 0.28),
-      left: Math.max(gutter, (viewport.width - width) / 2),
+      bottom: PHONE_RIBBON_BOTTOM,
+      left: gutter,
       width,
     };
   }
 
-  const besideRight = target.x + target.width + 28;
-  const besideLeft = target.x - width - 28;
-  const below = target.y + target.height + 18;
+  const target = input.target ?? input.anchor;
+  const maxLeft = Math.max(gutter, viewport.width - width - gutter);
+  const floor = header + 16;
+  const ceil = Math.max(floor, viewport.height - panel - 20);
 
-  if (input.stop === "notes" && besideLeft >= gutter) {
-    return { top: target.y, left: besideLeft, width };
+  if (!target) {
+    return {
+      top: Math.min(Math.max(floor, viewport.height * 0.58), ceil),
+      left: Math.max(gutter, Math.min((viewport.width - width) / 2, maxLeft)),
+      width,
+    };
   }
 
-  if ((input.stop === "contracts" || input.stop === "moods") && besideRight + width <= viewport.width - gutter) {
-    return { top: Math.max(header + 12, target.y), left: besideRight, width: Math.min(width, 360) };
+  const gap = 36;
+  const below = target.y + target.height + gap;
+  const above = target.y - gap - panel;
+  const tight = target.y + target.height + 18;
+  if (below <= ceil || tight <= ceil || above >= floor) {
+    const top = below <= ceil ? below : tight <= ceil ? tight : above;
+    const idealLeft = target.x + target.width / 2 - width / 2;
+    return {
+      top,
+      left: Math.min(Math.max(idealLeft, gutter), maxLeft),
+      width,
+    };
   }
 
+  // The subject fills the screen. Sit beside it when the margins allow,
+  // otherwise along the bottom edge, clear of the top of the subject.
+  const beside = Math.min(width, 360);
+  const right = target.x + target.width + gap;
+  const left = target.x - gap - beside;
+  const besideTop = Math.min(Math.max(target.y, floor), Math.max(floor, viewport.height - panel - 20));
+  if (right + beside <= viewport.width - gutter) {
+    return { top: besideTop, left: right, width: beside };
+  }
+  if (left >= gutter) {
+    return { top: besideTop, left, width: beside };
+  }
   return {
-    top: Math.min(below, viewport.height - 160),
-    left: Math.max(gutter, Math.min(target.x, viewport.width - width - gutter)),
+    top: ceil,
+    left: Math.min(Math.max(target.x + target.width / 2 - width / 2, gutter), maxLeft),
     width,
   };
+}
+
+/** True when a placed panel's box cuts through the lit subject. */
+export function ribbonHitsTarget(
+  place: RibbonPlace,
+  target: Rect,
+  panelHeight: number,
+  viewportHeight: number
+): boolean {
+  const top = place.top ?? Math.max(0, viewportHeight - (typeof place.bottom === "number" ? place.bottom : 0) - panelHeight);
+  const bottom = top + panelHeight;
+  const left = place.left;
+  const right = place.left + place.width;
+  const separated =
+    bottom <= target.y ||
+    top >= target.y + target.height ||
+    right <= target.x ||
+    left >= target.x + target.width;
+  return !separated;
 }

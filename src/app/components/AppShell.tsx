@@ -8,10 +8,10 @@ import { motion } from "framer-motion";
 import EmailVerificationPrompt, { syncVerificationProfile } from "./EmailVerificationPrompt";
 import UpdatesSheet, { UpdateHighlightCard, UpdatesNavButton } from "./UpdatesPanel";
 import UserAvatar from "./UserAvatar";
-import { dismissProductHighlight, useUpdatesSeen, viewProductUpdates } from "../hooks/useUpdatesSeen";
+import { dismissProductHighlight, publishAccountCreatedAt, useUpdatesSeen, viewProductUpdates } from "../hooks/useUpdatesSeen";
 import { readSessionClaims, useSessionIdentity } from "../hooks/useAuth";
 import { apiFetch } from "../hooks/useApi";
-import { readSelf } from "../lib/accountProfile";
+import { readAccountCreatedAt, readSelf } from "../lib/accountProfile";
 import { requestLogout } from "../lib/logout";
 import { syncPersonalCache } from "../lib/personalCache";
 import { usePreferences } from "../hooks/usePreferences";
@@ -85,11 +85,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const claims = readSessionClaims();
-    if (!claims) return;
+    if (!claims) {
+      publishAccountCreatedAt(null);
+      return;
+    }
     let cancelled = false;
     apiFetch<unknown>("/users")
       .then((body) => {
         if (cancelled) return;
+        publishAccountCreatedAt(readAccountCreatedAt(body, claims.userId));
         const me = readSelf(body, claims.userId);
         if (!me) return;
         publishSessionProfile({
@@ -100,7 +104,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         });
         syncVerificationProfile({ email: me.email, emailVerified: me.emailVerified });
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) publishAccountCreatedAt(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -121,7 +127,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ))[] = [
     { label: "Notes", href: "/notes", icon: StickyNote },
     { label: "Calendar", href: "/calendar", icon: CalendarDays },
-    { label: "Habits", href: "/habits", icon: Flame },
+    { label: "Contracts", href: "/habits", icon: Flame },
     { label: "Tasks", href: "/tasks", icon: CheckSquare },
     { label: "Moods", href: "/moods", icon: Smile },
     // Tags is a supporting taxonomy reached from within Notes on mobile.
@@ -230,12 +236,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="app-main relative z-10">
-        {tour.overlay ? null : <EmailVerificationPrompt />}
+        {tour.quietChrome ? null : <EmailVerificationPrompt />}
         {children}
       </main>
 
       <UpdatesSheet open={updatesOpen} onClose={closeUpdates} returnFocusRef={updatesOpenerRef} />
-      {updateHighlight && !updatesOpen && !tour.overlay ? (
+      {updateHighlight && !updatesOpen && !tour.quietChrome ? (
         <UpdateHighlightCard
           entry={updateHighlight}
           onOpen={() => openUpdates(null)}

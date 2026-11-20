@@ -31,9 +31,11 @@ test("every stop carries its route, target, and the approved copy", () => {
   assert.equal(TOUR_STOPS[0]?.route, "/notes");
   assert.equal(TOUR_STOPS[0]?.target, "[data-tour='notes-create']");
   assert.equal(TOUR_STOPS[1]?.target, "[data-tour='tags-create']");
-  assert.equal(TOUR_STOPS[2]?.target, "[data-tour='tasks-field']");
-  assert.equal(TOUR_STOPS[3]?.target, "[data-tour='contracts-list']");
+  assert.equal(TOUR_STOPS[2]?.target, "[data-tour='tasks-add']");
+  assert.equal(TOUR_STOPS[3]?.target, "[data-tour='contracts-create'], [data-tour='contracts-list']");
+  assert.equal(TOUR_STOPS[3]?.emptyBody, "A contract is a small promise to yourself. One is enough to begin.");
   assert.equal(TOUR_STOPS[4]?.target, "[data-tour='calendar-today']");
+  assert.equal(TOUR_STOPS[5]?.target, "[data-tour='mood-picker']");
   assert.equal(TOUR_STOPS[1]?.route, "/tags");
   assert.equal(TOUR_STOPS[1]?.waypoint, "[data-tour='manage-tags']");
   assert.equal(TOUR_STOPS[2]?.route, "/tasks");
