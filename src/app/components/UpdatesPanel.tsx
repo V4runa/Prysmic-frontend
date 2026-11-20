@@ -16,6 +16,7 @@ import {
 } from "../../content/updates";
 import { dismissProductHighlight } from "../hooks/useUpdatesSeen";
 import { springSoft } from "../lib/motion";
+import { TOUR_ENABLED } from "../tour/tourFlag";
 
 function subscribeNoop(): () => void {
   return () => {};
@@ -140,6 +141,7 @@ function UpdateActionLink({
 }) {
   const action = readUpdateAction(entry);
   if (!action) return null;
+  if (!TOUR_ENABLED && action.href.includes("tour=1")) return null;
   return (
     <Link
       href={action.href}

@@ -30,6 +30,7 @@ import {
   type TourSeenValue,
 } from "./tourSeen";
 import { departDelay, TOUR_BEAT } from "./tourBeats";
+import { TOUR_ENABLED } from "./tourFlag";
 import { TOUR_COPY, TOUR_STOPS, routeMatches, stopIndexForPath, type TourStopId } from "./tourStops";
 
 export type TourApi = {
@@ -74,6 +75,9 @@ export function useTour(): TourApi {
 }
 
 export default function TourProvider({ children }: { children: React.ReactNode }) {
+  // Off: the default inactive API. Nothing auto-starts, ?tour=1 is ignored,
+  // and the tour cannot quiet chrome, light the nav, or lock the page.
+  if (!TOUR_ENABLED) return children;
   return (
     <TourProviderInner>
       <Suspense fallback={null}>
