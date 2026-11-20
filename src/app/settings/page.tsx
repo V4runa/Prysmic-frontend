@@ -12,6 +12,7 @@ import PageTransition from "../components/PageTransition";
 import PasswordHints from "../components/PasswordHints";
 import UserAvatar, { AvatarGlyph } from "../components/UserAvatar";
 import { syncVerificationProfile } from "../components/EmailVerificationPrompt";
+import { TOUR_ENABLED } from "../tour/tourFlag";
 import { Field, FormButton, SelectField, TextField } from "../components/forms";
 import { ApiError, apiFetch } from "../hooks/useApi";
 import { useSessionIdentity } from "../hooks/useAuth";
@@ -916,7 +917,7 @@ export default function SettingsPage() {
           <ProfileSection userId={identity.userId} />
           <SecuritySection userId={identity.userId} />
           <PreferencesSection />
-          <TourSection />
+          {TOUR_ENABLED ? <TourSection /> : null}
           <DataSection />
         </div>
       </div>
