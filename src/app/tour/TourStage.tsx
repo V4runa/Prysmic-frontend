@@ -96,6 +96,7 @@ export default function TourStage(props: StageProps) {
   const [keptKey, setKeptKey] = useState("");
   const [flameReady, setFlameReady] = useState(false);
   const [finaleAdvance, setFinaleAdvance] = useState(false);
+  const [leaveStage, setLeaveStage] = useState<"line" | "lift" | null>(null);
   const reported = useRef("");
   const actions = useRef(props);
 
@@ -216,6 +217,9 @@ export default function TourStage(props: StageProps) {
     flameReady &&
     (state.phase === "light" || state.phase === "closing");
   const finaleLifting = finaleShown && state.phase === "closing";
+  const leavingPanel =
+    !finaleShown && state.phase === "closing" && state.closing === "left" && Boolean(stop);
+  const leaveLifting = leavingPanel && leaveStage === "lift";
 
   useEffect(() => {
     const speaking = (state.phase === "present" || state.phase === "ack") && (beat === "words" || beat === "ready");
@@ -255,6 +259,23 @@ export default function TourStage(props: StageProps) {
     const timer = window.setTimeout(() => setFinaleAdvance(true), reduced ? 0 : TOUR_BEAT.dwell);
     return () => window.clearTimeout(timer);
   }, [state.alreadyLit, state.phase, flameReady, reduced]);
+
+  useEffect(() => {
+    const midTour =
+      state.phase === "closing" &&
+      state.closing === "left" &&
+      state.index >= 0 &&
+      !(state.alreadyLit && flameReady);
+    if (!midTour) return;
+    const lineAt = reduced ? 0 : TOUR_BEAT.wordsOut;
+    const liftAt = lineAt + (reduced ? 0 : TOUR_BEAT.wordsIn);
+    const line = window.setTimeout(() => setLeaveStage("line"), lineAt);
+    const lift = window.setTimeout(() => setLeaveStage("lift"), liftAt);
+    return () => {
+      window.clearTimeout(line);
+      window.clearTimeout(lift);
+    };
+  }, [state.phase, state.closing, state.index, state.alreadyLit, flameReady, reduced]);
 
   useEffect(() => {
     if (state.phase !== "travel" || reduced) return;
@@ -354,12 +375,14 @@ export default function TourStage(props: StageProps) {
   // is still arriving opens the room for a frame. Keep it up through the dim
   // and the route change; the reveal is what lets it show the subject again.
   const glowOn =
-    !finaleShown &&
-    (state.phase === "travel" ||
-      state.phase === "settle" ||
-      beat === "reveal" ||
-      beat === "drift" ||
-      speaking);
+    (leavingPanel && !leaveLifting) ||
+    (!finaleShown &&
+      !leavingPanel &&
+      (state.phase === "travel" ||
+        state.phase === "settle" ||
+        beat === "reveal" ||
+        beat === "drift" ||
+        speaking));
   const solid =
     finaleShown || state.phase === "closing"
       ? 0
@@ -372,7 +395,7 @@ export default function TourStage(props: StageProps) {
             : 0;
   const fadeMs = reduced
     ? 180
-    : state.phase === "closing"
+    : leavingPanel || state.phase === "closing"
       ? TOUR_BEAT.lift
       : finaleShown
         ? TOUR_BEAT.reveal
@@ -397,7 +420,7 @@ export default function TourStage(props: StageProps) {
     reduced,
   });
   const ribbonPlace =
-    (speaking || finaleShown) && stop && frame.width > 0
+    (speaking || finaleShown || leavingPanel) && stop && frame.width > 0
       ? placeRibbon({
           stop: "closing",
           phone: frame.phone,
@@ -452,10 +475,12 @@ export default function TourStage(props: StageProps) {
             index={state.index}
             place={ribbonPlace}
             ack={state.phase === "ack" ? state.ackLine : null}
-            line={finaleShown ? TOUR_COPY.litLine : null}
+            line={finaleShown ? TOUR_COPY.litLine : leavingPanel && leaveStage !== null ? TOUR_COPY.leftLine : null}
             done={finaleShown}
-            lifting={finaleLifting}
-            advance={finaleShown ? finaleAdvance || finaleLifting : beat === "ready"}
+            solid={leavingPanel}
+            lifting={finaleLifting || leaveLifting}
+            dimCopy={leavingPanel && leaveStage === null}
+            advance={finaleShown ? finaleAdvance || finaleLifting : leavingPanel ? false : beat === "ready"}
             onBack={() => {
               if (beat === "ready") props.onBack();
             }}
@@ -472,7 +497,7 @@ export default function TourStage(props: StageProps) {
             onLeave={props.onLeave}
           />
         ) : null}
-        {state.phase === "closing" && state.closing && state.closing !== "declined" && state.closing !== "lit" ? (
+        {state.phase === "closing" && state.closing && state.closing !== "declined" && state.closing !== "lit" && !leavingPanel ? (
           <ClosingLine key={state.closing} kind={state.closing} onDone={props.onClosingDone} />
         ) : null}
       </AnimatePresence>

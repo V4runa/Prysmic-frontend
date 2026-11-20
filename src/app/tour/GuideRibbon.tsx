@@ -19,7 +19,9 @@ export default function GuideRibbon({
   controls = true,
   advance = true,
   done = false,
+  solid = false,
   lifting = false,
+  dimCopy = false,
   onBack,
   onNext,
   onNotToday,
@@ -37,8 +39,12 @@ export default function GuideRibbon({
   advance?: boolean;
   /** The primary control says Done and ends the finale. */
   done?: boolean;
-  /** Fade the whole panel in place. Used for the finale lift. */
+  /** Solid fill, so page text cannot show through the panel. */
+  solid?: boolean;
+  /** Fade the whole panel in place. */
   lifting?: boolean;
+  /** Fade the current words out, leaving the panel. */
+  dimCopy?: boolean;
   onBack: () => void;
   onNext: () => void;
   onNotToday: () => void;
@@ -63,13 +69,13 @@ export default function GuideRibbon({
         ...TOUR_WASH,
         // The finale sits on the timeline. A solid fill keeps that text out of
         // the panel; the gradient on the other stops stays as it is.
-        ...(done ? { background: "#06070a" } : {}),
+        ...(done || solid ? { background: "#06070a" } : {}),
       }}
       initial={done ? false : { opacity: 0 }}
       animate={{ opacity: lifting ? 0 : 1 }}
       exit={{ opacity: 0 }}
       transition={
-        done
+        done || solid || lifting
           ? { duration: TOUR_BEAT.lift / 1000, ease: TOUR_EASE }
           : { duration: reduced ? 0.15 : TOUR_BEAT.wordsOut / 1000, ease: TOUR_EASE }
       }
@@ -78,7 +84,17 @@ export default function GuideRibbon({
         {line ? `Stop ${index + 1} of ${TOUR_STOPS.length}. ${line}` : stopAnnouncement(index)}
       </p>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+        <div
+          className="min-w-0 flex-1"
+          style={
+            dimCopy
+              ? {
+                  opacity: 0,
+                  transition: `opacity ${TOUR_BEAT.wordsOut}ms cubic-bezier(0.45, 0.05, 0.55, 0.95)`,
+                }
+              : undefined
+          }
+        >
           {line ? (
             <motion.p
               id="tour-heading"

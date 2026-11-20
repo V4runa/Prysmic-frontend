@@ -263,7 +263,12 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (state.phase !== "closing") return;
-    const delay = state.closing === "home" || state.closing === "lit" ? TOUR_BEAT.lift + 700 : TOUR_BEAT.lift + 200;
+    const delay =
+      state.closing === "home" || state.closing === "lit"
+        ? TOUR_BEAT.lift + 700
+        : state.closing === "left"
+          ? TOUR_BEAT.wordsOut + TOUR_BEAT.wordsIn + TOUR_BEAT.lift
+          : TOUR_BEAT.lift + 200;
     const timer = window.setTimeout(() => dispatch({ type: "closing-done" }), delay);
     return () => window.clearTimeout(timer);
   }, [state.phase, state.closing]);
