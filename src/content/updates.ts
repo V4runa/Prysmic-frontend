@@ -213,7 +213,7 @@ export const productUpdates = [
     kind: "new",
     title: "Settings",
     summary:
-      "You can change your password, update your email and confirm the new address, and pick an avatar. You can also choose the page that opens after login, a 12- or 24-hour clock, and the hour when your habit and mood day rolls over.",
+      "You can change your password, update your email and confirm the new address, and pick an avatar. You can also choose the page that opens after login, a 12- or 24-hour clock, and the hour when your contract and mood day rolls over.",
   },
   {
     id: "privacy-and-terms",
@@ -229,7 +229,7 @@ export const productUpdates = [
     kind: "new",
     title: "Delete your account",
     summary:
-      "You can delete your account from Settings. You confirm with your current password and the word DELETE, and your notes, tags, habits, tasks, and moods are removed.",
+      "You can delete your account from Settings. You confirm with your current password and the word DELETE, and your notes, tags, contracts, tasks, and moods are removed.",
   },
 ] as const satisfies readonly ProductUpdate[];
 

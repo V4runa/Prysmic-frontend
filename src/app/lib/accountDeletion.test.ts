@@ -238,7 +238,7 @@ test("account deletion stays inside the app shell and reuses export", () => {
 
   const page = readFileSync(new URL("../settings/page.tsx", import.meta.url), "utf8");
   assert.match(page, /ExportDataButton/);
-  assert.match(page, /notes, tags, habits, tasks, and moods/);
+  assert.match(page, /notes, tags, contracts, tasks, and moods/);
   assert.match(page, /can(?:'|&#39;|&apos;)t be undone/);
   assert.match(page, /DeleteAccountDialog/);
   assert.match(page, /readStoredToken/);

@@ -51,7 +51,7 @@ export default function HabitsPage() {
   const lastCheckDate = useRef<string>(today);
 
   useEffect(() => {
-    if (isError) setError("Failed to load habits");
+    if (isError) setError("Failed to load contracts");
   }, [isError]);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function HabitsPage() {
       queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
         (prev ?? []).map((h) => (h.id === habitId ? previousState : h))
       );
-      setError("Failed to mark habit complete.");
+      setError("Failed to mark contract complete.");
       setAnimatingId(null);
     }
   };

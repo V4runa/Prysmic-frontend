@@ -430,11 +430,14 @@ export default function EventModal({
                       <option value="">Nothing</option>
                       <option value="note">Note</option>
                       <option value="task">Task</option>
-                      <option value="habit">Habit</option>
+                      <option value="habit">Contract</option>
                     </SelectField>
                   </Field>
                   {linkedType && (
-                    <Field label={`Which ${linkedType}`} htmlFor="event-link-id">
+                    <Field
+                      label={`Which ${linkedType === "habit" ? "contract" : linkedType}`}
+                      htmlFor="event-link-id"
+                    >
                       <SelectField
                         id="event-link-id"
                         value={linkedId}

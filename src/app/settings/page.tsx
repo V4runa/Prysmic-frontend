@@ -811,9 +811,9 @@ function PreferencesSection() {
         </fieldset>
 
         <Field
-          label="Habit and mood day rollover"
+          label="Contract and mood day rollover"
           htmlFor="settings-rollover"
-          hint="Habits and moods logged before this hour still count toward the previous day."
+          hint="Contracts and moods logged before this hour still count toward the previous day."
         >
           <SelectField
             id="settings-rollover"
@@ -866,7 +866,7 @@ function DataSection() {
     <GlassPanel>
       <h2 className="text-base font-medium tracking-wide text-slate-100">Data & privacy</h2>
       <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-        Download a JSON copy of your notes, tags, habits, tasks, and moods. Attachment files are not included.
+        Download a JSON copy of your notes, tags, contracts, tasks, and moods. Attachment files are not included.
       </p>
       <div className="mt-3">
         <ExportDataButton />
@@ -875,7 +875,7 @@ function DataSection() {
       <section className="mt-8 rounded-lg border border-rose-300/25 bg-rose-400/[0.04] p-4 sm:p-5">
         <h3 className="text-base font-medium tracking-wide text-rose-100">Delete account</h3>
         <p className="mt-2 text-sm leading-relaxed text-slate-300">
-          This permanently deletes all of your notes, tags, habits, tasks, and moods. It can&apos;t be undone.
+          This permanently deletes all of your notes, tags, contracts, tasks, and moods. It can&apos;t be undone.
           Export your data first if you want a copy.
         </p>
         <FormButton type="button" variant="danger" className="mt-4" onClick={() => setOpen(true)}>
