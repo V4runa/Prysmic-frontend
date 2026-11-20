@@ -24,16 +24,23 @@ test("a wide control is lit across its whole box, with feather outside", () => {
   assert.equal(glowFor({ x: 0, y: 0, width: 0, height: 40 }), null);
 });
 
-test("the calendar lantern sits inside today's cell, not on the day before", () => {
+test("a narrow calendar cell keeps the lantern off the date numeral", () => {
   const cell = { x: 220, y: 340, width: 52, height: 72 };
   const anchor = lanternAnchor(cell, "calendar");
-  assert.ok(anchor.x > cell.x + cell.width * 0.35);
-  assert.ok(anchor.x < cell.x + cell.width);
-  assert.ok(anchor.y > cell.y);
-  assert.ok(anchor.y < cell.y + 28);
+  const center = cell.x + cell.width / 2;
+  assert.ok(Math.abs(anchor.x - center) > 12);
+  assert.ok(anchor.x > cell.x && anchor.x < cell.x + cell.width);
+  assert.ok(anchor.y > cell.y && anchor.y < cell.y + 20);
   const old = { x: cell.x - 14, y: cell.y - 22 };
-  assert.ok(Math.abs(anchor.x - old.x) > 20);
+  assert.ok(anchor.x > old.x);
   assert.ok(anchor.y > old.y);
+});
+
+test("a wide calendar cell keeps the lantern centered along today's top", () => {
+  const cell = { x: 400, y: 200, width: 140, height: 110 };
+  const anchor = lanternAnchor(cell, "calendar");
+  assert.ok(Math.abs(anchor.x - (cell.x + cell.width / 2)) < 2);
+  assert.ok(anchor.y > cell.y && anchor.y < cell.y + 28);
 });
 
 test("phone copy docks above the tab bar, including the safe area", () => {

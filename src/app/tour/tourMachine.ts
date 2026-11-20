@@ -35,6 +35,11 @@ export type TourState = {
   persistSeen: boolean;
   /** Today's mood was already logged, so the finale does not ask again. */
   alreadyLit: boolean;
+  /**
+   * Set when Not today is chosen. The walk stays on Moods until Done,
+   * so the ending matches a logged mood instead of lifting itself.
+   */
+  finale: "skip" | null;
 };
 
 export const initialTourState: TourState = {
@@ -45,6 +50,7 @@ export const initialTourState: TourState = {
   moodColor: null,
   persistSeen: false,
   alreadyLit: false,
+  finale: null,
 };
 
 export type TourEvent =
@@ -62,6 +68,8 @@ export type TourEvent =
   | { type: "mood-picked" }
   | { type: "mood-kept"; color: string | null }
   | { type: "not-today" }
+  | { type: "finale-back" }
+  | { type: "finale-done" }
   | { type: "leave" }
   | { type: "light-done" }
   | { type: "closing-done" };
@@ -147,7 +155,7 @@ export function tourReducer(state: TourState, event: TourEvent): TourState {
       return travelTo(state, state.index + 1);
 
     case "mood-picked":
-      if (state.phase !== "present") return state;
+      if (state.phase !== "present" || state.finale === "skip") return state;
       if (TOUR_STOPS[state.index]?.id !== "moods") return state;
       return { ...state, phase: "reflect", ackLine: null };
 
@@ -156,8 +164,16 @@ export function tourReducer(state: TourState, event: TourEvent): TourState {
       return { ...state, phase: "light", moodColor: event.color };
 
     case "not-today":
-      if (state.phase !== "present") return state;
+      if (state.phase !== "present" || state.finale === "skip") return state;
       if (TOUR_STOPS[state.index]?.id !== "moods") return state;
+      return { ...state, finale: "skip", ackLine: null };
+
+    case "finale-back":
+      if (state.phase !== "present" || state.finale !== "skip") return state;
+      return { ...state, finale: null };
+
+    case "finale-done":
+      if (state.phase !== "present" || state.finale !== "skip") return state;
       return close(state, "not-today");
 
     case "leave":

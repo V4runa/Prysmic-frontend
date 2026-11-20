@@ -184,7 +184,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.label}
                   variant="desktop"
                   open={updatesOpen}
-                  unread={updatesUnread}
+                  unread={tour.suppressUpdatesDot ? false : updatesUnread}
                   onOpen={openUpdates}
                 />
               ) : (
@@ -261,7 +261,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.label}
                 variant="mobile"
                 open={updatesOpen}
-                unread={updatesUnread}
+                unread={tour.suppressUpdatesDot ? false : updatesUnread}
                 onOpen={openUpdates}
               />
             );

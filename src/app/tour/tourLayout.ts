@@ -94,6 +94,14 @@ export function glowFor(rect: Rect | null): GlowFocus | null {
  */
 export function lanternAnchor(rect: Rect, stopId: string | null): { x: number; y: number } {
   if (stopId === "calendar") {
+    // Phone cells are narrow and center the numeral. Sit in the top corner
+    // so the date stays readable, still inside today's cell.
+    if (rect.width < 78) {
+      return {
+        x: rect.x + rect.width - 2,
+        y: rect.y + 6,
+      };
+    }
     return {
       x: rect.x + rect.width / 2,
       y: rect.y + Math.min(20, Math.max(14, rect.height * 0.22)),
