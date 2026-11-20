@@ -348,6 +348,21 @@ select option {
     0 18px 44px -16px rgba(0, 0, 0, 0.6);
 }
 
+/* Phones: the mood page scrolls inside this panel. Android Chrome flickers
+   when it resamples backdrop-filter during that scroll. A steady fill keeps
+   the same dark glass; the blur stays on wider screens. */
+@media (max-width: 639px) {
+  .glass-card.mood-stable-glass {
+    background-image: linear-gradient(
+      160deg,
+      rgba(22, 24, 32, 0.94),
+      rgba(12, 14, 20, 0.92) 55%
+    ) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
 /* Just the specular top-edge gloss — layer it onto surfaces that already own
    their own (often colored) background, like the habit tiles. */
 .glass-sheen {
