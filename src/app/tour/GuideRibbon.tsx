@@ -18,6 +18,7 @@ export default function GuideRibbon({
   line,
   controls = true,
   advance = true,
+  done = false,
   onBack,
   onNext,
   onNotToday,
@@ -33,6 +34,8 @@ export default function GuideRibbon({
   controls?: boolean;
   /** Next and Back stay hidden until the stop has had its beat. */
   advance?: boolean;
+  /** The primary control says Done and ends the finale. */
+  done?: boolean;
   onBack: () => void;
   onNext: () => void;
   onNotToday: () => void;
@@ -152,7 +155,15 @@ export default function GuideRibbon({
             >
               {TOUR_COPY.back}
             </button>
-            {moods ? (
+            {done ? (
+              <button
+                type="button"
+                onClick={onNext}
+                className="tap-target rounded-md border border-cyan-300/20 bg-cyan-400/10 px-4 text-sm tracking-wide text-cyan-100 hover:bg-cyan-400/20"
+              >
+                {TOUR_COPY.done}
+              </button>
+            ) : moods ? (
               <button
                 type="button"
                 onClick={onNotToday}

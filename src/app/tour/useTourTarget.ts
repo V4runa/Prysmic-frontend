@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { pageIsBusy, scrollIntoPanel, toRect, visibleQuery, visibleRects } from "./tourDom";
 import { unionRect, type Rect } from "./tourLayout";
 
-const FALLBACK = "main h1, main h2";
+const FALLBACK = "main";
 const GIVE_UP_MS = 8000;
 
 function far(a: Rect, b: Rect): boolean {

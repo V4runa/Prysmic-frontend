@@ -52,6 +52,7 @@ export const TOUR_COPY = {
   litLine: "Your mood already lights the room.",
   back: "Back",
   next: "Next",
+  done: "Done",
 } as const;
 
 /** Spectrum motes. Same hues as PrismBackdrop and the calendar source chips. */
@@ -78,7 +79,7 @@ export const TOUR_STOPS: readonly TourStop[] = [
     id: "notes",
     route: "/notes",
     navHref: "/notes",
-    target: "[data-tour='notes-feed']",
+    target: "[data-tour='notes-create']",
     waypoint: "[data-tour-nav='/notes']",
     title: "Notes",
     body: "This is where your thoughts live. Write anything, finished or not.",
@@ -91,7 +92,7 @@ export const TOUR_STOPS: readonly TourStop[] = [
     id: "tags",
     route: "/tags",
     navHref: "/tags",
-    target: "[data-tour='tags-codex']",
+    target: "[data-tour='tags-create']",
     waypoint: "[data-tour='manage-tags']",
     title: "Tag Codex",
     body: "Tags gather notes and tasks by theme. Name one now if you like, or keep walking.",
@@ -104,7 +105,7 @@ export const TOUR_STOPS: readonly TourStop[] = [
     id: "tasks",
     route: "/tasks",
     navHref: "/tasks",
-    target: "[data-tour='tasks-add']",
+    target: "[data-tour='tasks-field']",
     waypoint: "[data-tour-nav='/tasks']",
     title: "Tasks",
     body: "Things to do, kept short. Type one and press Enter.",
@@ -130,7 +131,7 @@ export const TOUR_STOPS: readonly TourStop[] = [
     id: "calendar",
     route: "/calendar",
     navHref: "/calendar",
-    target: "[data-tour='calendar-grid']",
+    target: "[data-tour='calendar-today']",
     waypoint: "[data-tour-nav='/calendar']",
     title: "Calendar",
     body: "Everything meets here. Tasks, contracts, events and moods, day by day.",

@@ -13,7 +13,7 @@ export const TOUR_BEAT = {
   drift: 700,
   wordsDelay: 200,
   wordsIn: 300,
-  dwell: 1300,
+  dwell: 600,
   lift: 1500,
 } as const;
 

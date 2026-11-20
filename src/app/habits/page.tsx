@@ -147,7 +147,7 @@ export default function HabitsPage() {
           </motion.button>
         </div>
 
-        <div data-tour="contracts-list" className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto app-scroll p-1">
             {isLoading && habits.length === 0 ? (
               <div className="wide-grid-contracts grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
@@ -165,6 +165,7 @@ export default function HabitsPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
+                data-tour="contracts-list"
                 className="wide-grid-contracts grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3"
               >
                 {habits.length === 0 ? (

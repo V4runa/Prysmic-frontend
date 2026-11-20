@@ -12,7 +12,7 @@ import { TOUR_BEAT, TOUR_EASE } from "./tourBeats";
 import { focusables, pageIsBusy, toRect, visibleQuery } from "./tourDom";
 import { placeRibbon, type Rect } from "./tourLayout";
 import { tourStopId, type TourState } from "./tourMachine";
-import { TOUR_MOTE, TOUR_STOPS, tourStopByIndex } from "./tourStops";
+import { TOUR_COPY, TOUR_MOTE, TOUR_STOPS, tourStopByIndex } from "./tourStops";
 import { useTourTarget } from "./useTourTarget";
 
 type Tint = { r: number; g: number; b: number } | null;
@@ -84,7 +84,8 @@ export default function TourStage(props: StageProps) {
   const stop = tourStopByIndex(state.index);
   const stopId = tourStopId(state);
   const skipTarget = stopId === "moods" && Boolean(props.moodToken);
-  const seeking = state.phase === "settle" && !skipTarget;
+  const seeking =
+    (state.phase === "settle" || state.phase === "present" || state.phase === "ack") && !skipTarget;
   const selectors = stop && !skipTarget ? [stop.target] : [];
   const target = useTourTarget(selectors, seeking, reduced);
   const [arrivalAnchor, setArrivalAnchor] = useState<Rect | null>(null);
@@ -93,6 +94,8 @@ export default function TourStage(props: StageProps) {
   const [sceneBeat, setSceneBeat] = useState<{ index: number; beat: "drift" | "words" | "ready" } | null>(null);
   const [keptRect, setKeptRect] = useState<Rect | null>(null);
   const [keptKey, setKeptKey] = useState("");
+  const [flameReady, setFlameReady] = useState(false);
+  const [finaleAdvance, setFinaleAdvance] = useState(false);
   const reported = useRef("");
   const actions = useRef(props);
 
@@ -181,7 +184,13 @@ export default function TourStage(props: StageProps) {
   const rectKey = target.rect
     ? `${target.rect.x.toFixed(0)}|${target.rect.y.toFixed(0)}|${target.rect.width.toFixed(0)}|${target.rect.height.toFixed(0)}`
     : "";
-  if (rectKey && rectKey !== keptKey && target.rect) {
+  if (
+    rectKey &&
+    rectKey !== keptKey &&
+    target.rect &&
+    state.phase !== "travel" &&
+    state.phase !== "settle"
+  ) {
     setKeptRect(target.rect);
     setKeptKey(rectKey);
   }
@@ -202,14 +211,19 @@ export default function TourStage(props: StageProps) {
     state.phase === "light" ||
     (state.phase === "travel" && (reduced || departedFor === state.index));
 
+  const finaleShown =
+    state.alreadyLit &&
+    flameReady &&
+    (state.phase === "light" || (state.phase === "closing" && state.closing === "lit"));
+
   useEffect(() => {
     const speaking = (state.phase === "present" || state.phase === "ack") && (beat === "words" || beat === "ready");
-    const litLine = state.phase === "closing" && (state.closing === "lit" || state.closing === "home");
-    if (state.phase !== "arrival" && !speaking && !litLine) return;
+    const litLine = state.phase === "closing" && state.closing === "home";
+    if (state.phase !== "arrival" && !speaking && !litLine && !finaleShown) return;
     const heading = document.getElementById("tour-heading");
     const timer = window.setTimeout(() => heading?.focus({ preventScroll: true }), reduced ? 40 : 80);
     return () => window.clearTimeout(timer);
-  }, [state.phase, state.index, state.closing, beat, reduced]);
+  }, [state.phase, state.index, state.closing, beat, reduced, finaleShown]);
 
   useEffect(() => {
     if (state.phase !== "light") return;
@@ -222,7 +236,8 @@ export default function TourStage(props: StageProps) {
       const box = room?.getBoundingClientRect();
       const present = Boolean(box && box.height > 40 && !pageIsBusy());
       if (present || performance.now() - started > 8000) {
-        actions.current.onLightDone();
+        if (state.alreadyLit) setFlameReady(true);
+        else actions.current.onLightDone();
         return;
       }
       frame = requestAnimationFrame(watch);
@@ -232,7 +247,13 @@ export default function TourStage(props: StageProps) {
       cancelled = true;
       cancelAnimationFrame(frame);
     };
-  }, [state.phase]);
+  }, [state.phase, state.alreadyLit]);
+
+  useEffect(() => {
+    if (!(state.alreadyLit && state.phase === "light" && flameReady)) return;
+    const timer = window.setTimeout(() => setFinaleAdvance(true), reduced ? 0 : TOUR_BEAT.dwell);
+    return () => window.clearTimeout(timer);
+  }, [state.alreadyLit, state.phase, flameReady, reduced]);
 
   useEffect(() => {
     if (state.phase !== "travel" || reduced) return;
@@ -328,9 +349,18 @@ export default function TourStage(props: StageProps) {
   const speaking =
     (state.phase === "present" || state.phase === "ack") && (beat === "words" || beat === "ready");
   const holding = state.phase === "travel" && !covered;
-  const glowOn = holding ? Boolean(keptRect) : beat === "reveal" || beat === "drift" || speaking;
+  // The feather is what darkens the edges. Fading it out while the solid veil
+  // is still arriving opens the room for a frame. Keep it up through the dim
+  // and the route change; the reveal is what lets it show the subject again.
+  const glowOn =
+    !finaleShown &&
+    (state.phase === "travel" ||
+      state.phase === "settle" ||
+      beat === "reveal" ||
+      beat === "drift" ||
+      speaking);
   const solid =
-    state.phase === "closing"
+    finaleShown || state.phase === "closing"
       ? 0
       : state.phase === "arrival" || (holding && !keptRect)
         ? 0.9
@@ -343,10 +373,17 @@ export default function TourStage(props: StageProps) {
     ? 180
     : state.phase === "closing"
       ? TOUR_BEAT.lift
-      : covered
-        ? TOUR_BEAT.dim
-        : TOUR_BEAT.reveal;
-  const focus = glowOn ? glowFor(target.rect ?? keptRect) : null;
+      : finaleShown
+        ? TOUR_BEAT.reveal
+        : covered
+          ? TOUR_BEAT.dim
+          : TOUR_BEAT.reveal;
+  const focus = glowOn
+    ? glowFor(
+        state.phase === "present" || state.phase === "ack" ? (target.rect ?? keptRect) : keptRect,
+        frame.height || window.innerHeight
+      )
+    : null;
   const showGuide = state.phase !== "closing" && state.phase !== "done" && state.phase !== "idle" && state.phase !== "light";
   const pose = buildPose({
     state,
@@ -359,7 +396,7 @@ export default function TourStage(props: StageProps) {
     reduced,
   });
   const ribbonPlace =
-    speaking && stop && frame.width > 0
+    (speaking || finaleShown) && stop && frame.width > 0
       ? placeRibbon({
           stop: "closing",
           phone: frame.phone,
@@ -408,26 +445,40 @@ export default function TourStage(props: StageProps) {
           />
         ) : null}
         {stop && ribbonPlace ? (
-          <GuideRibbon
-            key={stop.id}
-            stop={stop}
-            index={state.index}
-            place={ribbonPlace}
-            ack={state.phase === "ack" ? state.ackLine : null}
-            advance={beat === "ready"}
-            onBack={() => {
-              if (beat === "ready") props.onBack();
+          <motion.div
+            key={finaleShown ? "finale" : stop.id}
+            animate={{ opacity: state.phase === "closing" && state.closing === "lit" ? 0 : 1 }}
+            transition={{
+              duration: state.phase === "closing" && state.closing === "lit" ? TOUR_BEAT.lift / 1000 : 0.01,
+              ease: TOUR_EASE,
             }}
-            onNext={() => {
-              if (beat === "ready") props.onNext();
-            }}
-            onNotToday={() => {
-              if (beat === "ready") props.onNotToday();
-            }}
-            onLeave={props.onLeave}
-          />
+          >
+            <GuideRibbon
+              stop={stop}
+              index={state.index}
+              place={ribbonPlace}
+              ack={state.phase === "ack" ? state.ackLine : null}
+              line={finaleShown ? TOUR_COPY.litLine : null}
+              done={finaleShown}
+              advance={finaleShown ? finaleAdvance : beat === "ready"}
+              onBack={() => {
+                if (beat === "ready") props.onBack();
+              }}
+              onNext={() => {
+                if (finaleShown) {
+                  props.onLightDone();
+                  return;
+                }
+                if (beat === "ready") props.onNext();
+              }}
+              onNotToday={() => {
+                if (beat === "ready") props.onNotToday();
+              }}
+              onLeave={props.onLeave}
+            />
+          </motion.div>
         ) : null}
-        {state.phase === "closing" && state.closing && state.closing !== "declined" ? (
+        {state.phase === "closing" && state.closing && state.closing !== "declined" && state.closing !== "lit" ? (
           <ClosingLine key={state.closing} kind={state.closing} onDone={props.onClosingDone} />
         ) : null}
       </AnimatePresence>
@@ -460,13 +511,17 @@ function gatheredColors(index: number): string[] {
     .filter((color): color is string => Boolean(color));
 }
 
-function glowFor(rect: Rect | null): { x: number; y: number; rx: number; ry: number } | null {
+function glowFor(
+  rect: Rect | null,
+  viewportHeight: number
+): { x: number; y: number; rx: number; ry: number } | null {
   if (!rect) return null;
+  const tall = rect.height > Math.max(520, viewportHeight * 0.72);
   return {
     x: rect.x + rect.width / 2,
-    y: rect.y + rect.height / 2,
-    rx: Math.max(rect.width * 0.62, 210),
-    ry: Math.max(rect.height * 0.75, 160),
+    y: tall ? rect.y + Math.min(200, rect.height * 0.22) : rect.y + rect.height / 2,
+    rx: Math.min(Math.max(rect.width * 0.5 + 72, 120), 380),
+    ry: Math.min(Math.max(tall ? 150 : rect.height * 0.55 + 56, 88), 220),
   };
 }
 

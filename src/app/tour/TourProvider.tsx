@@ -269,12 +269,6 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   }, [state.phase, state.closing]);
 
   useEffect(() => {
-    if (state.phase !== "light") return;
-    const timer = window.setTimeout(() => dispatch({ type: "light-done" }), 8000);
-    return () => window.clearTimeout(timer);
-  }, [state.phase]);
-
-  useEffect(() => {
     if (state.phase !== "done") return;
     const heading =
       document.querySelector("main [data-tour-heading]") ||

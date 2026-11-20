@@ -185,6 +185,7 @@ export default function QuickTaskInput({
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <TextField
           ref={titleRef}
+          data-tour="tasks-field"
           placeholder="Add a new task..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
