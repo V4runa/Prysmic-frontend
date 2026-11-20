@@ -19,6 +19,7 @@ export default function GuideRibbon({
   controls = true,
   advance = true,
   done = false,
+  lifting = false,
   onBack,
   onNext,
   onNotToday,
@@ -36,6 +37,8 @@ export default function GuideRibbon({
   advance?: boolean;
   /** The primary control says Done and ends the finale. */
   done?: boolean;
+  /** Fade the whole panel in place. Used for the finale lift. */
+  lifting?: boolean;
   onBack: () => void;
   onNext: () => void;
   onNotToday: () => void;
@@ -58,11 +61,18 @@ export default function GuideRibbon({
         left: place.left,
         width: place.width,
         ...TOUR_WASH,
+        // The finale sits on the timeline. A solid fill keeps that text out of
+        // the panel; the gradient on the other stops stays as it is.
+        ...(done ? { background: "#06070a" } : {}),
       }}
-      initial={reduced ? { opacity: 0 } : { opacity: 0 }}
-      animate={{ opacity: 1 }}
+      initial={done ? false : { opacity: 0 }}
+      animate={{ opacity: lifting ? 0 : 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: reduced ? 0.15 : TOUR_BEAT.wordsOut / 1000, ease: TOUR_EASE }}
+      transition={
+        done
+          ? { duration: TOUR_BEAT.lift / 1000, ease: TOUR_EASE }
+          : { duration: reduced ? 0.15 : TOUR_BEAT.wordsOut / 1000, ease: TOUR_EASE }
+      }
     >
       <p className="sr-only" aria-live="polite">
         {line ? `Stop ${index + 1} of ${TOUR_STOPS.length}. ${line}` : stopAnnouncement(index)}

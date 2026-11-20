@@ -214,7 +214,8 @@ export default function TourStage(props: StageProps) {
   const finaleShown =
     state.alreadyLit &&
     flameReady &&
-    (state.phase === "light" || (state.phase === "closing" && state.closing === "lit"));
+    (state.phase === "light" || state.phase === "closing");
+  const finaleLifting = finaleShown && state.phase === "closing";
 
   useEffect(() => {
     const speaking = (state.phase === "present" || state.phase === "ack") && (beat === "words" || beat === "ready");
@@ -293,7 +294,7 @@ export default function TourStage(props: StageProps) {
     const onPointer = () => actions.current.onClosingDone();
     const timer = window.setTimeout(() => {
       window.addEventListener("pointerdown", onPointer);
-    }, 400);
+    }, TOUR_BEAT.lift);
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener("pointerdown", onPointer);
@@ -445,38 +446,31 @@ export default function TourStage(props: StageProps) {
           />
         ) : null}
         {stop && ribbonPlace ? (
-          <motion.div
+          <GuideRibbon
             key={finaleShown ? "finale" : stop.id}
-            animate={{ opacity: state.phase === "closing" && state.closing === "lit" ? 0 : 1 }}
-            transition={{
-              duration: state.phase === "closing" && state.closing === "lit" ? TOUR_BEAT.lift / 1000 : 0.01,
-              ease: TOUR_EASE,
+            stop={stop}
+            index={state.index}
+            place={ribbonPlace}
+            ack={state.phase === "ack" ? state.ackLine : null}
+            line={finaleShown ? TOUR_COPY.litLine : null}
+            done={finaleShown}
+            lifting={finaleLifting}
+            advance={finaleShown ? finaleAdvance || finaleLifting : beat === "ready"}
+            onBack={() => {
+              if (beat === "ready") props.onBack();
             }}
-          >
-            <GuideRibbon
-              stop={stop}
-              index={state.index}
-              place={ribbonPlace}
-              ack={state.phase === "ack" ? state.ackLine : null}
-              line={finaleShown ? TOUR_COPY.litLine : null}
-              done={finaleShown}
-              advance={finaleShown ? finaleAdvance : beat === "ready"}
-              onBack={() => {
-                if (beat === "ready") props.onBack();
-              }}
-              onNext={() => {
-                if (finaleShown) {
-                  props.onLightDone();
-                  return;
-                }
-                if (beat === "ready") props.onNext();
-              }}
-              onNotToday={() => {
-                if (beat === "ready") props.onNotToday();
-              }}
-              onLeave={props.onLeave}
-            />
-          </motion.div>
+            onNext={() => {
+              if (finaleShown) {
+                props.onLightDone();
+                return;
+              }
+              if (beat === "ready") props.onNext();
+            }}
+            onNotToday={() => {
+              if (beat === "ready") props.onNotToday();
+            }}
+            onLeave={props.onLeave}
+          />
         ) : null}
         {state.phase === "closing" && state.closing && state.closing !== "declined" && state.closing !== "lit" ? (
           <ClosingLine key={state.closing} kind={state.closing} onDone={props.onClosingDone} />
