@@ -351,6 +351,19 @@ export default function TourCard({
       softObstacles.push(toBox(rect, 4));
     }
   }
+  if (step?.id === "moods" && target) {
+    for (const node of document.querySelectorAll<HTMLElement>("[data-tour='mood-grid'] button")) {
+      const rect = node.getBoundingClientRect();
+      if (rect.width < 48 || rect.height < 48) continue;
+      const inside =
+        rect.left >= target.x - 2 &&
+        rect.top >= target.y - 2 &&
+        rect.right <= target.x + target.width + 2 &&
+        rect.bottom <= target.y + target.height + 2;
+      if (inside) continue;
+      softObstacles.push(toBox(rect, 8));
+    }
+  }
   const obstacles = target
     ? [
         ...keepBoxes(visibleQuery(step?.target ?? "")),

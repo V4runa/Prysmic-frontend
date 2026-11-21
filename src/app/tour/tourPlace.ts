@@ -135,8 +135,7 @@ function placeAtWidth(
     }, 0);
     const distance = gapTo(box, target);
     const centered = Math.abs(box.x + box.width / 2 - (target.x + target.width / 2));
-    const score =
-      targetHit * 1000 + obstacleHit * 40 + softHit + distance + centered * 0.05 + (distance > 36 ? (distance - 36) * 2 : 0);
+    const score = targetHit * 5000 + obstacleHit * 80 + softHit * 0.02 + distance * 6;
     if (targetHit === 0 && obstacleHit === 0 && softHit === 0 && (!best || score < best.score)) best = { spot, score };
     if (targetHit === 0 && obstacleHit === 0 && (!near || score < near.score)) near = { spot, score };
     if (!fallback || score < fallback.score) fallback = { spot, score };
