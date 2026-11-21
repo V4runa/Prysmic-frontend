@@ -50,6 +50,27 @@ export function overlapArea(a: Box, b: Box): number {
   return (right - left) * (bottom - top);
 }
 
+function focusBox(obstacle: Box): Box {
+  if (obstacle.width > 480 && obstacle.height < 140) {
+    const width = Math.min(260, obstacle.width);
+    return { ...obstacle, x: obstacle.x + (obstacle.width - width) / 2, width };
+  }
+  return obstacle;
+}
+
+/** On a phone, covering the bottom of a tall target is worse than covering the top. */
+function coverScore(card: Box, target: Box, phone: boolean): number {
+  const area = overlapArea(card, target);
+  if (!area || !phone) return area;
+  const lower: Box = {
+    x: target.x,
+    y: target.y + target.height * 0.58,
+    width: target.width,
+    height: target.height * 0.42,
+  };
+  return area + overlapArea(card, lower) * 8;
+}
+
 function gapTo(card: Box, target: Box): number {
   const dx = Math.max(card.x - (target.x + target.width), target.x - (card.x + card.width), 0);
   const dy = Math.max(card.y - (target.y + target.height), target.y - (card.y + card.height), 0);
@@ -119,9 +140,10 @@ export function placeTourCard(input: {
     const box = spotBox(spot, height);
     if (box.y + box.height > viewport.height - insets.bottom + 1) continue;
     if (box.y < minTop - 1) continue;
-    const targetHit = overlapArea(box, target);
+    const phone = viewport.width < TOUR_CARD_WIDTH;
+    const targetHit = coverScore(box, target, phone);
     const obstacleHit = (input.obstacles ?? []).reduce((sum, obstacle) => {
-      const area = overlapArea(box, obstacle);
+      const area = overlapArea(box, focusBox(obstacle));
       if (!area) return sum;
       const lower = box.y + box.height / 2 > obstacle.y + obstacle.height / 2 ? 4 : 1;
       return sum + area * lower;
@@ -129,7 +151,7 @@ export function placeTourCard(input: {
     const distance = gapTo(box, target);
     const score = targetHit * 1000 + obstacleHit * 8 + distance + (distance > 36 ? (distance - 36) * 2 : 0);
     if (targetHit === 0 && obstacleHit === 0 && (!best || score < best.score)) best = { spot, score };
-    if (targetHit === 0 && (!fallback || score < fallback.score)) fallback = { spot, score };
+    if (!fallback || score < fallback.score) fallback = { spot, score };
   }
 
   const lastResort: CardSpot = {
