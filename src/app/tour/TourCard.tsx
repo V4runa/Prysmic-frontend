@@ -100,15 +100,12 @@ function pageBusy(): boolean {
 
 function scrollTargetClear(node: HTMLElement, insets: SafeInsets, cardHeight: number): void {
   const rect = node.getBoundingClientRect();
-  const viewTop = insets.top;
-  const viewBottom = window.innerHeight - insets.bottom - cardHeight - 16;
-  if (rect.top >= viewTop && rect.bottom <= viewBottom) return;
-  const delta =
-    rect.height > viewBottom - viewTop
-      ? rect.top - viewTop
-      : rect.top < viewTop
-        ? rect.top - viewTop
-        : rect.bottom - viewBottom;
+  const viewTop = insets.top + 8;
+  const viewBottom = window.innerHeight - insets.bottom - cardHeight - 18;
+  let delta = 0;
+  if (rect.bottom > viewBottom) delta = rect.bottom - viewBottom;
+  else if (rect.top < viewTop) delta = rect.top - viewTop;
+  if (Math.abs(delta) < 2) return;
   const scroller = node.closest(".app-scroll");
   if (scroller instanceof HTMLElement) scroller.scrollBy({ top: delta, behavior: "auto" });
   else window.scrollBy({ top: delta, behavior: "auto" });
@@ -235,14 +232,17 @@ export default function TourCard({
         hits = 0;
         return;
       }
-      if (!scrolled) {
-        scrolled = true;
-        scrollTargetClear(node, { top: chrome.top, bottom: chrome.bottom }, CARD_ESTIMATE);
-      }
       const box = measureTarget(node);
       if (previous && sameTarget(previous, box)) hits += 1;
       else hits = 0;
       previous = box;
+      if (hits >= 1 && !scrolled) {
+        scrolled = true;
+        scrollTargetClear(node, { top: chrome.top, bottom: chrome.bottom }, CARD_ESTIMATE);
+        hits = 0;
+        previous = null;
+        return;
+      }
       if (hits >= 2) {
         locked = true;
         window.clearInterval(timer);
@@ -322,7 +322,9 @@ export default function TourCard({
     viewport: viewport.width > 0 ? viewport : { width: 390, height: 844 },
     insets: { top: chrome.top, bottom: chrome.bottom },
     card: { width: TOUR_CARD_WIDTH, height: cardHeight || CARD_ESTIMATE },
-    target: showStep ? target : null,
+    target: showStep && target
+      ? { x: target.x - 12, y: target.y - 12, width: target.width + 24, height: target.height + 24 }
+      : null,
     obstacles,
     presentation: phase === "step" ? "anchor" : "center",
   });

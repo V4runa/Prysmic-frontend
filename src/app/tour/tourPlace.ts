@@ -77,7 +77,7 @@ export function placeTourCard(input: {
   const maxLeft = viewport.width - TOUR_MARGIN - width;
 
   const center = (): CardSpot => ({
-    top: clamp((viewport.height - height) / 2, minTop, Math.max(minTop, maxTop)),
+    top: clamp((viewport.height - height) / 2 - 36, minTop, Math.max(minTop, maxTop)),
     left: clamp((viewport.width - width) / 2, minLeft, Math.max(minLeft, maxLeft)),
     width,
   });
@@ -123,13 +123,13 @@ export function placeTourCard(input: {
     const obstacleHit = (input.obstacles ?? []).reduce((sum, obstacle) => {
       const area = overlapArea(box, obstacle);
       if (!area) return sum;
-      const lower = box.y + box.height / 2 > obstacle.y + obstacle.height / 2 ? 3 : 1;
+      const lower = box.y + box.height / 2 > obstacle.y + obstacle.height / 2 ? 4 : 1;
       return sum + area * lower;
     }, 0);
     const distance = gapTo(box, target);
-    const score = targetHit * 1000 + obstacleHit * 4 + distance + (distance > 28 ? (distance - 28) * 3 : 0);
-    if (targetHit === 0 && (!best || score < best.score)) best = { spot, score };
-    if (!fallback || score < fallback.score) fallback = { spot, score };
+    const score = targetHit * 1000 + obstacleHit * 8 + distance + (distance > 36 ? (distance - 36) * 2 : 0);
+    if (targetHit === 0 && obstacleHit === 0 && (!best || score < best.score)) best = { spot, score };
+    if (targetHit === 0 && (!fallback || score < fallback.score)) fallback = { spot, score };
   }
 
   return best?.spot ?? fallback?.spot ?? null;

@@ -130,7 +130,7 @@ export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
       <div className="flex flex-col items-center w-full min-h-full px-4 py-6 sm:px-6 sm:py-8">
         <div className="wide-mood-head flex w-full max-w-5xl flex-col items-center">
         {/* Header */}
-        <div className="mb-6 flex w-full items-center justify-between gap-3 sm:mb-10">
+        <div data-tour-keep="" className="mb-6 flex w-full items-center justify-between gap-3 sm:mb-10">
           <div className="min-w-0">
             {onCancel && !managing && (
               <button
