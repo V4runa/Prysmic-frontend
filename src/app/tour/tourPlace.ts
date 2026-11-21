@@ -80,6 +80,7 @@ function placeAtWidth(
     card: { width: number; height: number };
     target: Box;
     obstacles?: readonly Box[];
+    softObstacles?: readonly Box[];
     shieldBelow?: boolean;
   },
   width: number
@@ -112,6 +113,7 @@ function placeAtWidth(
   ];
 
   let best: { spot: CardSpot; score: number } | null = null;
+  let near: { spot: CardSpot; score: number } | null = null;
   let fallback: { spot: CardSpot; score: number } | null = null;
   for (const candidate of raw) {
     const spot: CardSpot = {
@@ -124,17 +126,19 @@ function placeAtWidth(
     if (box.y < minTop - 1) continue;
     const phone = viewport.width < TOUR_CARD_WIDTH;
     const targetHit = coverScore(box, target, phone);
-    const obstacleHit = (input.obstacles ?? []).reduce((sum, obstacle) => {
+    const obstacleHit = (input.obstacles ?? []).reduce((sum, obstacle) => sum + overlapArea(box, obstacle), 0);
+    const softHit = (input.softObstacles ?? []).reduce((sum, obstacle) => {
       const area = overlapArea(box, obstacle);
       if (!area) return sum;
       const belowTarget = obstacle.y >= target.y + target.height * 0.5;
-      const weight = input.shieldBelow && belowTarget ? 24 : box.y + box.height / 2 > obstacle.y + obstacle.height / 2 ? 4 : 1;
-      return sum + area * weight;
+      return sum + area * (input.shieldBelow && belowTarget ? 8 : 1);
     }, 0);
     const distance = gapTo(box, target);
     const centered = Math.abs(box.x + box.width / 2 - (target.x + target.width / 2));
-    const score = targetHit * 1000 + obstacleHit * 8 + distance + centered * 0.05 + (distance > 36 ? (distance - 36) * 2 : 0);
-    if (targetHit === 0 && obstacleHit === 0 && (!best || score < best.score)) best = { spot, score };
+    const score =
+      targetHit * 1000 + obstacleHit * 40 + softHit + distance + centered * 0.05 + (distance > 36 ? (distance - 36) * 2 : 0);
+    if (targetHit === 0 && obstacleHit === 0 && softHit === 0 && (!best || score < best.score)) best = { spot, score };
+    if (targetHit === 0 && obstacleHit === 0 && (!near || score < near.score)) near = { spot, score };
     if (!fallback || score < fallback.score) fallback = { spot, score };
   }
 
@@ -143,7 +147,7 @@ function placeAtWidth(
     left: minLeft,
     width,
   };
-  return { clear: best?.spot ?? null, fallback: fallback?.spot ?? lastResort };
+  return { clear: best?.spot ?? null, fallback: near?.spot ?? fallback?.spot ?? lastResort };
 }
 
 export function placeTourCard(input: {
@@ -152,6 +156,8 @@ export function placeTourCard(input: {
   card: { width: number; height: number };
   target: Box | null;
   obstacles?: readonly Box[];
+  /** Day cells. A spot may cover these when that is the only way to stay off the header. */
+  softObstacles?: readonly Box[];
   presentation: "center" | "anchor";
   /** Covering days below the target costs more than covering days above it. */
   shieldBelow?: boolean;

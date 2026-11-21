@@ -86,7 +86,8 @@ test("a calendar day keeps the card off the weeks below it", () => {
     insets: phoneInsets,
     card: { width: 358, height: 210 },
     target: day,
-    obstacles: weeks,
+    softObstacles: weeks,
+    obstacles: [box({ x: 0, y: 72, width: 390, height: 72 })],
     presentation: "anchor",
     shieldBelow: true,
   });

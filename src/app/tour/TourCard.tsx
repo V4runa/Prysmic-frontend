@@ -250,8 +250,10 @@ export default function TourCard({
         hits = 0;
         return;
       }
-      const available = window.innerHeight - chrome.top - chrome.bottom - CARD_ESTIMATE - 28;
-      const moodRow = step.id === "moods" ? measureMoodRow(node, available) : null;
+      const moodRow =
+        step.id === "moods"
+          ? measureMoodRow(node, { top: chrome.top, bottom: chrome.bottom, card: CARD_ESTIMATE })
+          : null;
       const box = moodRow ?? measureTarget(node);
       if (previous && sameTarget(previous, box)) hits += 1;
       else hits = 0;
@@ -341,18 +343,17 @@ export default function TourCard({
 
   const showStep = phase === "step" && target;
   const showCard = phase !== "step" || showStep;
-  const dayObstacles: Box[] = [];
+  const softObstacles: Box[] = [];
   if (step?.id === "calendar") {
     for (const node of document.querySelectorAll<HTMLElement>("[data-tour-day]")) {
       const rect = node.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) continue;
-      dayObstacles.push(toBox(rect, 4));
+      softObstacles.push(toBox(rect, 4));
     }
   }
   const obstacles = target
     ? [
         ...keepBoxes(visibleQuery(step?.target ?? "")),
-        ...dayObstacles,
         ...(chrome.flame ? [chrome.flame] : []),
         ...(chrome.nav ? [chrome.nav] : []),
       ]
@@ -365,6 +366,7 @@ export default function TourCard({
       ? { x: target.x - 18, y: target.y - 18, width: target.width + 36, height: target.height + 36 }
       : null,
     obstacles,
+    softObstacles,
     presentation: phase === "step" ? "anchor" : "center",
     shieldBelow: step?.id === "calendar",
   });
@@ -511,7 +513,8 @@ export default function TourCard({
           </div>
         </div>
       ) : null}
-      <style>{`@keyframes prysmic-tour-in { from { opacity: 0 } to { opacity: 1 } }`}</style>
+      <style>{`@keyframes prysmic-tour-in { from { opacity: 0 } to { opacity: 1 } }
+        html:has([data-tour-card="calendar"]) [data-tour-day] { box-shadow: none; }`}</style>
     </div>
   );
 }
