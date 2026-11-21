@@ -132,7 +132,12 @@ export function placeTourCard(input: {
     if (targetHit === 0 && (!fallback || score < fallback.score)) fallback = { spot, score };
   }
 
-  return best?.spot ?? fallback?.spot ?? null;
+  const lastResort: CardSpot = {
+    top: Math.max(minTop, Math.min(Number.isFinite(maxTop) ? maxTop : minTop, viewport.height - Math.min(insets.bottom, 120) - height)),
+    left: minLeft,
+    width,
+  };
+  return best?.spot ?? fallback?.spot ?? lastResort;
 }
 
 export function cardSpotInside(

@@ -70,7 +70,7 @@ function readChrome(): Chrome {
   const flame = flameNode instanceof HTMLElement ? toBox(flameNode.getBoundingClientRect(), 56) : null;
   return {
     top: headerH + 12,
-    bottom: (navBox?.height ?? 0) + 12,
+    bottom: Math.min(navBox?.height ?? 0, 96) + 12,
     nav: navBox,
     flame,
   };
