@@ -179,13 +179,45 @@ export function placeTourCard(input: {
 
   const anchored = { ...input, target: input.target };
   const preferred = placeAtWidth(anchored, full);
-  if (preferred.clear) return preferred.clear;
   const narrow = Math.min(full, 300);
-  if (narrow < full - 8) {
-    const retry = placeAtWidth(anchored, narrow);
-    if (retry.clear) return retry.clear;
+  const retry = narrow < full - 8 ? placeAtWidth(anchored, narrow) : null;
+  const spot = preferred.clear ?? retry?.clear ?? preferred.fallback;
+  if (!spot) return null;
+  return nudgeOffTarget(spot, input.target, height, {
+    minTop,
+    maxTop: viewport.height - insets.bottom - height,
+    minLeft: TOUR_MARGIN,
+    maxLeft: viewport.width - TOUR_MARGIN - spot.width,
+    obstacles: input.obstacles ?? [],
+  });
+}
+
+/** Slide a card that still clips its target out along the nearest open side. */
+function nudgeOffTarget(
+  spot: CardSpot,
+  target: Box,
+  height: number,
+  bounds: { minTop: number; maxTop: number; minLeft: number; maxLeft: number; obstacles: readonly Box[] }
+): CardSpot {
+  const box = spotBox(spot, height);
+  if (overlapArea(box, target) === 0) return spot;
+  const shifts = [
+    { left: spot.left, top: target.y + target.height + GAP },
+    { left: spot.left, top: target.y - height - GAP },
+    { left: target.x + target.width + GAP, top: spot.top },
+    { left: target.x - spot.width - GAP, top: spot.top },
+  ];
+  for (const shift of shifts) {
+    const top = clamp(shift.top, bounds.minTop, Math.max(bounds.minTop, bounds.maxTop));
+    const left = clamp(shift.left, bounds.minLeft, Math.max(bounds.minLeft, bounds.maxLeft));
+    if (Math.abs(top - shift.top) > 1 || Math.abs(left - shift.left) > 1) continue;
+    const next = spotBox({ top, left, width: spot.width }, height);
+    if (overlapArea(next, target) > 0) continue;
+    const blocked = bounds.obstacles.some((obstacle) => overlapArea(next, obstacle) > 0);
+    if (blocked) continue;
+    return { top, left, width: spot.width };
   }
-  return preferred.fallback;
+  return spot;
 }
 
 export function cardSpotInside(
