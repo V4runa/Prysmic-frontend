@@ -73,34 +73,24 @@ function spotBox(spot: { top: number; left: number; width: number }, height: num
   return { x: spot.left, y: spot.top, width: spot.width, height };
 }
 
-export function placeTourCard(input: {
-  viewport: { width: number; height: number };
-  insets: SafeInsets;
-  card: { width: number; height: number };
-  target: Box | null;
-  obstacles?: readonly Box[];
-  presentation: "center" | "anchor";
-}): CardSpot | null {
-  const { viewport, insets } = input;
-  const width = Math.min(input.card.width, Math.max(200, viewport.width - TOUR_MARGIN * 2));
+function placeAtWidth(
+  input: {
+    viewport: { width: number; height: number };
+    insets: SafeInsets;
+    card: { width: number; height: number };
+    target: Box;
+    obstacles?: readonly Box[];
+    shieldBelow?: boolean;
+  },
+  width: number
+): { clear: CardSpot | null; fallback: CardSpot | null } {
+  const { viewport, insets, target } = input;
   const height = Math.max(1, input.card.height);
   const minTop = Math.max(TOUR_MARGIN, insets.top);
   const maxTop = viewport.height - insets.bottom - height;
   const minLeft = TOUR_MARGIN;
   const maxLeft = viewport.width - TOUR_MARGIN - width;
 
-  const center = (): CardSpot => ({
-    top: clamp((viewport.height - height) / 2 - 36, minTop, Math.max(minTop, maxTop)),
-    left: clamp((viewport.width - width) / 2, minLeft, Math.max(minLeft, maxLeft)),
-    width,
-  });
-
-  if (input.presentation === "center" || !input.target) {
-    if (input.presentation === "anchor") return null;
-    return center();
-  }
-
-  const target = input.target;
   const outside = (input.obstacles ?? []).flatMap((obstacle) => [
     { left: obstacle.x + obstacle.width + GAP, top: obstacle.y + 8 },
     { left: obstacle.x - width - GAP, top: obstacle.y + 8 },
@@ -137,11 +127,13 @@ export function placeTourCard(input: {
     const obstacleHit = (input.obstacles ?? []).reduce((sum, obstacle) => {
       const area = overlapArea(box, obstacle);
       if (!area) return sum;
-      const lower = box.y + box.height / 2 > obstacle.y + obstacle.height / 2 ? 4 : 1;
-      return sum + area * lower;
+      const belowTarget = obstacle.y >= target.y + target.height * 0.5;
+      const weight = input.shieldBelow && belowTarget ? 24 : box.y + box.height / 2 > obstacle.y + obstacle.height / 2 ? 4 : 1;
+      return sum + area * weight;
     }, 0);
     const distance = gapTo(box, target);
-    const score = targetHit * 1000 + obstacleHit * 8 + distance + (distance > 36 ? (distance - 36) * 2 : 0);
+    const centered = Math.abs(box.x + box.width / 2 - (target.x + target.width / 2));
+    const score = targetHit * 1000 + obstacleHit * 8 + distance + centered * 0.05 + (distance > 36 ? (distance - 36) * 2 : 0);
     if (targetHit === 0 && obstacleHit === 0 && (!best || score < best.score)) best = { spot, score };
     if (!fallback || score < fallback.score) fallback = { spot, score };
   }
@@ -151,7 +143,44 @@ export function placeTourCard(input: {
     left: minLeft,
     width,
   };
-  return best?.spot ?? fallback?.spot ?? lastResort;
+  return { clear: best?.spot ?? null, fallback: fallback?.spot ?? lastResort };
+}
+
+export function placeTourCard(input: {
+  viewport: { width: number; height: number };
+  insets: SafeInsets;
+  card: { width: number; height: number };
+  target: Box | null;
+  obstacles?: readonly Box[];
+  presentation: "center" | "anchor";
+  /** Covering days below the target costs more than covering days above it. */
+  shieldBelow?: boolean;
+}): CardSpot | null {
+  const { viewport, insets } = input;
+  const height = Math.max(1, input.card.height);
+  const minTop = Math.max(TOUR_MARGIN, insets.top);
+  const maxTop = viewport.height - insets.bottom - height;
+  const full = Math.min(input.card.width, Math.max(200, viewport.width - TOUR_MARGIN * 2));
+
+  if (input.presentation === "center" || !input.target) {
+    if (input.presentation === "anchor") return null;
+    const left = clamp((viewport.width - full) / 2, TOUR_MARGIN, Math.max(TOUR_MARGIN, viewport.width - TOUR_MARGIN - full));
+    return {
+      top: clamp((viewport.height - height) / 2 - 36, minTop, Math.max(minTop, maxTop)),
+      left,
+      width: full,
+    };
+  }
+
+  const anchored = { ...input, target: input.target };
+  const preferred = placeAtWidth(anchored, full);
+  if (preferred.clear) return preferred.clear;
+  const narrow = Math.min(full, 300);
+  if (narrow < full - 8) {
+    const retry = placeAtWidth(anchored, narrow);
+    if (retry.clear) return retry.clear;
+  }
+  return preferred.fallback;
 }
 
 export function cardSpotInside(

@@ -74,6 +74,31 @@ test("the phone card stays above the tab bar and off the target", () => {
   assert.ok(spot.top + 230 <= phone.height - phoneInsets.bottom);
 });
 
+test("a calendar day keeps the card off the weeks below it", () => {
+  const day = box({ x: 250, y: 520, width: 28, height: 28 });
+  const weeks = [0, 1, 2, 3, 4, 5].flatMap((row) =>
+    [0, 1, 2, 3, 4, 5, 6].map((col) =>
+      box({ x: 16 + col * 52, y: 180 + row * 88, width: 48, height: 80 })
+    )
+  );
+  const spot = placeTourCard({
+    viewport: phone,
+    insets: phoneInsets,
+    card: { width: 358, height: 210 },
+    target: day,
+    obstacles: weeks,
+    presentation: "anchor",
+    shieldBelow: true,
+  });
+  assert.ok(spot);
+  const placed = asBox(spot, 210);
+  assert.equal(overlapArea(placed, day), 0);
+  const below = weeks.filter((cell) => cell.y > day.y + day.height);
+  const covered = below.reduce((sum, cell) => sum + overlapArea(placed, cell), 0);
+  assert.equal(covered, 0);
+  assert.ok(placed.y + placed.height <= day.y);
+});
+
 test("the card avoids a keep-clear row under the target", () => {
   const field = box({ x: 80, y: 180, width: 900, height: 44 });
   const search = box({ x: 80, y: 240, width: 900, height: 48 });

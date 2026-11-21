@@ -125,7 +125,7 @@ function DesktopMonth({
                   return (
                     <div
                       key={cell.key}
-                      data-tour={isToday ? "calendar-today" : undefined}
+                      data-tour-day=""
                       onClick={() => onSelectDay(cell.key)}
                       className={clsx(
                         "group relative flex flex-col rounded-lg border px-1.5 pt-1 pb-1.5 overflow-hidden cursor-pointer transition-colors",
@@ -157,6 +157,7 @@ function DesktopMonth({
                         style={{ height: DATE_ROW }}
                       >
                         <span
+                          data-tour={isToday ? "calendar-today" : undefined}
                           className={clsx(
                             "text-xs font-medium h-5 w-5 flex items-center justify-center rounded-full",
                             isToday
@@ -304,7 +305,7 @@ function MobileMonth({
               return (
                 <button
                   key={cell.key}
-                  data-tour={isToday ? "calendar-today" : undefined}
+                  data-tour-day=""
                   onClick={() => onSelectDay(cell.key)}
                   className={clsx(
                     "relative flex flex-col items-center justify-start gap-1 rounded-lg border py-1.5 overflow-hidden transition-colors",
@@ -327,6 +328,7 @@ function MobileMonth({
                     />
                   )}
                   <span
+                    data-tour={isToday ? "calendar-today" : undefined}
                     className={clsx(
                       "relative text-xs font-medium h-6 w-6 flex items-center justify-center rounded-full",
                       isToday

@@ -11,7 +11,7 @@ import {
   tourProgressLabel,
   tourStepByIndex,
 } from "./tourStops";
-import { measureTarget, sameTarget, visibleQuery, type TargetBox } from "./tourTarget";
+import { measureMoodRow, measureTarget, sameTarget, visibleQuery, type TargetBox } from "./tourTarget";
 import type { TourPhase } from "./tourMachine";
 
 type OpenPhase = Exclude<TourPhase, "idle" | "done">;
@@ -108,10 +108,18 @@ function pageBusy(): boolean {
   return false;
 }
 
-function scrollTargetClear(node: HTMLElement, insets: SafeInsets, cardHeight: number): void {
+function scrollTargetClear(
+  node: HTMLElement,
+  insets: SafeInsets,
+  cardHeight: number,
+  reserve: "below" | "visible"
+): void {
   const rect = node.getBoundingClientRect();
   const viewTop = insets.top + 8;
-  const viewBottom = window.innerHeight - insets.bottom - cardHeight - 18;
+  const viewBottom =
+    reserve === "below"
+      ? window.innerHeight - insets.bottom - cardHeight - 18
+      : window.innerHeight - insets.bottom - 8;
   let delta = 0;
   if (rect.bottom > viewBottom) delta = rect.bottom - viewBottom;
   else if (rect.top < viewTop) delta = rect.top - viewTop;
@@ -242,13 +250,25 @@ export default function TourCard({
         hits = 0;
         return;
       }
-      const box = measureTarget(node);
+      const available = window.innerHeight - chrome.top - chrome.bottom - CARD_ESTIMATE - 28;
+      const moodRow = step.id === "moods" ? measureMoodRow(node, available) : null;
+      const box = moodRow ?? measureTarget(node);
       if (previous && sameTarget(previous, box)) hits += 1;
       else hits = 0;
       previous = box;
       if (hits >= 1 && !scrolled) {
         scrolled = true;
-        scrollTargetClear(node, { top: chrome.top, bottom: chrome.bottom }, CARD_ESTIMATE);
+        const scrollNode =
+          step.id === "moods"
+            ? ([...node.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48).at(-1) ??
+              node)
+            : node;
+        scrollTargetClear(
+          scrollNode,
+          { top: chrome.top, bottom: chrome.bottom },
+          CARD_ESTIMATE,
+          step.id === "calendar" ? "visible" : "below"
+        );
         hits = 0;
         previous = null;
         return;
@@ -321,9 +341,18 @@ export default function TourCard({
 
   const showStep = phase === "step" && target;
   const showCard = phase !== "step" || showStep;
+  const dayObstacles: Box[] = [];
+  if (step?.id === "calendar") {
+    for (const node of document.querySelectorAll<HTMLElement>("[data-tour-day]")) {
+      const rect = node.getBoundingClientRect();
+      if (rect.width < 2 || rect.height < 2) continue;
+      dayObstacles.push(toBox(rect, 4));
+    }
+  }
   const obstacles = target
     ? [
         ...keepBoxes(visibleQuery(step?.target ?? "")),
+        ...dayObstacles,
         ...(chrome.flame ? [chrome.flame] : []),
         ...(chrome.nav ? [chrome.nav] : []),
       ]
@@ -337,6 +366,7 @@ export default function TourCard({
       : null,
     obstacles,
     presentation: phase === "step" ? "anchor" : "center",
+    shieldBelow: step?.id === "calendar",
   });
 
   const title = phase === "welcome" ? TOUR_WELCOME.title : phase === "close" ? TOUR_CLOSE.title : step?.title ?? "";
