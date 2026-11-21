@@ -50,14 +50,6 @@ export function overlapArea(a: Box, b: Box): number {
   return (right - left) * (bottom - top);
 }
 
-function focusBox(obstacle: Box): Box {
-  if (obstacle.width > 480 && obstacle.height < 140) {
-    const width = Math.min(260, obstacle.width);
-    return { ...obstacle, x: obstacle.x + (obstacle.width - width) / 2, width };
-  }
-  return obstacle;
-}
-
 /** On a phone, covering the bottom of a tall target is worse than covering the top. */
 function coverScore(card: Box, target: Box, phone: boolean): number {
   const area = overlapArea(card, target);
@@ -143,7 +135,7 @@ export function placeTourCard(input: {
     const phone = viewport.width < TOUR_CARD_WIDTH;
     const targetHit = coverScore(box, target, phone);
     const obstacleHit = (input.obstacles ?? []).reduce((sum, obstacle) => {
-      const area = overlapArea(box, focusBox(obstacle));
+      const area = overlapArea(box, obstacle);
       if (!area) return sum;
       const lower = box.y + box.height / 2 > obstacle.y + obstacle.height / 2 ? 4 : 1;
       return sum + area * lower;

@@ -84,7 +84,17 @@ function keepBoxes(target: HTMLElement | null): Box[] {
     if (style.display === "none" || style.visibility === "hidden") continue;
     const rect = node.getBoundingClientRect();
     if (rect.width < 2 || rect.height < 2) continue;
-    boxes.push(toBox(rect, 6));
+    const wideLine = node.tagName === "P" && rect.width > 480 && rect.height < 140;
+    boxes.push(
+      wideLine
+        ? {
+            x: rect.x + (rect.width - 280) / 2,
+            y: rect.y - 8,
+            width: 280,
+            height: rect.height + 16,
+          }
+        : toBox(rect, 12)
+    );
   }
   return boxes;
 }
@@ -323,7 +333,7 @@ export default function TourCard({
     insets: { top: chrome.top, bottom: chrome.bottom },
     card: { width: TOUR_CARD_WIDTH, height: cardHeight || CARD_ESTIMATE },
     target: showStep && target
-      ? { x: target.x - 12, y: target.y - 12, width: target.width + 24, height: target.height + 24 }
+      ? { x: target.x - 18, y: target.y - 18, width: target.width + 36, height: target.height + 36 }
       : null,
     obstacles,
     presentation: phase === "step" ? "anchor" : "center",
@@ -420,7 +430,9 @@ export default function TourCard({
           aria-labelledby={progress ? `${progressId} ${titleId}` : titleId}
           aria-describedby={bodyId}
           tabIndex={-1}
-          className="pointer-events-auto fixed z-[81] overflow-y-auto rounded-2xl border border-white/10 bg-[#14161c] p-5 text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none"
+          className={`pointer-events-auto fixed z-[81] overflow-y-auto rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
+            viewport.width < 640 ? "p-3.5" : "p-5"
+          }`}
           style={{
             ...cardStyle,
             animation: reduceMotion ? undefined : "prysmic-tour-in 150ms ease",
@@ -438,7 +450,7 @@ export default function TourCard({
           <p id={bodyId} className="mt-2 text-sm leading-relaxed text-slate-300">
             {body}
           </p>
-          <div className="mt-5 flex flex-wrap items-center gap-2">
+          <div className={`flex flex-wrap items-center gap-2 ${viewport.width < 640 ? "mt-3" : "mt-5"}`}>
             {phase !== "close" ? (
               <button type="button" className={btnSecondary} onPointerDown={press(onSkip)}>
                 {TOUR_CONTROLS.skip}
