@@ -13,10 +13,16 @@ const apiProxyTarget = process.env.API_PROXY_TARGET;
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN?.trim();
 const uploadSourceMaps = Boolean(sentryAuthToken);
 
+// VERCEL_ENV is a server build variable. Inline it so client code can tell
+// production from preview. NEXT_PUBLIC_VERCEL_ENV wins when it is already set.
+const vercelEnv = process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.VERCEL_ENV;
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // The browser bundle cannot read VERCEL_ENV unless it is inlined here.
-  ...(process.env.VERCEL_ENV ? { env: { VERCEL_ENV: process.env.VERCEL_ENV } } : {}),
+  env: {
+    ...(process.env.VERCEL_ENV ? { VERCEL_ENV: process.env.VERCEL_ENV } : {}),
+    ...(vercelEnv ? { NEXT_PUBLIC_VERCEL_ENV: vercelEnv } : {}),
+  },
   async headers() {
     const privateLink = [
       { key: "Referrer-Policy", value: "no-referrer" },

@@ -20,13 +20,11 @@ import { tactileSubtle } from "../lib/motion";
 import { leastUsedTagColor, tagColorClasses, tagColorKey } from "../lib/tagColors";
 import { notesTagHref, tagDeleteErrorMessage, tagUsageLabel, tasksTagHref } from "../lib/tagQuery";
 import { TextField, FormButton } from "../components/forms";
-import { useTour } from "../tour/TourProvider";
 
 export default function TagsPage() {
   const { data: tags = [], isError, isLoading } = useTags();
   const invalidateTags = useInvalidateTags();
   const createTag = useCreateTag();
-  const tour = useTour();
   const [newTagName, setNewTagName] = useState("");
   const [pickedColor, setPickedColor] = useState<string | null>(null);
   const newTagColor = pickedColor ?? leastUsedTagColor(tags);
@@ -46,7 +44,6 @@ export default function TagsPage() {
     try {
       await createTag(name, newTagColor);
       setNewTagName("");
-      tour.notifyTagCreated();
     } catch (err) {
       setError(tagCreateErrorMessage(err));
     }
@@ -91,11 +88,11 @@ export default function TagsPage() {
       <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
       <GlassPanel className="app-workspace flex flex-col gap-4 sm:gap-6 h-full min-h-0">
         {/* Header */}
-        <h2 data-tour-heading tabIndex={-1} className="text-slate-100 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-wide outline-none">
+        <h2 className="text-slate-100 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-wide">
           Tag Codex
         </h2>
 
-        <div data-tour="tags-create" className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
         {/* Tag creation */}
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <div className="flex-grow min-w-[150px] sm:min-w-[200px]">
@@ -120,7 +117,7 @@ export default function TagsPage() {
         </div>
 
         {/* Tags Grid */}
-        <div data-tour="tags-codex" className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto app-scroll p-1">
             {isLoading && tags.length === 0 ? (
               <div className="wide-grid-tags grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">

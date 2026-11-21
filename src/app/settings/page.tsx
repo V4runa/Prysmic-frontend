@@ -850,10 +850,10 @@ function TourSection() {
     <GlassPanel>
       <h2 className="text-base font-medium tracking-wide text-slate-100">Tour</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-400">
-        A one-minute walk through Prysmic.
+        A short tour of the main areas in Prysmic.
       </p>
       <FormButton type="button" variant="secondary" className="mt-4" onClick={() => router.push("/notes?tour=1")}>
-        Walk the tour again
+        Start the tour again
       </FormButton>
     </GlassPanel>
   );

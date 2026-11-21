@@ -1,219 +1,144 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import { initialTourState, tourIsOpen, tourReducer, type TourState } from "./tourMachine";
 import {
-  gatheredMotes,
-  initialTourState,
-  tourHoldsMoodTimeline,
-  tourReducer,
-  tourStopId,
-  type TourState,
-} from "./tourMachine";
-import { TOUR_COPY, TOUR_MOTE, TOUR_STOPS, stopAnnouncement, welcomeHeading } from "./tourStops";
+  TOUR_CLOSE,
+  TOUR_CONTROLS,
+  TOUR_STEPS,
+  TOUR_WELCOME,
+  tourFacingCopy,
+  tourProgressLabel,
+  tourRouteFor,
+} from "./tourStops";
 
 function walkTo(index: number): TourState {
   let state = tourReducer(initialTourState, { type: "open" });
-  state = tourReducer(state, { type: "begin" });
-  for (let i = 0; i < index; i += 1) {
-    state = tourReducer(state, { type: "arrived" });
-    state = tourReducer(state, { type: "target-ready" });
-    state = tourReducer(state, { type: "next" });
-  }
-  state = tourReducer(state, { type: "arrived" });
-  state = tourReducer(state, { type: "target-ready" });
+  state = tourReducer(state, { type: "start" });
+  for (let i = 0; i < index; i += 1) state = tourReducer(state, { type: "next" });
   return state;
 }
 
-test("every stop carries its route, target, and the approved copy", () => {
+test("the tour is five steps with the approved copy", () => {
   assert.deepEqual(
-    TOUR_STOPS.map((stop) => stop.id),
-    ["notes", "tags", "tasks", "contracts", "calendar", "moods"]
+    TOUR_STEPS.map((step) => step.id),
+    ["notes", "tasks", "contracts", "calendar", "moods"]
   );
-  assert.equal(TOUR_STOPS[0]?.route, "/notes");
-  assert.equal(TOUR_STOPS[0]?.target, "[data-tour='notes-create']");
-  assert.equal(TOUR_STOPS[1]?.target, "[data-tour='tags-create']");
-  assert.equal(TOUR_STOPS[2]?.target, "[data-tour='tasks-add']");
-  assert.equal(TOUR_STOPS[3]?.target, "[data-tour='contracts-create'], [data-tour='contracts-list']");
-  assert.equal(TOUR_STOPS[3]?.emptyBody, "A contract is a small promise to yourself. One is enough to begin.");
-  assert.equal(TOUR_STOPS[4]?.target, "[data-tour='calendar-today']");
-  assert.equal(TOUR_STOPS[5]?.target, "[data-tour='mood-picker']");
-  assert.equal(TOUR_STOPS[1]?.route, "/tags");
-  assert.equal(TOUR_STOPS[1]?.waypoint, "[data-tour='manage-tags']");
-  assert.equal(TOUR_STOPS[2]?.route, "/tasks");
-  assert.equal(TOUR_STOPS[3]?.route, "/habits");
-  assert.equal(TOUR_STOPS[3]?.navHref, "/habits");
-  assert.equal(TOUR_STOPS[4]?.route, "/calendar");
-  assert.equal(TOUR_STOPS[5]?.route, "/moods");
-  assert.equal(TOUR_STOPS[0]?.body, "This is where your thoughts live. Write anything, finished or not.");
+  assert.equal(TOUR_STEPS[0]?.route, "/notes");
+  assert.equal(TOUR_STEPS[0]?.target, "[data-tour='notes-create']");
+  assert.equal(TOUR_STEPS[1]?.route, "/tasks");
+  assert.equal(TOUR_STEPS[1]?.target, "[data-tour='tasks-field']");
+  assert.equal(TOUR_STEPS[2]?.route, "/habits");
+  assert.equal(TOUR_STEPS[2]?.target, "[data-tour='contracts-create'], [data-tour='contracts-list']");
+  assert.equal(TOUR_STEPS[3]?.route, "/calendar");
+  assert.equal(TOUR_STEPS[3]?.target, "[data-tour='calendar-today']");
+  assert.equal(TOUR_STEPS[4]?.route, "/moods");
+  assert.equal(TOUR_STEPS[4]?.target, "[data-tour='mood-picker']");
+
+  assert.equal(TOUR_WELCOME.title, "Welcome to Prysmic");
   assert.equal(
-    TOUR_STOPS[1]?.body,
-    "Tags gather notes and tasks by theme. Name one now if you like, or keep walking."
+    TOUR_WELCOME.body,
+    "This is your private notebook for notes, tasks, contracts, a calendar, and moods. This short tour shows you each area. You can skip it at any time."
   );
-  assert.equal(TOUR_STOPS[2]?.body, "Things to do, kept short. Type one and press Enter.");
+  assert.equal(TOUR_WELCOME.start, "Start tour");
+  assert.equal(TOUR_WELCOME.skip, "Skip tour");
   assert.equal(
-    TOUR_STOPS[3]?.body,
-    "A contract is a small promise to yourself. Check in each day and watch it hold."
+    TOUR_STEPS[0]?.body,
+    "This is where you write. Select New note to start one. You can add tags to a note to connect it with related notes and tasks."
   );
   assert.equal(
-    TOUR_STOPS[4]?.body,
-    "Everything meets here. Tasks, contracts, events and moods, day by day."
+    TOUR_STEPS[1]?.body,
+    "This is your to-do list. Type a task and press Enter to add it. When you mark a task done, it shows on that day in the calendar."
   );
-  assert.equal(TOUR_STOPS[5]?.body, "One small thing before you settle in.");
-  assert.equal(TOUR_STOPS[1]?.optional, "tag");
-  assert.equal(TOUR_STOPS[2]?.optional, "task");
-  assert.equal(TOUR_STOPS[5]?.optional, "mood");
-  assert.equal(TOUR_STOPS[3]?.optional, null);
-  assert.equal(welcomeHeading("anu"), "Welcome, Anu.");
-  assert.equal(welcomeHeading("Ada"), "Welcome, Ada.");
-  assert.equal(welcomeHeading("  "), "Welcome.");
-  assert.equal(stopAnnouncement(2), `Stop 3 of 6, Tasks. ${TOUR_STOPS[2]?.body}`);
+  assert.equal(
+    TOUR_STEPS[2]?.body,
+    "A contract is a daily commitment you set for yourself. Add one, then check in each day. The days you keep it are saved here and on the calendar."
+  );
+  assert.equal(
+    TOUR_STEPS[3]?.body,
+    "The calendar shows your tasks, contracts, events, and moods by day. Select a day to see what is on it, or select an item to open it."
+  );
+  assert.equal(
+    TOUR_STEPS[4]?.body,
+    "Here you can log how you feel today. Select a mood, or add your own. If you log one, the notebook takes on that color for the rest of the day."
+  );
+  assert.equal(TOUR_CLOSE.title, "You're all set");
+  assert.equal(TOUR_CLOSE.body, "You can start this tour again anytime from Settings.");
+  assert.equal(TOUR_CLOSE.done, "Done");
+  assert.equal(TOUR_CONTROLS.back, "Back");
+  assert.equal(TOUR_CONTROLS.next, "Next");
+  assert.equal(tourProgressLabel(0), "1 of 5");
+  assert.equal(tourProgressLabel(4), "5 of 5");
+
+  const facing = tourFacingCopy().join("\n");
+  assert.equal(/tap/i.test(facing), false);
+  assert.equal(/habit/i.test(facing), false);
 });
 
-test("a walk moves arrival to each stop and gathers motes along the way", () => {
+test("start, next, and back move through the steps without marking seen", () => {
   let state = tourReducer(initialTourState, { type: "open" });
-  assert.equal(state.phase, "arrival");
+  assert.equal(state.phase, "welcome");
   assert.equal(state.persistSeen, false);
-  assert.equal(tourHoldsMoodTimeline(state), true);
+  assert.equal(tourIsOpen(state), true);
+  assert.equal(tourRouteFor("welcome", -1), "/notes");
 
-  state = tourReducer(state, { type: "begin" });
-  assert.equal(state.phase, "travel");
-  assert.equal(tourStopId(state), "notes");
+  state = tourReducer(state, { type: "start" });
+  assert.equal(state.phase, "step");
+  assert.equal(state.index, 0);
+  assert.equal(tourRouteFor("step", 0), "/notes");
 
-  state = tourReducer(state, { type: "arrived" });
-  assert.equal(state.phase, "settle");
-  state = tourReducer(state, { type: "target-ready" });
-  assert.equal(state.phase, "present");
-  assert.deepEqual(gatheredMotes(state), [TOUR_MOTE.notes]);
+  state = walkTo(4);
+  assert.equal(state.index, 4);
+  assert.equal(tourRouteFor("step", 4), "/moods");
+  assert.equal(state.persistSeen, false);
 
-  state = tourReducer(state, { type: "next" });
-  state = tourReducer(state, { type: "arrived" });
-  state = tourReducer(state, { type: "target-ready" });
-  assert.equal(tourStopId(state), "tags");
+  state = tourReducer(state, { type: "back" });
+  assert.equal(state.index, 3);
+  assert.equal(tourRouteFor("step", 3), "/calendar");
 
-  const ignored = tourReducer(state, { type: "action", line: "nope" });
-  assert.equal(ignored.phase, "present");
-  state = tourReducer(state, { type: "action", line: TOUR_COPY.tagAck });
-  assert.equal(state.phase, "ack");
-  assert.equal(state.ackLine, TOUR_COPY.tagAck);
-  state = tourReducer(state, { type: "ack-done" });
-  assert.equal(state.phase, "travel");
-  assert.equal(tourStopId(state), "tasks");
-
-  const tasks = walkTo(2);
-  assert.equal(tourStopId(tasks), "tasks");
-  const acked = tourReducer(tasks, { type: "action", line: TOUR_COPY.taskAck });
-  assert.equal(tourReducer(acked, { type: "ack-done" }).index, 3);
-
-  const calendar = walkTo(4);
-  assert.equal(tourStopId(calendar), "calendar");
-  assert.deepEqual(gatheredMotes(calendar), [
-    TOUR_MOTE.notes,
-    TOUR_MOTE.tags,
-    TOUR_MOTE.tasks,
-    TOUR_MOTE.contracts,
-  ]);
-  assert.equal(tourReducer(calendar, { type: "next" }).index, 5);
+  state = tourReducer(walkTo(0), { type: "back" });
+  assert.equal(state.phase, "welcome");
 });
 
-test("back returns one stop, and the first stop returns to the welcome", () => {
-  const notes = walkTo(0);
-  const welcome = tourReducer(notes, { type: "back" });
-  assert.equal(welcome.phase, "arrival");
-  assert.equal(welcome.persistSeen, false);
+test("the last next, skip, and escape all land on the close card", () => {
+  const finished = tourReducer(walkTo(4), { type: "next" });
+  assert.equal(finished.phase, "close");
+  assert.equal(finished.persistSeen, false);
+  assert.equal(tourRouteFor("close", -1), "/notes");
 
-  const tasks = walkTo(2);
-  const traveling = tourReducer(tasks, { type: "back" });
-  assert.equal(traveling.phase, "travel");
-  assert.equal(traveling.index, 1);
+  const skipped = tourReducer(walkTo(2), { type: "skip" });
+  assert.equal(skipped.phase, "close");
+  assert.equal(tourReducer(skipped, { type: "skip" }).phase, "close");
 
-  const aligned = tourReducer(traveling, { type: "align", index: 1 });
-  assert.equal(aligned.phase, "settle");
-  assert.equal(aligned.index, 1);
+  const declined = tourReducer(tourReducer(initialTourState, { type: "open" }), { type: "skip" });
+  assert.equal(declined.phase, "close");
+  assert.equal(declined.persistSeen, false);
 });
 
-test("a mood pick steps back, then lighting the room ends as seen", () => {
-  const moods = walkTo(5);
-  assert.equal(tourReducer(moods, { type: "next" }), moods);
-  const reflect = tourReducer(moods, { type: "mood-picked" });
-  assert.equal(reflect.phase, "reflect");
-  assert.equal(tourHoldsMoodTimeline(reflect), true);
+test("done marks the tour seen and a later open can replay", () => {
+  const closed = tourReducer(walkTo(4), { type: "next" });
+  assert.equal(tourReducer(closed, { type: "done" }).phase, "done");
+  const done = tourReducer(closed, { type: "done" });
+  assert.equal(done.persistSeen, true);
+  assert.equal(tourIsOpen(done), false);
+  assert.equal(tourRouteFor("done", -1), "/notes");
 
-  const light = tourReducer(reflect, { type: "mood-kept", color: "emerald" });
-  assert.equal(light.phase, "light");
-  assert.equal(light.moodColor, "emerald");
-  assert.equal(light.persistSeen, false);
-
-  const home = tourReducer(light, { type: "light-done" });
-  assert.equal(home.phase, "closing");
-  assert.equal(home.closing, "home");
-  assert.equal(home.persistSeen, true);
-  assert.equal(tourHoldsMoodTimeline(home), false);
-
-  const done = tourReducer(home, { type: "closing-done" });
-  assert.equal(done.phase, "done");
-  assert.equal(tourHoldsMoodTimeline(done), false);
+  const replay = tourReducer(done, { type: "open" });
+  assert.equal(replay.phase, "welcome");
+  assert.equal(replay.persistSeen, false);
+  assert.equal(tourReducer(initialTourState, { type: "done" }).phase, "idle");
+  assert.equal(tourReducer(walkTo(1), { type: "start" }).index, 1);
 });
 
-test("Not today waits for Done, and Leave and looking alone end as seen", () => {
-  const moods = walkTo(5);
-  const skipped = tourReducer(moods, { type: "not-today" });
-  assert.equal(skipped.phase, "present");
-  assert.equal(skipped.finale, "skip");
-  assert.equal(skipped.persistSeen, false);
-  assert.equal(tourHoldsMoodTimeline(skipped), true);
-  const returned = tourReducer(skipped, { type: "finale-back" });
-  assert.equal(returned.finale, null);
-  assert.equal(returned.phase, "present");
-  const closed = tourReducer(skipped, { type: "finale-done" });
-  assert.equal(closed.closing, "not-today");
-  assert.equal(closed.persistSeen, true);
-  assert.equal(tourReducer(moods, { type: "finale-done" }), moods);
-
-  const notes = walkTo(0);
-  const left = tourReducer(notes, { type: "leave" });
-  assert.equal(left.closing, "left");
-  assert.equal(left.persistSeen, true);
-  assert.equal(tourReducer(left, { type: "leave" }).phase, "done");
-
-  const arrival = tourReducer(initialTourState, { type: "open" });
-  const declined = tourReducer(arrival, { type: "decline" });
-  assert.equal(declined.closing, "declined");
-  assert.equal(declined.persistSeen, true);
-  assert.equal(tourReducer(declined, { type: "closing-done" }).phase, "done");
-});
-
-test("a mood already logged skips the question and lights the room", () => {
-  const moods = walkTo(5);
-  const lit = tourReducer(moods, { type: "target-ready", todayMood: "emerald" });
-  assert.equal(lit.phase, "present");
-  const settled = tourReducer(
-    { ...moods, phase: "settle" },
-    { type: "target-ready", todayMood: "emerald" }
+test("settings and updates use the approved tour lines", () => {
+  const settings = readFileSync(new URL("../settings/page.tsx", import.meta.url), "utf8");
+  assert.match(settings, /A short tour of the main areas in Prysmic\./);
+  assert.match(settings, /Start the tour again/);
+  const updates = readFileSync(new URL("../../content/updates.ts", import.meta.url), "utf8");
+  assert.match(updates, /A tour of Prysmic/);
+  assert.match(
+    updates,
+    /A short tour shows you notes, tasks, contracts, the calendar, and moods\. You can start it again anytime from Settings\./
   );
-  assert.equal(settled.phase, "light");
-  assert.equal(settled.alreadyLit, true);
-  assert.equal(settled.moodColor, "emerald");
-  const closing = tourReducer(settled, { type: "light-done" });
-  assert.equal(closing.closing, "lit");
-  assert.equal(tourHoldsMoodTimeline(closing), false);
-  assert.equal(tourHoldsMoodTimeline(settled), false);
-});
-
-test("ignored events do not skip ahead, and a replay can open again from done", () => {
-  assert.equal(tourReducer(initialTourState, { type: "begin" }).phase, "idle");
-  assert.equal(tourReducer(initialTourState, { type: "leave" }).phase, "idle");
-  const arrival = tourReducer(initialTourState, { type: "open" });
-  assert.equal(tourReducer(arrival, { type: "mood-picked" }).phase, "arrival");
-  assert.equal(tourReducer(arrival, { type: "open" }).phase, "arrival");
-
-  const done = tourReducer(tourReducer(arrival, { type: "decline" }), { type: "closing-done" });
-  assert.equal(tourReducer(done, { type: "open" }).phase, "arrival");
-});
-
-test("the browser landing on another stop settles there without a new flight", () => {
-  const tasks = walkTo(2);
-  const tags = tourReducer(tasks, { type: "align", index: 1 });
-  assert.equal(tags.phase, "settle");
-  assert.equal(tags.index, 1);
-  assert.equal(tourReducer(tags, { type: "align", index: 1 }), tags);
-  assert.equal(tourReducer(tasks, { type: "align", index: 9 }), tasks);
+  assert.match(updates, /Start the tour/);
 });

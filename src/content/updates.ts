@@ -65,10 +65,10 @@ export const productUpdates = [
     id: "guided-tour",
     date: "2026-11-19",
     kind: "new",
-    title: "A walk through your notebook",
+    title: "A tour of Prysmic",
     summary:
-      "A short tour walks you through notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings.",
-    action: { label: "Take the tour", href: "/notes?tour=1" },
+      "A short tour shows you notes, tasks, contracts, the calendar, and moods. You can start it again anytime from Settings.",
+    action: { label: "Start the tour", href: "/notes?tour=1" },
   },
   {
     id: "mood-colors-the-room",

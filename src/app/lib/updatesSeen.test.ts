@@ -197,12 +197,12 @@ test("tidier tags on busy notes is unread for someone caught up through the prev
   assert.equal(newest?.kind, "new");
   assert.equal(newest?.highlight, undefined);
   assert.equal(newest?.date, "2026-11-19");
-  assert.equal(newest?.title, "A walk through your notebook");
+  assert.equal(newest?.title, "A tour of Prysmic");
   assert.equal(
     newest?.summary,
-    "A short tour walks you through notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings."
+    "A short tour shows you notes, tasks, contracts, the calendar, and moods. You can start it again anytime from Settings."
   );
-  assert.deepEqual(readUpdateAction(newest!), { label: "Take the tour", href: "/notes?tour=1" });
+  assert.deepEqual(readUpdateAction(newest!), { label: "Start the tour", href: "/notes?tour=1" });
   assert.equal(mood?.title, "Your mood colors the room");
   assert.deepEqual(readUpdateAction(mood!), { label: "Try it now", href: "/moods" });
   assert.equal(tidier?.kind, "improved");
@@ -270,12 +270,12 @@ test("the published changelog is newest first and ready for a public page", () =
   assert.equal(changelog.updates[0]?.highlight, false);
   assert.equal(changelog.updates[0]?.kind, "new");
   assert.equal(changelog.updates[0]?.date, "2026-11-19");
-  assert.equal(changelog.updates[0]?.title, "A walk through your notebook");
+  assert.equal(changelog.updates[0]?.title, "A tour of Prysmic");
   assert.equal(
     changelog.updates[0]?.summary,
-    "A short tour walks you through notes, tags, tasks, contracts, the calendar, and moods. You can walk it again anytime from Settings."
+    "A short tour shows you notes, tasks, contracts, the calendar, and moods. You can start it again anytime from Settings."
   );
-  assert.deepEqual(changelog.updates[0]?.action, { label: "Take the tour", href: "/notes?tour=1" });
+  assert.deepEqual(changelog.updates[0]?.action, { label: "Start the tour", href: "/notes?tour=1" });
   assert.equal(changelog.updates[1]?.id, "mood-colors-the-room");
   assert.equal(changelog.updates[1]?.highlight, false);
   assert.equal(changelog.updates[1]?.kind, "new");

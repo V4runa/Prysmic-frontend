@@ -17,7 +17,6 @@ import { useLogicalToday } from "../hooks/usePreferences";
 import { calendarQueryKey } from "../hooks/useCalendar";
 import { MoodOption, useMoodOptions } from "../hooks/useMoodOptions";
 import { setMoodRoomPreview } from "../hooks/useMoodRoom";
-import { useTour } from "../tour/TourProvider";
 
 enum MoodPhase {
   PICK = "pick",
@@ -58,7 +57,6 @@ const normalizeMoods = (moods: MoodEntry[]): MoodEntry[] =>
 
 export default function MoodPage() {
   const queryClient = useQueryClient();
-  const tour = useTour();
   const searchParams = useSearchParams();
   const focusDay = calendarDayFromSearch(searchParams.toString());
   const [phase, setPhase] = useState<MoodPhase>(MoodPhase.PICK);
@@ -95,9 +93,6 @@ export default function MoodPage() {
   // 🧠 Detect today's entry and pick the starting phase once moods load.
   useEffect(() => {
     if (loading || phaseLocked.current) return;
-    // The tour keeps the picker up. The timeline, and the flame inside it,
-    // mount only after the guide has left.
-    if (tour.holdsMoodTimeline) return;
 
     if (focusDay && timeline.some((mood) => localDateKey(mood.date) === focusDay)) {
       setPhase(MoodPhase.TIMELINE);
@@ -117,7 +112,7 @@ export default function MoodPage() {
       const lastSaved = localStorage.getItem("lastMoodDate");
       if (lastSaved !== todayKey) setPhase(MoodPhase.PICK);
     }
-  }, [loading, timeline, todayKey, focusDay, tour.holdsMoodTimeline]);
+  }, [loading, timeline, todayKey, focusDay]);
 
   // 🎭 When a mood is picked
   const handleMoodSelect = (mood: MoodOption) => {
@@ -125,7 +120,6 @@ export default function MoodPage() {
     setMoodRoomPreview(mood.color);
     setSelectedMood(mood);
     setPhase(MoodPhase.REFLECT);
-    tour.notifyMoodPicked();
   };
 
   // 🧘 Handle reflection + save mood.
@@ -200,7 +194,6 @@ export default function MoodPage() {
     localStorage.setItem("lastMoodDate", todayKey);
     setReplacing(false);
     setPhase(MoodPhase.TIMELINE);
-    tour.notifyMoodKept(selectedMood.color ?? null);
     await queryClient.invalidateQueries({ queryKey: ["moods"] });
     // The calendar shows moods from its own cached feed; refresh it too.
     queryClient.invalidateQueries({ queryKey: calendarQueryKey });
@@ -223,7 +216,7 @@ export default function MoodPage() {
 
   return (
     <PageTransition>
-      <div className={outerClass} data-tour-heading tabIndex={-1}>
+      <div className={outerClass}>
         <GlassPanel className={panelClass}>
           <AnimatePresence mode="wait">
             {/* 🌞 Pick Phase */}
@@ -270,10 +263,7 @@ export default function MoodPage() {
             )}
 
             {/* 📈 Timeline Phase */}
-            {phase === MoodPhase.TIMELINE && tour.holdsMoodTimeline ? (
-              <div key="tour-hold" className="h-full min-h-0 w-full flex-1" />
-            ) : null}
-            {phase === MoodPhase.TIMELINE && !tour.holdsMoodTimeline ? (
+            {phase === MoodPhase.TIMELINE ? (
               <motion.div
                 key="timeline"
                 initial={{ opacity: 0, y: 20 }}

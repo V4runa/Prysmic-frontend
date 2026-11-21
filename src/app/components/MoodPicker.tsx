@@ -17,7 +17,6 @@ import {
 } from "../lib/moodColors";
 import { tactile, tactileSubtle } from "../lib/motion";
 import { Field, TextField, FormButton } from "./forms";
-import { useTour } from "../tour/TourProvider";
 
 interface MoodPickerProps {
   onSelect: (mood: MoodOption) => void;
@@ -38,7 +37,6 @@ interface EditorState {
 }
 
 export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
-  const tour = useTour();
   const { data: options = [], isLoading } = useMoodOptions();
   const invalidate = useInvalidateMoodOptions();
 
@@ -128,20 +126,11 @@ export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
   };
 
   return (
-    <div
-      className="app-scroll relative w-full h-full overflow-y-auto"
-      style={
-        tour.overlay && tour.stopId === "moods" ? { paddingBottom: "10rem" } : undefined
-      }
-    >
+    <div className="app-scroll relative w-full h-full overflow-y-auto">
       <div className="flex flex-col items-center w-full min-h-full px-4 py-6 sm:px-6 sm:py-8">
         <div data-tour="mood-picker" className="wide-mood-head flex w-full max-w-5xl flex-col items-center">
         {/* Header */}
-        <div
-          className={`flex w-full items-center justify-between gap-3 sm:mb-10 ${
-            tour.overlay && tour.stopId === "moods" ? "mb-3" : "mb-6"
-          }`}
-        >
+        <div className="mb-6 flex w-full items-center justify-between gap-3 sm:mb-10">
           <div className="min-w-0">
             {onCancel && !managing && (
               <button
@@ -153,7 +142,6 @@ export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
               </button>
             )}
             <motion.h2
-              data-tour="mood-heading"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -187,10 +175,7 @@ export default function MoodPicker({ onSelect, onCancel }: MoodPickerProps) {
           <p className="text-slate-400 mt-10">Loading your moods...</p>
         ) : (
           <motion.div
-            data-tour="mood-grid"
-            className={`wide-mood-grid grid w-full grid-cols-3 place-items-center gap-3 sm:grid-cols-4 sm:gap-5 md:grid-cols-5 ${
-              tour.overlay && tour.stopId === "moods" ? "max-sm:mx-auto max-sm:max-w-[18rem] max-sm:gap-2" : ""
-            }`}
+            className="wide-mood-grid grid w-full grid-cols-3 place-items-center gap-3 sm:grid-cols-4 sm:gap-5 md:grid-cols-5"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.6 }}
