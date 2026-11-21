@@ -3,7 +3,7 @@
  * Later resize and scroll events only remeasure.
  */
 
-import { TOUR_PHONE_MAX, type Box } from "./tourPlace";
+import type { Box } from "./tourPlace";
 
 export type TargetBox = Box & { radius: string };
 
@@ -30,38 +30,6 @@ export function measureTarget(node: HTMLElement): TargetBox {
     height: rect.height,
     radius,
   };
-}
-
-/**
- * Phone only. Brings the target into the band above the bottom card once.
- * Does not change the page's layout.
- */
-export function revealTargetOnce(node: HTMLElement): void {
-  if (typeof window === "undefined") return;
-  if (window.innerWidth >= TOUR_PHONE_MAX) return;
-
-  const cardReserve = 240;
-  const header = 72;
-  const rect = node.getBoundingClientRect();
-  const viewTop = header + 8;
-  const viewBottom = window.innerHeight - cardReserve;
-  if (rect.top >= viewTop && rect.bottom <= viewBottom) return;
-
-  const scroller = node.closest(".app-scroll");
-  if (scroller instanceof HTMLElement) {
-    const frame = scroller.getBoundingClientRect();
-    const visibleTop = Math.max(frame.top, viewTop);
-    const visibleBottom = Math.min(frame.bottom, viewBottom);
-    const visibleHeight = Math.max(1, visibleBottom - visibleTop);
-    const delta =
-      rect.height >= visibleHeight
-        ? rect.top - visibleTop
-        : rect.top - visibleTop - visibleHeight / 2 + rect.height / 2;
-    scroller.scrollBy({ top: delta, behavior: "auto" });
-    return;
-  }
-
-  node.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
 }
 
 export function sameTarget(current: TargetBox | null, next: TargetBox): boolean {

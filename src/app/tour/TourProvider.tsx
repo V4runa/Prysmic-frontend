@@ -3,7 +3,7 @@
 import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../hooks/useApi";
-import { useSessionIdentity } from "../hooks/useAuth";
+import { readSessionClaims, useSessionIdentity } from "../hooks/useAuth";
 import { saveTourSeen } from "./tourClient";
 import TourCard from "./TourCard";
 import { initialTourState, tourIsOpen, tourReducer } from "./tourMachine";
@@ -13,7 +13,9 @@ import {
   forgetLocalSeen,
   nextChromeQuiet,
   QUIET_CHROME_MEMORY,
+  localSeenRecently,
   readLocalSeen,
+  takeTourReplay,
   readSignupFresh,
   readTourSeenAt,
   rememberTourSeen,
@@ -96,6 +98,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   const saved = useRef(false);
   const autoOpened = useRef(false);
   const handledRequest = useRef(0);
+  const ended = useRef(false);
   const [landing, setLanding] = useState<ChromeQuietMemory>(QUIET_CHROME_MEMORY);
 
   const onTourQuery = useCallback((event: { rising: boolean }) => {
@@ -131,9 +134,11 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       storage = null;
     }
 
+    const recent =
+      storage != null && userId != null ? localSeenRecently(storage, userId) : false;
     if (userLoaded && storage && userId != null) {
       if (typeof seenAt === "string") rememberTourSeen(storage, userId, seenAt);
-      else if (seenAt === null) forgetLocalSeen(storage, userId);
+      else if (seenAt === null && !recent && !saved.current) forgetLocalSeen(storage, userId);
     }
 
     const phaseKind = state.phase === "idle" || state.phase === "done" ? state.phase : "active";
@@ -144,13 +149,19 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     });
     handledRequest.current = request.handled;
     if (request.start) {
+      const armed = takeTourReplay();
+      if (ended.current && !armed) {
+        stripTourParam(router, pathname);
+        return;
+      }
+      ended.current = false;
       dispatch({ type: "open" });
       stripTourParam(router, pathname);
       return;
     }
     if (requestSerial > 0) stripTourParam(router, pathname);
 
-    if (phaseKind !== "idle") return;
+    if (phaseKind !== "idle" || saved.current || recent) return;
 
     const decision = decideTourStart({
       requested: false,
@@ -167,17 +178,30 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (state.phase === "idle") return;
-    const route =
-      state.phase === "done" ? "/notes" : tourRouteFor(state.phase, state.index);
-    if (pathname === route) return;
-    router.push(route);
-  }, [state.phase, state.index, pathname, router]);
+    if (state.phase === "done") {
+      stripTourParam(router, pathname);
+      if (state.returnNotes && pathname !== "/notes") router.push("/notes");
+      return;
+    }
+    const route = tourRouteFor(state.phase, state.index);
+    if (pathname !== route) router.push(route);
+    else stripTourParam(router, pathname);
+  }, [state.phase, state.index, state.returnNotes, pathname, router]);
+
+  const finishTour = useCallback(() => {
+    ended.current = true;
+    handledRequest.current = Math.max(handledRequest.current, requestSerial);
+    stripTourParam(router, pathname);
+    const userId = identity.userId ?? readSessionClaims()?.userId ?? null;
+    if (!saved.current && userId != null) {
+      saved.current = true;
+      void saveTourSeen(userId);
+    }
+  }, [identity.userId, pathname, router, requestSerial]);
 
   const markSeen = useCallback(() => {
-    if (saved.current || identity.userId == null) return;
-    saved.current = true;
-    void saveTourSeen(identity.userId);
-  }, [identity.userId]);
+    finishTour();
+  }, [finishTour]);
 
   useEffect(() => {
     if (!state.persistSeen) {
@@ -230,15 +254,13 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
             onStart={() => dispatch({ type: "start" })}
             onNext={() => dispatch({ type: "next" })}
             onBack={() => dispatch({ type: "back" })}
-            onSkip={() => dispatch({ type: "skip" })}
+            onSkip={() => {
+              finishTour();
+              dispatch({ type: "skip" });
+            }}
             onDone={() => {
-              void (async () => {
-                if (!saved.current && identity.userId != null) {
-                  saved.current = true;
-                  await saveTourSeen(identity.userId);
-                }
-                dispatch({ type: "done" });
-              })();
+              finishTour();
+              dispatch({ type: "done" });
             }}
           />
         ) : null}

@@ -248,7 +248,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Native-style Bottom Tab Bar (mobile only) */}
       <nav
-        className="app-bottom-nav no-print sm:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch select-none overflow-x-auto overscroll-x-contain scrollbar-hidden border-t border-white/10 bg-[#0b0c0f]/80 backdrop-blur-lg"
+        className={`app-bottom-nav no-print sm:hidden fixed bottom-0 left-0 right-0 flex items-stretch select-none overflow-x-auto overscroll-x-contain scrollbar-hidden border-t border-white/10 bg-[#0b0c0f]/80 backdrop-blur-lg ${
+          tour.overlay ? "z-[90] pointer-events-none" : "z-50"
+        }`}
         aria-label="Primary"
       >
         {bottomNavItems.map((item) => {

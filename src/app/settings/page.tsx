@@ -13,6 +13,7 @@ import PasswordHints from "../components/PasswordHints";
 import UserAvatar, { AvatarGlyph } from "../components/UserAvatar";
 import { syncVerificationProfile } from "../components/EmailVerificationPrompt";
 import { TOUR_ENABLED } from "../tour/tourFlag";
+import { armTourReplay } from "../tour/tourSeen";
 import { Field, FormButton, SelectField, TextField } from "../components/forms";
 import { ApiError, apiFetch } from "../hooks/useApi";
 import { useSessionIdentity } from "../hooks/useAuth";
@@ -852,7 +853,15 @@ function TourSection() {
       <p className="mt-2 text-sm leading-relaxed text-slate-400">
         A short tour of the main areas in Prysmic.
       </p>
-      <FormButton type="button" variant="secondary" className="mt-4" onClick={() => router.push("/notes?tour=1")}>
+      <FormButton
+        type="button"
+        variant="secondary"
+        className="mt-4"
+        onClick={() => {
+          armTourReplay();
+          router.push("/notes?tour=1");
+        }}
+      >
         Start the tour again
       </FormButton>
     </GlassPanel>

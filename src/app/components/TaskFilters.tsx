@@ -40,7 +40,7 @@ export default function TaskFilters({ filters, tags = [], onChange }: TaskFilter
   const active = hasActiveFilters(filters);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div data-tour-keep="" className="flex flex-col gap-3">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
       {/* Search — grows to fill available width */}
       <div className="relative flex-1 min-w-0">

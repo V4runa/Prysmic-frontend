@@ -33,7 +33,7 @@ test("the tour is five steps with the approved copy", () => {
   assert.equal(TOUR_STEPS[3]?.route, "/calendar");
   assert.equal(TOUR_STEPS[3]?.target, "[data-tour='calendar-today']");
   assert.equal(TOUR_STEPS[4]?.route, "/moods");
-  assert.equal(TOUR_STEPS[4]?.target, "[data-tour='mood-picker']");
+  assert.equal(TOUR_STEPS[4]?.target, "[data-tour='mood-grid']");
 
   assert.equal(TOUR_WELCOME.title, "Welcome to Prysmic");
   assert.equal(
@@ -44,7 +44,7 @@ test("the tour is five steps with the approved copy", () => {
   assert.equal(TOUR_WELCOME.skip, "Skip tour");
   assert.equal(
     TOUR_STEPS[0]?.body,
-    "This is where you write. Select New note to start one. You can add tags to a note to connect it with related notes and tasks."
+    "This is where you write. Select New Note to start one. You can add tags to a note to connect it with related notes and tasks."
   );
   assert.equal(
     TOUR_STEPS[1]?.body,
@@ -52,7 +52,7 @@ test("the tour is five steps with the approved copy", () => {
   );
   assert.equal(
     TOUR_STEPS[2]?.body,
-    "A contract is a daily commitment you set for yourself. Add one, then check in each day. The days you keep it are saved here and on the calendar."
+    "A contract is a daily commitment you set for yourself. Add one, then check it off on this page each day. The days you keep it are saved here and on the calendar."
   );
   assert.equal(
     TOUR_STEPS[3]?.body,
@@ -100,19 +100,26 @@ test("start, next, and back move through the steps without marking seen", () => 
   assert.equal(state.phase, "welcome");
 });
 
-test("the last next, skip, and escape all land on the close card", () => {
+test("the last next opens the close card, and skip ends the tour as seen", () => {
   const finished = tourReducer(walkTo(4), { type: "next" });
   assert.equal(finished.phase, "close");
   assert.equal(finished.persistSeen, false);
+  assert.equal(finished.returnNotes, false);
   assert.equal(tourRouteFor("close", -1), "/notes");
 
-  const skipped = tourReducer(walkTo(2), { type: "skip" });
-  assert.equal(skipped.phase, "close");
-  assert.equal(tourReducer(skipped, { type: "skip" }).phase, "close");
+  const skipped = tourReducer(walkTo(1), { type: "skip" });
+  assert.equal(skipped.phase, "done");
+  assert.equal(skipped.persistSeen, true);
+  assert.equal(skipped.returnNotes, false);
+  assert.equal(tourIsOpen(skipped), false);
 
-  const declined = tourReducer(tourReducer(initialTourState, { type: "open" }), { type: "skip" });
-  assert.equal(declined.phase, "close");
-  assert.equal(declined.persistSeen, false);
+  const fromWelcome = tourReducer(tourReducer(initialTourState, { type: "open" }), { type: "skip" });
+  assert.equal(fromWelcome.phase, "done");
+  assert.equal(fromWelcome.persistSeen, true);
+
+  const fromClose = tourReducer(finished, { type: "skip" });
+  assert.equal(fromClose.phase, "done");
+  assert.equal(fromClose.persistSeen, true);
 });
 
 test("done marks the tour seen and a later open can replay", () => {

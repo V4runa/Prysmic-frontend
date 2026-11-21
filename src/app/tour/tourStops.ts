@@ -44,7 +44,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     route: "/notes",
     target: "[data-tour='notes-create']",
     title: "Notes",
-    body: "This is where you write. Select New note to start one. You can add tags to a note to connect it with related notes and tasks.",
+    body: "This is where you write. Select New Note to start one. You can add tags to a note to connect it with related notes and tasks.",
   },
   {
     id: "tasks",
@@ -58,7 +58,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     route: "/habits",
     target: "[data-tour='contracts-create'], [data-tour='contracts-list']",
     title: "Contracts",
-    body: "A contract is a daily commitment you set for yourself. Add one, then check in each day. The days you keep it are saved here and on the calendar.",
+    body: "A contract is a daily commitment you set for yourself. Add one, then check it off on this page each day. The days you keep it are saved here and on the calendar.",
   },
   {
     id: "calendar",
@@ -70,7 +70,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "moods",
     route: "/moods",
-    target: "[data-tour='mood-picker']",
+    target: "[data-tour='mood-grid']",
     title: "Moods",
     body: "Here you can log how you feel today. Select a mood, or add your own. If you log one, the notebook takes on that color for the rest of the day.",
   },

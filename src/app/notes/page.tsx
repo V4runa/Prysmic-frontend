@@ -290,6 +290,7 @@ export default function NotesOverviewPage() {
               <motion.div {...tactile} className="inline-flex">
                 <Link
                   href="/tags"
+                  data-tour-keep=""
                   className="tap-target flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/10 text-slate-300 hover:bg-white/10 transition-colors text-sm"
                 >
                   <Tag className="h-4 w-4" />

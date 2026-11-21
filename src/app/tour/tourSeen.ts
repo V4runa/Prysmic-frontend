@@ -10,6 +10,27 @@
 
 export const TOUR_SEEN_KEY = "prysmic_tour_seen";
 export const TOUR_SIGNUP_KEY = "prysmic_tour_signup";
+export const TOUR_REPLAY_KEY = "prysmic_tour_replay";
+
+/** Settings and Updates set this before navigating to `?tour=1`. */
+export function armTourReplay(): void {
+  try {
+    sessionStorage.setItem(TOUR_REPLAY_KEY, "1");
+  } catch {
+    // Private mode can reject storage. The query string may still open it.
+  }
+}
+
+/** Read and clear a replay the user just asked for. */
+export function takeTourReplay(): boolean {
+  try {
+    if (sessionStorage.getItem(TOUR_REPLAY_KEY) !== "1") return false;
+    sessionStorage.removeItem(TOUR_REPLAY_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export type TourSeenValue = string | null | undefined;
 
@@ -107,6 +128,28 @@ export function readLocalSeen(storage: Storage, userId: number | null): boolean 
   return Boolean(readMap(storage)[String(userId)]);
 }
 
+/** ISO timestamp mirrored for this account, if one is stored. */
+export function readLocalSeenAt(storage: Storage, userId: number | null): string | null {
+  if (userId == null) return null;
+  return readMap(storage)[String(userId)] ?? null;
+}
+
+/**
+ * True when this browser marked the tour seen moments ago.
+ * A GET /users that still says "unseen" must not wipe that and restart the walk.
+ */
+export function localSeenRecently(
+  storage: Storage,
+  userId: number | null,
+  withinMs = 30000
+): boolean {
+  const at = readLocalSeenAt(storage, userId);
+  if (!at) return false;
+  const time = Date.parse(at);
+  if (Number.isNaN(time)) return false;
+  return Date.now() - time >= 0 && Date.now() - time < withinMs;
+}
+
 export function rememberTourSeen(
   storage: Storage,
   userId: number | null,
@@ -162,7 +205,8 @@ export function takeTourRequest(input: {
   phase: "idle" | "done" | "active";
 }): { start: boolean; handled: number } {
   if (input.serial <= input.handled) return { start: false, handled: input.handled };
-  if (input.phase === "active") return { start: false, handled: input.handled };
+  // A param that appears during a walk must not open again when the walk ends.
+  if (input.phase === "active") return { start: false, handled: input.serial };
   return { start: true, handled: input.serial };
 }
 
