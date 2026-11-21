@@ -232,8 +232,13 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
             onBack={() => dispatch({ type: "back" })}
             onSkip={() => dispatch({ type: "skip" })}
             onDone={() => {
-              markSeen();
-              dispatch({ type: "done" });
+              void (async () => {
+                if (!saved.current && identity.userId != null) {
+                  saved.current = true;
+                  await saveTourSeen(identity.userId);
+                }
+                dispatch({ type: "done" });
+              })();
             }}
           />
         ) : null}
