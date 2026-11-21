@@ -92,41 +92,36 @@ export default function TourCard({
     return () => window.removeEventListener("resize", read);
   }, []);
 
+  const anchorKey = `${stepKey}:${target ? "anchored" : "open"}:${viewport.width}`;
   useLayoutEffect(() => {
     const node = cardRef.current;
     if (!node) return;
     const read = () => {
-      const next = node.offsetHeight;
+      const next = Math.ceil(node.scrollHeight);
       setCardHeight((current) => (current === next ? current : next));
     };
     read();
     const observer = new ResizeObserver(read);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [stepKey]);
+  }, [anchorKey]);
 
   useLayoutEffect(() => {
     const step = phase === "step" ? tourStepByIndex(index) : null;
     if (phase !== "step" || !step) return;
 
     let scrolled = false;
-    const publish = (box: TargetBox | null) => {
+    let locked = false;
+    const publish = (box: TargetBox) => {
       setMeasured((current) => {
         const key = `${phase}:${index}:${pathname}`;
-        if (box === null) {
-          if (current.key === key && current.box === null) return current;
-          return { key, box: null };
-        }
         if (current.key === key && current.box && sameTarget(current.box, box)) return current;
         return { key, box };
       });
     };
     const read = (allowScroll: boolean): boolean => {
       const node = visibleQuery(step.target);
-      if (!node) {
-        publish(null);
-        return false;
-      }
+      if (!node) return false;
       if (allowScroll && !scrolled) {
         scrolled = true;
         revealTargetOnce(node);
@@ -135,34 +130,42 @@ export default function TourCard({
       return true;
     };
 
-    const foundAtStart = read(true);
-    let found = foundAtStart;
+    let observer: MutationObserver | null = null;
+    let timer = 0;
+    let giveUp = 0;
+    const finish = () => {
+      locked = true;
+      window.clearInterval(timer);
+      window.clearTimeout(giveUp);
+      observer?.disconnect();
+    };
+
+    timer = window.setInterval(() => {
+      if (locked) return;
+      if (read(!scrolled)) finish();
+    }, 100);
+    giveUp = window.setTimeout(finish, 8000);
+
+    if (read(true)) finish();
+    else {
+      observer = new MutationObserver(() => {
+        if (locked) return;
+        if (read(true)) finish();
+      });
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-tour"] });
+    }
 
     const onReflow = () => {
-      found = read(false) || found;
+      if (!locked) return;
+      read(false);
     };
     window.addEventListener("resize", onReflow);
     window.addEventListener("scroll", onReflow, true);
 
-    let observer: MutationObserver | null = null;
-    if (!found) {
-      observer = new MutationObserver(() => {
-        if (found) return;
-        found = read(true);
-        if (found) observer?.disconnect();
-      });
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["data-tour"],
-      });
-    }
-
     return () => {
+      finish();
       window.removeEventListener("resize", onReflow);
       window.removeEventListener("scroll", onReflow, true);
-      observer?.disconnect();
     };
   }, [phase, index, pathname]);
 
@@ -252,7 +255,7 @@ export default function TourCard({
           top: spot.top,
           left: spot.left,
           width: spot.width,
-          maxHeight: Math.max(160, (viewport.height || 640) - 32),
+          maxHeight: Math.max(160, (viewport.height || 640) - spot.top - 16),
           transition: reduceMotion ? "none" : "top 150ms ease, left 150ms ease",
         };
 

@@ -173,15 +173,19 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     router.push(route);
   }, [state.phase, state.index, pathname, router]);
 
+  const markSeen = useCallback(() => {
+    if (saved.current || identity.userId == null) return;
+    saved.current = true;
+    void saveTourSeen(identity.userId);
+  }, [identity.userId]);
+
   useEffect(() => {
     if (!state.persistSeen) {
       saved.current = false;
       return;
     }
-    if (saved.current || identity.userId == null) return;
-    saved.current = true;
-    void saveTourSeen(identity.userId);
-  }, [state.persistSeen, identity.userId]);
+    markSeen();
+  }, [state.persistSeen, markSeen]);
 
   useEffect(() => {
     if (state.phase !== "done") return;
@@ -227,7 +231,10 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
             onNext={() => dispatch({ type: "next" })}
             onBack={() => dispatch({ type: "back" })}
             onSkip={() => dispatch({ type: "skip" })}
-            onDone={() => dispatch({ type: "done" })}
+            onDone={() => {
+              markSeen();
+              dispatch({ type: "done" });
+            }}
           />
         ) : null}
       </TourContext.Provider>
