@@ -100,7 +100,7 @@ export default function DayMoodEditor({ day, mood }: DayMoodEditorProps) {
     : null;
 
   return (
-    <section className="flex flex-col gap-1.5">
+    <section data-tour-keep="" className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <span className={sectionTitle}>Mood</span>
         {mood?.backfilled && (

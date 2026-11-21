@@ -134,7 +134,6 @@ function placeAtWidth(
       return sum + area * (input.shieldBelow && belowTarget ? 8 : 1);
     }, 0);
     const distance = gapTo(box, target);
-    const centered = Math.abs(box.x + box.width / 2 - (target.x + target.width / 2));
     const score = targetHit * 5000 + obstacleHit * 80 + softHit * 0.02 + distance * 6;
     if (targetHit === 0 && obstacleHit === 0 && softHit === 0 && (!best || score < best.score)) best = { spot, score };
     if (targetHit === 0 && obstacleHit === 0 && (!near || score < near.score)) near = { spot, score };
@@ -160,6 +159,9 @@ export function placeTourCard(input: {
   presentation: "center" | "anchor";
   /** Covering days below the target costs more than covering days above it. */
   shieldBelow?: boolean;
+  /** Moods on a wide screen sit under the grid. Phone calendar sits against today's week. */
+  bias?: "auto" | "below" | "around-week";
+  week?: Box | null;
 }): CardSpot | null {
   const { viewport, insets } = input;
   const height = Math.max(1, input.card.height);
@@ -177,6 +179,15 @@ export function placeTourCard(input: {
     };
   }
 
+  if (input.bias === "below") {
+    const under = placeBelow(input.target, full, height, viewport, insets, input.obstacles ?? []);
+    if (under) return under;
+  }
+  if (input.bias === "around-week" && input.week) {
+    const beside = placeAroundWeek(input.week, full, height, viewport, insets, input.obstacles ?? []);
+    if (beside) return beside;
+  }
+
   const anchored = { ...input, target: input.target };
   const preferred = placeAtWidth(anchored, full);
   const narrow = Math.min(full, 300);
@@ -190,6 +201,59 @@ export function placeTourCard(input: {
     maxLeft: viewport.width - TOUR_MARGIN - spot.width,
     obstacles: input.obstacles ?? [],
   });
+}
+
+function placeBelow(
+  target: Box,
+  width: number,
+  height: number,
+  viewport: { width: number; height: number },
+  insets: SafeInsets,
+  obstacles: readonly Box[]
+): CardSpot | null {
+  const minTop = Math.max(TOUR_MARGIN, insets.top);
+  const maxBottom = viewport.height - insets.bottom;
+  const top = target.y + target.height + GAP;
+  if (top < minTop - 1 || top + height > maxBottom + 1) return null;
+  const lefts = [target.x + target.width / 2 - width / 2, target.x];
+  for (const raw of lefts) {
+    const left = clamp(raw, TOUR_MARGIN, Math.max(TOUR_MARGIN, viewport.width - TOUR_MARGIN - width));
+    const box = spotBox({ top, left, width }, height);
+    if (overlapArea(box, target) > 0) continue;
+    if (obstacles.some((obstacle) => overlapArea(box, obstacle) > 0)) continue;
+    return { top, left, width };
+  }
+  return null;
+}
+
+/** Phone calendar: directly under today's week, or directly above it. */
+function placeAroundWeek(
+  week: Box,
+  width: number,
+  height: number,
+  viewport: { width: number; height: number },
+  insets: SafeInsets,
+  obstacles: readonly Box[]
+): CardSpot | null {
+  const minTop = Math.max(TOUR_MARGIN, insets.top);
+  const maxTop = viewport.height - insets.bottom - height;
+  const left = TOUR_MARGIN;
+  const clear = (top: number, allowObstacles: boolean) => {
+    if (top < minTop - 1 || top > maxTop + 1) return false;
+    const box = spotBox({ top, left, width }, height);
+    if (overlapArea(box, week) > 0) return false;
+    if (!allowObstacles && obstacles.some((obstacle) => overlapArea(box, obstacle) > 0)) return false;
+    return true;
+  };
+  const below = week.y + week.height + GAP;
+  const above = week.y - height - GAP;
+  if (clear(below, false)) return { top: below, left, width };
+  if (clear(above, false)) return { top: above, left, width };
+  const forcedAbove = clamp(above, minTop, Math.max(minTop, maxTop));
+  if (clear(forcedAbove, true)) return { top: forcedAbove, left, width };
+  const forcedBelow = clamp(below, minTop, Math.max(minTop, maxTop));
+  if (clear(forcedBelow, true)) return { top: forcedBelow, left, width };
+  return null;
 }
 
 /** Slide a card that still clips its target out along the nearest open side. */

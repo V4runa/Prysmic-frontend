@@ -11,7 +11,7 @@ import {
   tourProgressLabel,
   tourStepByIndex,
 } from "./tourStops";
-import { measureMoodRow, measureTarget, sameTarget, visibleQuery, type TargetBox } from "./tourTarget";
+import { clipMoodGrid, measureTarget, sameTarget, visibleQuery, type TargetBox } from "./tourTarget";
 import type { TourPhase } from "./tourMachine";
 
 type OpenPhase = Exclude<TourPhase, "idle" | "done">;
@@ -67,7 +67,7 @@ function readChrome(): Chrome {
     if (node.textContent !== "🔥") return false;
     return /text-6xl|text-8xl/.test(node.parentElement?.className ?? "");
   });
-  const flame = flameNode instanceof HTMLElement ? toBox(flameNode.getBoundingClientRect(), 56) : null;
+  const flame = flameNode instanceof HTMLElement ? toBox(flameNode.getBoundingClientRect(), 96) : null;
   return {
     top: headerH + 12,
     bottom: Math.min(navBox?.height ?? 0, 96) + 12,
@@ -97,6 +97,16 @@ function keepBoxes(target: HTMLElement | null): Box[] {
     );
   }
   return boxes;
+}
+
+function todayWeek(): Box | null {
+  const numeral = visibleQuery("[data-tour='calendar-today']");
+  const cell = numeral?.closest("[data-tour-day]");
+  const row = cell?.parentElement;
+  if (!(row instanceof HTMLElement)) return null;
+  const rect = row.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) return null;
+  return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
 }
 
 function pageBusy(): boolean {
@@ -176,6 +186,8 @@ export default function TourCard({
   const [reduceMotion, setReduceMotion] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+  const [welcomeReady, setWelcomeReady] = useState(phase !== "welcome");
+  const [holdFlame, setHoldFlame] = useState(false);
 
   const stepKey = phase === "step" ? `step-${index}` : phase;
   const step = phase === "step" ? tourStepByIndex(index) : null;
@@ -215,15 +227,35 @@ export default function TourCard({
     return () => observer.disconnect();
   }, [stepKey, cardReady]);
 
+  useEffect(() => {
+    if (phase !== "welcome") return;
+    let timer = 0;
+    let cancelled = false;
+    const check = () => {
+      if (cancelled) return;
+      if (!pageBusy()) {
+        setWelcomeReady(true);
+        return;
+      }
+      setWelcomeReady(false);
+      timer = window.setTimeout(check, 40);
+    };
+    timer = window.setTimeout(check, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [phase, pathname]);
+
   useLayoutEffect(() => {
     if (phase !== "step" || !step) return;
     let scrolled = false;
     let locked = false;
     let previous: TargetBox | null = null;
-    let hits = 0;
     let timer = 0;
 
     const publish = (box: TargetBox) => {
+      setHoldFlame(false);
       setMeasured((current) => {
         const key = `${phase}:${index}:${pathname}`;
         if (current.key === key && current.box && sameTarget(current.box, box)) return current;
@@ -236,68 +268,63 @@ export default function TourCard({
       if (locked) return;
       if (pageBusy()) {
         previous = null;
-        hits = 0;
         return;
       }
       const node = visibleQuery(step.target);
+      if (step.id === "moods" && !node) {
+        if (readChrome().flame) {
+          locked = true;
+          window.clearInterval(timer);
+          setHoldFlame(true);
+          setChrome(readChrome());
+        }
+        previous = null;
+        return;
+      }
       if (!node) {
         previous = null;
-        hits = 0;
         return;
       }
       if (step.id === "moods" && !node.querySelector("button")) {
         previous = null;
-        hits = 0;
         return;
       }
-      padMood(node);
-      const moodRow =
-        step.id === "moods"
-          ? measureMoodRow(node, { top: chrome.top, bottom: chrome.bottom, card: CARD_ESTIMATE })
-          : null;
-      const box = moodRow ?? measureTarget(node);
-      if (previous && sameTarget(previous, box)) hits += 1;
-      else hits = 0;
-      previous = box;
-      if (hits >= 1 && !scrolled) {
+      if (step.id === "moods" && !scrolled) {
+        const scroller = node.closest(".app-scroll");
+        if (scroller instanceof HTMLElement && scroller.scrollTop > 1) {
+          scroller.scrollTo({ top: 0, behavior: "auto" });
+          scrolled = true;
+          previous = null;
+          return;
+        }
         scrolled = true;
-        const scrollNode =
-          step.id === "moods"
-            ? ([...node.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48).at(-1) ??
-              node)
-            : node;
-        scrollTargetClear(
-          scrollNode,
-          { top: chrome.top, bottom: chrome.bottom },
-          CARD_ESTIMATE,
-          step.id === "calendar" ? "visible" : "below"
-        );
-        hits = 0;
-        previous = null;
+      }
+      const phone = window.innerWidth < 700;
+      const box =
+        step.id === "moods"
+          ? clipMoodGrid(node, phone ? window.innerHeight - chrome.bottom - 260 - 16 : null)
+          : measureTarget(node);
+      if (!previous || !sameTarget(previous, box)) {
+        previous = box;
+        if (!scrolled && step.id !== "moods") {
+          scrolled = true;
+          scrollTargetClear(
+            node,
+            { top: chrome.top, bottom: chrome.bottom },
+            step.id === "calendar" ? 0 : CARD_ESTIMATE,
+            step.id === "calendar" ? "visible" : "below"
+          );
+        }
         return;
       }
-      if (hits >= 2) {
-        locked = true;
-        window.clearInterval(timer);
-        publish(box);
-      }
-    };
-
-    let padded: HTMLElement | null = null;
-    const padMood = (node: HTMLElement) => {
-      if (step.id !== "moods" || padded || window.innerWidth >= 700) return;
-      const scroller = node.closest(".app-scroll");
-      if (!(scroller instanceof HTMLElement)) return;
-      scroller.style.paddingBottom = `${CARD_ESTIMATE + chrome.bottom}px`;
-      padded = scroller;
-    };
-
-    timer = window.setInterval(tick, 120);
-    tick();
-    return () => {
+      locked = true;
       window.clearInterval(timer);
-      if (padded) padded.style.paddingBottom = "";
+      publish(box);
     };
+
+    timer = window.setInterval(tick, 40);
+    tick();
+    return () => window.clearInterval(timer);
   }, [phase, index, pathname, step, chrome.top, chrome.bottom]);
 
   useEffect(() => {
@@ -354,48 +381,61 @@ export default function TourCard({
     };
   }, []);
 
-  const showStep = phase === "step" && target;
-  const showCard = phase !== "step" || showStep;
+  const showWelcome = phase === "welcome" && welcomeReady;
+  const showStep = phase === "step" && (target != null || holdFlame);
+  const showCard = showWelcome || phase === "close" || showStep;
+  const phone = viewport.width > 0 && viewport.width < 700;
   const softObstacles: Box[] = [];
-  if (step?.id === "calendar") {
+  if (step?.id === "calendar" && !phone) {
     for (const node of document.querySelectorAll<HTMLElement>("[data-tour-day]")) {
       const rect = node.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) continue;
       softObstacles.push(toBox(rect, 4));
     }
   }
-  if (step?.id === "moods" && target) {
-    for (const node of document.querySelectorAll<HTMLElement>("[data-tour='mood-grid'] button")) {
-      const rect = node.getBoundingClientRect();
-      if (rect.width < 48 || rect.height < 48) continue;
-      const inside =
-        rect.left >= target.x - 2 &&
-        rect.top >= target.y - 2 &&
-        rect.right <= target.x + target.width + 2 &&
-        rect.bottom <= target.y + target.height + 2;
-      if (inside) continue;
-      softObstacles.push(toBox(rect, 8));
-    }
+  const obstacles = [
+    ...keepBoxes(visibleQuery(step?.target ?? "")),
+    ...(chrome.flame ? [chrome.flame] : []),
+    ...(chrome.nav ? [chrome.nav] : []),
+  ];
+  const cardSize = { width: TOUR_CARD_WIDTH, height: cardHeight || CARD_ESTIMATE };
+  let spot: CardSpot | null = null;
+  if (phase === "step" && step?.id === "moods" && phone) {
+    const height = cardSize.height;
+    spot = {
+      top: Math.max(chrome.top, viewport.height - chrome.bottom - height),
+      left: 16,
+      width: Math.min(TOUR_CARD_WIDTH, viewport.width - 32),
+    };
+  } else if (holdFlame && chrome.flame) {
+    const height = cardSize.height;
+    const width = Math.min(TOUR_CARD_WIDTH, Math.max(200, viewport.width - 32));
+    spot = {
+      top: Math.min(
+        chrome.flame.y + chrome.flame.height + 16,
+        Math.max(chrome.top, viewport.height - chrome.bottom - height)
+      ),
+      left: Math.max(16, (viewport.width - width) / 2),
+      width,
+    };
+  } else {
+    spot = placeTourCard({
+      viewport: viewport.width > 0 ? viewport : { width: 390, height: 844 },
+      insets: { top: chrome.top, bottom: chrome.bottom },
+      card: cardSize,
+      target: showStep && target
+        ? step?.id === "moods"
+          ? { x: target.x, y: target.y, width: target.width, height: target.height }
+          : { x: target.x - 18, y: target.y - 18, width: target.width + 36, height: target.height + 36 }
+        : null,
+      obstacles,
+      softObstacles,
+      presentation: phase === "step" ? "anchor" : "center",
+      shieldBelow: step?.id === "calendar" && !phone,
+      bias: step?.id === "moods" ? "below" : step?.id === "calendar" && phone ? "around-week" : "auto",
+      week: step?.id === "calendar" && phone ? todayWeek() : null,
+    });
   }
-  const obstacles = target
-    ? [
-        ...keepBoxes(visibleQuery(step?.target ?? "")),
-        ...(chrome.flame ? [chrome.flame] : []),
-        ...(chrome.nav ? [chrome.nav] : []),
-      ]
-    : [];
-  const spot: CardSpot | null = placeTourCard({
-    viewport: viewport.width > 0 ? viewport : { width: 390, height: 844 },
-    insets: { top: chrome.top, bottom: chrome.bottom },
-    card: { width: TOUR_CARD_WIDTH, height: cardHeight || CARD_ESTIMATE },
-    target: showStep && target
-      ? { x: target.x - 18, y: target.y - 18, width: target.width + 36, height: target.height + 36 }
-      : null,
-    obstacles,
-    softObstacles,
-    presentation: phase === "step" ? "anchor" : "center",
-    shieldBelow: step?.id === "calendar",
-  });
 
   const title = phase === "welcome" ? TOUR_WELCOME.title : phase === "close" ? TOUR_CLOSE.title : step?.title ?? "";
   const body = phase === "welcome" ? TOUR_WELCOME.body : phase === "close" ? TOUR_CLOSE.body : step?.body ?? "";
@@ -440,7 +480,7 @@ export default function TourCard({
   return (
     <div className="fixed inset-0 z-[80] pointer-events-none">
       <div className="fixed left-0 right-0 top-0 z-[80]" style={{ bottom: shieldBottom, pointerEvents: "auto" }} />
-      {phase === "step" && ring ? (
+      {phase === "step" && (ring || holdFlame) ? (
         <svg className="pointer-events-none fixed inset-0 h-full w-full" aria-hidden="true">
           <defs>
             <mask id="prysmic-tour-dim">
@@ -460,7 +500,7 @@ export default function TourCard({
           </defs>
           <rect width="100%" height="100%" fill="rgba(6,7,10,0.55)" mask="url(#prysmic-tour-dim)" />
         </svg>
-      ) : phase !== "step" ? (
+      ) : showWelcome || phase === "close" ? (
         <div className="fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom }} />
       ) : null}
       {ring ? (

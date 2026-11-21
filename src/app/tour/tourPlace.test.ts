@@ -100,6 +100,42 @@ test("a calendar day keeps the card off the weeks below it", () => {
   assert.ok(placed.y + placed.height <= day.y);
 });
 
+test("a wide mood grid keeps the card centered underneath", () => {
+  const grid = box({ x: 200, y: 140, width: 1000, height: 420 });
+  const spot = placeTourCard({
+    viewport: { width: 1920, height: 1080 },
+    insets: open,
+    card: { width: 400, height: 200 },
+    target: grid,
+    presentation: "anchor",
+    bias: "below",
+  });
+  assert.ok(spot);
+  const placed = asBox(spot, 200);
+  assert.equal(overlapArea(placed, grid), 0);
+  assert.ok(placed.y >= grid.y + grid.height);
+  assert.ok(Math.abs(placed.x + placed.width / 2 - (grid.x + grid.width / 2)) < 2);
+});
+
+test("the phone calendar card sits against today's week and off that row", () => {
+  const week = box({ x: 12, y: 430, width: 366, height: 96 });
+  const spot = placeTourCard({
+    viewport: phone,
+    insets: phoneInsets,
+    card: { width: 358, height: 200 },
+    target: box({ x: 250, y: 448, width: 24, height: 24 }),
+    week,
+    presentation: "anchor",
+    bias: "around-week",
+  });
+  assert.ok(spot);
+  const placed = asBox(spot, 200);
+  assert.equal(overlapArea(placed, week), 0);
+  const below = placed.y >= week.y + week.height;
+  const above = placed.y + placed.height <= week.y;
+  assert.ok(below || above);
+});
+
 test("the card avoids a keep-clear row under the target", () => {
   const field = box({ x: 80, y: 180, width: 900, height: 44 });
   const search = box({ x: 80, y: 240, width: 900, height: 48 });

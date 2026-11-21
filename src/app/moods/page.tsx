@@ -17,6 +17,7 @@ import { useLogicalToday } from "../hooks/usePreferences";
 import { calendarQueryKey } from "../hooks/useCalendar";
 import { MoodOption, useMoodOptions } from "../hooks/useMoodOptions";
 import { setMoodRoomPreview } from "../hooks/useMoodRoom";
+import { useTour } from "../tour/TourProvider";
 
 enum MoodPhase {
   PICK = "pick",
@@ -57,6 +58,7 @@ const normalizeMoods = (moods: MoodEntry[]): MoodEntry[] =>
 
 export default function MoodPage() {
   const queryClient = useQueryClient();
+  const tour = useTour();
   const searchParams = useSearchParams();
   const focusDay = calendarDayFromSearch(searchParams.toString());
   const [phase, setPhase] = useState<MoodPhase>(MoodPhase.PICK);
@@ -226,10 +228,10 @@ export default function MoodPage() {
             {phase === MoodPhase.PICK && (!todayEntry || replacing) && (
               <motion.div
                 key="picker"
-                initial={{ opacity: 0, y: 10 }}
+                initial={tour.overlay ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.8, ease: "easeInOut" }}
+                exit={tour.overlay ? { opacity: 1 } : { opacity: 0, y: -10 }}
+                transition={tour.overlay ? { duration: 0 } : { duration: 0.8, ease: "easeInOut" }}
                 className="w-full h-full flex-1"
               >
                 <MoodPicker
@@ -266,10 +268,10 @@ export default function MoodPage() {
             {phase === MoodPhase.TIMELINE ? (
               <motion.div
                 key="timeline"
-                initial={{ opacity: 0, y: 20 }}
+                initial={tour.overlay ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1.0, ease: "easeOut" }}
+                exit={tour.overlay ? { opacity: 1 } : { opacity: 0 }}
+                transition={tour.overlay ? { duration: 0 } : { duration: 1.0, ease: "easeOut" }}
                 className="h-full min-h-0 w-full min-w-0 flex-1"
               >
                 <MoodTimeline

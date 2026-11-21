@@ -32,60 +32,42 @@ export function measureTarget(node: HTMLElement): TargetBox {
   };
 }
 
-function unionBox(tiles: HTMLElement[]): TargetBox | null {
-  if (tiles.length === 0) return null;
-  let x = Infinity;
-  let y = Infinity;
-  let right = 0;
-  let bottom = 0;
-  for (const tile of tiles) {
-    const rect = tile.getBoundingClientRect();
-    x = Math.min(x, rect.x);
-    y = Math.min(y, rect.y);
-    right = Math.max(right, rect.right);
-    bottom = Math.max(bottom, rect.bottom);
-  }
-  return {
-    x,
-    y,
-    width: right - x,
-    height: bottom - y,
-    radius: getComputedStyle(tiles[0]).borderRadius || "16px",
-  };
-}
-
 /**
- * Highlight the whole grid when the card can sit clear of it.
- * Otherwise highlight the last row of moods, including the row above
- * when "Your own" sits on a row by itself.
+ * The whole mood grid. On a phone, stop the ring at the last full row
+ * that sits above the card so a tile is never sliced in half.
+ * Width stays the grid's width, so the ring reads as the grid, not a few moods.
  */
-export function measureMoodRow(
-  node: HTMLElement,
-  space: { top: number; bottom: number; card: number }
-): TargetBox | null {
-  if (node.getAttribute("data-tour") !== "mood-grid") return null;
+export function clipMoodGrid(node: HTMLElement, limitBottom: number | null): TargetBox {
   const grid = node.getBoundingClientRect();
-  const cardTop = window.innerHeight - space.bottom - space.card - 18;
-  const fits = grid.top >= space.top - 4 && grid.bottom <= cardTop;
+  const radius = getComputedStyle(node).borderRadius || "24px";
+  const full: TargetBox = {
+    x: grid.x,
+    y: grid.y,
+    width: grid.width,
+    height: grid.height,
+    radius,
+  };
+  if (limitBottom == null || grid.bottom <= limitBottom + 1) return full;
   const tiles = [...node.querySelectorAll("button")].filter((button) => {
     const rect = button.getBoundingClientRect();
     return rect.width > 48 && rect.height > 48;
   });
-  if (fits || tiles.length === 0) return null;
-  const lastTop = tiles[tiles.length - 1].getBoundingClientRect().top;
-  let row = tiles.filter((button) => Math.abs(button.getBoundingClientRect().top - lastTop) < 16);
-  if (row.length < 3) {
-    const earlier = tiles.filter((button) => button.getBoundingClientRect().top < lastTop - 16);
-    const prev = earlier[earlier.length - 1];
-    if (prev) {
-      const prevTop = prev.getBoundingClientRect().top;
-      row = [
-        ...earlier.filter((button) => Math.abs(button.getBoundingClientRect().top - prevTop) < 16),
-        ...row,
-      ];
-    }
+  const rows: { top: number; bottom: number }[] = [];
+  for (const tile of tiles) {
+    const rect = tile.getBoundingClientRect();
+    const row = rows.find((item) => Math.abs(item.top - rect.top) < 18);
+    if (row) row.bottom = Math.max(row.bottom, rect.bottom);
+    else rows.push({ top: rect.top, bottom: rect.bottom });
   }
-  return unionBox(row);
+  rows.sort((a, b) => a.top - b.top);
+  let bottom = grid.top;
+  for (const row of rows) {
+    if (row.bottom <= limitBottom) bottom = Math.max(bottom, row.bottom);
+    else break;
+  }
+  const height = bottom - grid.top;
+  if (height < 24) return full;
+  return { ...full, height };
 }
 
 export function sameTarget(current: TargetBox | null, next: TargetBox): boolean {

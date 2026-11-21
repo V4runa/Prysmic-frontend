@@ -10,6 +10,7 @@ import { localDateKey, prevDayKey } from "../lib/date";
 import { useLogicalToday } from "../hooks/usePreferences";
 import { resolveMoodVisual } from "../lib/moodColors";
 import { TextArea } from "./forms";
+import { useTour } from "../tour/TourProvider";
 
 interface MoodEntry {
   id: number;
@@ -39,6 +40,7 @@ export default function MoodTimeline({
   onSaveTodayNote,
 }: MoodTimelineProps) {
   const today = useLogicalToday();
+  const tour = useTour();
   // Count consecutive logical days that have at least one *organically logged*
   // mood entry, walking backwards from the current logical day.
   // Backfilled entries — moods added retroactively through the calendar — are
@@ -72,9 +74,9 @@ export default function MoodTimeline({
     <div className="app-scroll relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 pb-24 sm:pt-32 sm:pb-20">
       {/* 🔥 Streak header */}
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
+        initial={tour.overlay ? false : { opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
+        transition={tour.overlay ? { duration: 0 } : { duration: 0.8 }}
         className="flex flex-col items-center relative z-10 overflow-visible"
       >
         <motion.div
