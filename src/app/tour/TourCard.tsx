@@ -250,6 +250,7 @@ export default function TourCard({
         hits = 0;
         return;
       }
+      padMood(node);
       const moodRow =
         step.id === "moods"
           ? measureMoodRow(node, { top: chrome.top, bottom: chrome.bottom, card: CARD_ESTIMATE })
@@ -282,9 +283,21 @@ export default function TourCard({
       }
     };
 
+    let padded: HTMLElement | null = null;
+    const padMood = (node: HTMLElement) => {
+      if (step.id !== "moods" || padded) return;
+      const scroller = node.closest(".app-scroll");
+      if (!(scroller instanceof HTMLElement)) return;
+      scroller.style.paddingBottom = `${CARD_ESTIMATE + chrome.bottom}px`;
+      padded = scroller;
+    };
+
     timer = window.setInterval(tick, 120);
     tick();
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      if (padded) padded.style.paddingBottom = "";
+    };
   }, [phase, index, pathname, step, chrome.top, chrome.bottom]);
 
   useEffect(() => {

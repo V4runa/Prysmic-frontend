@@ -210,7 +210,6 @@ function nudgeOffTarget(
   for (const shift of shifts) {
     const top = clamp(shift.top, bounds.minTop, Math.max(bounds.minTop, bounds.maxTop));
     const left = clamp(shift.left, bounds.minLeft, Math.max(bounds.minLeft, bounds.maxLeft));
-    if (Math.abs(top - shift.top) > 1 || Math.abs(left - shift.left) > 1) continue;
     const next = spotBox({ top, left, width: spot.width }, height);
     if (overlapArea(next, target) > 0) continue;
     const blocked = bounds.obstacles.some((obstacle) => overlapArea(next, obstacle) > 0);
