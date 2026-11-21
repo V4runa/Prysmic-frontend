@@ -285,7 +285,7 @@ export default function TourCard({
 
     let padded: HTMLElement | null = null;
     const padMood = (node: HTMLElement) => {
-      if (step.id !== "moods" || padded) return;
+      if (step.id !== "moods" || padded || window.innerWidth >= 700) return;
       const scroller = node.closest(".app-scroll");
       if (!(scroller instanceof HTMLElement)) return;
       scroller.style.paddingBottom = `${CARD_ESTIMATE + chrome.bottom}px`;
