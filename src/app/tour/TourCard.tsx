@@ -118,11 +118,11 @@ function layoutPhoneMoods(
   }
   rows.sort((a, b) => a.top - b.top);
   let cardTop = Math.max(topInset, viewHeight - bottomInset - cardHeight);
-  const sliced = rows.find((row) => row.top < cardTop - 4 && row.bottom > cardTop + 4);
-  if (sliced) cardTop = Math.max(topInset, sliced.top - 8);
+  const sliced = rows.find((row) => row.top < cardTop - 2 && row.bottom > cardTop + 2);
+  if (sliced) cardTop = Math.max(topInset, sliced.top - 4);
   let ringBottom = rect.top;
   for (const row of rows) {
-    if (row.bottom <= cardTop - 8) ringBottom = row.bottom;
+    if (row.bottom <= cardTop - 1) ringBottom = row.bottom;
     else break;
   }
   const height = Math.max(24, ringBottom - rect.top);
