@@ -763,6 +763,15 @@ export default function TourCard({
   const stageKey = useRef("");
   const shownSig = useRef("");
   const navLock = useRef(false);
+  const dimHeld = useRef(false);
+  const ringSnap = useRef<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    radius: string;
+    shadow: string;
+  } | null>(null);
   const liveSpot = useRef<CardSpot | null>(null);
   const liveReady = useRef(false);
 
@@ -2070,16 +2079,45 @@ export default function TourCard({
     action();
   };
   const pending = leaving || stage !== "show";
-  const veilOpacity = stage === "show" ? 1 : 0;
-  const veilTransition = stage === "measure" || reduceMotion ? "none" : "opacity 160ms ease";
+  const dimAlready = dimHeld.current;
+  if (stage === "show") dimHeld.current = true;
+  // The first card fades in with the dim. After that the dim stays put
+  // between steps; only the card and the ring fade.
+  const dimOpacity = dimAlready || stage === "show" ? 1 : 0;
+  const fade = reduceMotion ? "none" : "opacity 160ms ease";
+  const dimTransition = dimAlready || reduceMotion ? "none" : fade;
+  const ringShadow = tightRing
+    ? "inset 0 0 0 2px rgba(103,232,249,0.95)"
+    : nearFlame
+      ? "0 0 0 2px rgba(103,232,249,0.95)"
+      : "0 0 0 2px rgba(103,232,249,0.95), 0 0 18px 2px rgba(103,232,249,0.4)";
+  if (stage === "show") {
+    ringSnap.current = drawRing
+      ? {
+          left: drawRing.left,
+          top: drawRing.top,
+          width: drawRing.width,
+          height: drawRing.height,
+          radius: drawRing.radius,
+          shadow: ringShadow,
+        }
+      : null;
+  }
+  const ringOpacity = stage === "show" && drawRing ? 1 : 0;
+  const shownRing = stage === "out" ? ringSnap.current : drawRing;
 
   const shieldBottom = chrome.nav ? chrome.nav.height : 0;
 
   return (
     <div className="fixed inset-0 z-[80] pointer-events-none">
       <div className="fixed left-0 right-0 top-0 z-[80]" style={{ bottom: shieldBottom, pointerEvents: tourOpen ? "auto" : "none" }} />
-      {showFrozenCard && phase === "step" && showLive && (drawRing || holdFlame) ? (
-        <svg className="pointer-events-none fixed inset-0 h-full w-full" aria-hidden="true" style={{ opacity: veilOpacity, transition: veilTransition }}>
+      {(showFrozenCard || dimAlready) ? (
+        <svg
+          data-tour-dim=""
+          className="pointer-events-none fixed left-0 right-0 top-0 h-auto w-full"
+          aria-hidden="true"
+          style={{ bottom: shieldBottom, opacity: dimOpacity, transition: dimTransition }}
+        >
           <defs>
             <mask id="prysmic-tour-dim">
               <rect width="100%" height="100%" fill="white" />
@@ -2092,37 +2130,33 @@ export default function TourCard({
                   height={hole.height}
                   rx={18}
                   fill="black"
+                  opacity={ringOpacity}
+                  style={{ transition: fade }}
                 />
               ))}
             </mask>
           </defs>
           <rect width="100%" height="100%" fill="rgba(6,7,10,0.55)" mask="url(#prysmic-tour-dim)" />
         </svg>
-      ) : showFrozenCard ? (
-        <div className="pointer-events-none fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom, opacity: veilOpacity, transition: veilTransition }} />
       ) : null}
-      {tourOpen && showLive && stepReady && drawRing ? (
+      {shownRing ? (
         <div
           aria-hidden="true"
           data-tour-ring=""
-          data-anchor-x={liveAnchor ? liveAnchor.x : undefined}
-          data-anchor-y={liveAnchor ? liveAnchor.y : undefined}
-          data-anchor-w={liveAnchor ? liveAnchor.width : undefined}
-          data-anchor-h={liveAnchor ? liveAnchor.height : undefined}
+          data-anchor-x={liveAnchor && stage === "show" ? liveAnchor.x : undefined}
+          data-anchor-y={liveAnchor && stage === "show" ? liveAnchor.y : undefined}
+          data-anchor-w={liveAnchor && stage === "show" ? liveAnchor.width : undefined}
+          data-anchor-h={liveAnchor && stage === "show" ? liveAnchor.height : undefined}
           className="pointer-events-none fixed"
           style={{
-            left: drawRing.left,
-            top: drawRing.top,
-            width: drawRing.width,
-            height: drawRing.height,
-            borderRadius: drawRing.radius,
-            boxShadow: tightRing
-              ? "inset 0 0 0 2px rgba(103,232,249,0.95)"
-              : nearFlame
-                ? "0 0 0 2px rgba(103,232,249,0.95)"
-                : "0 0 0 2px rgba(103,232,249,0.95), 0 0 18px 2px rgba(103,232,249,0.4)",
-            opacity: 1,
-            animation: reduceMotion ? undefined : "prysmic-tour-in 150ms ease forwards",
+            left: shownRing.left,
+            top: shownRing.top,
+            width: shownRing.width,
+            height: shownRing.height,
+            borderRadius: shownRing.radius,
+            boxShadow: stage === "out" && ringSnap.current ? ringSnap.current.shadow : ringShadow,
+            opacity: ringOpacity,
+            transition: fade,
           }}
         />
       ) : null}
@@ -2146,7 +2180,7 @@ export default function TourCard({
             opacity: stage === "show" ? 1 : 0,
             visibility: stage === "measure" ? "hidden" : "visible",
             pointerEvents: stage === "show" ? "auto" : "none",
-            transition: stage === "measure" || reduceMotion ? "none" : "opacity 160ms ease",
+            transition: fade,
           }}
           data-tour-card={phase === "step" ? (TOUR_STEPS[index]?.id ?? phase) : phase}
         >
