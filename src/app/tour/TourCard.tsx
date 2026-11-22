@@ -33,7 +33,7 @@ const CARD_ESTIMATE = 220;
 const RING_PAD = 8;
 /** Clear space from the ring's edge to the card. */
 const RING_GAP = 12;
-const CALENDAR_RING_PAD = 4;
+const CALENDAR_RING_PAD = 0;
 const NOTES_RING_PAD = 2;
 const CONTRACTS_RING_PAD = 0;
 
@@ -123,31 +123,52 @@ function moodOcclusionTop(grid: HTMLElement, headerBottom: number): number {
 /** Room for the ring's padding and the soft glow, so neither sits in the header. */
 const MOOD_GLOW = 18;
 
+type MoodFit = "a" | "b" | "c";
+
 /**
- * The trailing mood rows that can sit fully inside the panel, below the
- * header and any overflow clip, with the card beneath them. The last row
- * is "Your own…", so a short window rings that end of the grid.
+ * Desktop Moods, in order: heading plus the whole grid, heading scrolled
+ * away plus the whole grid, or the trailing rows that include Your own.
+ * `delta` is how far the panel still needs to scroll for that choice.
  */
-function wideMoodRows(
+function planWideMoods(
   grid: HTMLElement,
   cardHeight: number,
   viewportHeight: number
-): { rows: { top: number; bottom: number }[]; minTop: number; gap: number; clipTop: number } | null {
+): { rows: { top: number; bottom: number }[]; delta: number; gap: number; clipTop: number; fit: MoodFit } | null {
   const rows = moodRows(grid);
   if (rows.length === 0) return null;
   const header = document.querySelector(".app-header");
   const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
   const clipTop = moodOcclusionTop(grid, headerBottom);
-  const minTop = Math.max(clipTop, headerBottom + MOOD_GLOW) + RING_PAD;
-  const gap = RING_PAD + RING_GAP;
-  const band = viewportHeight - 16 - cardHeight - gap - minTop;
-  if (band < 24) return null;
+  // The drawn ring sits RING_PAD outside the tiles and must stay 8px under the
+  // header. The card sits `gap` under the last tile, which leaves that 8px.
+  const gap = RING_PAD + 12;
+  const minTop = Math.max(clipTop, headerBottom + 8 + RING_PAD);
+  // 4px keeps the card on screen without clipping it; the ring stays 12px above the card.
+  const maxBottom = viewportHeight - 4 - cardHeight - gap;
+  const head = grid.closest(".wide-mood-head")?.querySelector("h2");
+  const headTop = head instanceof HTMLElement ? head.getBoundingClientRect().top : clipTop;
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  const lift = Math.max(0, last.bottom - maxBottom);
+  const headingLimit = Math.max(clipTop, headerBottom);
+  const headingStays = headTop - lift >= headingLimit - 1;
+  const wholeStays = first.top - lift >= minTop - 1;
+  if (wholeStays && headingStays) return { rows, delta: lift, gap, clipTop: minTop, fit: "a" };
+  if (wholeStays) return { rows, delta: lift, gap, clipTop: minTop, fit: "b" };
   let start = rows.length - 1;
   for (let i = rows.length - 1; i >= 0; i -= 1) {
-    if (rows[rows.length - 1].bottom - rows[i].top <= band + 0.5) start = i;
+    if (last.bottom - rows[i].top <= maxBottom - minTop + 0.5) start = i;
     else break;
   }
-  return { rows: rows.slice(start), minTop, gap, clipTop };
+  let delta = lift;
+  if (rows[start].top - delta < minTop) delta = rows[start].top - minTop;
+  return { rows: rows.slice(start), delta: Math.max(0, delta), gap, clipTop: minTop, fit: "c" };
+}
+
+function moodLiftWrap(grid: HTMLElement): HTMLElement | null {
+  const wrap = grid.closest(".wide-mood-head")?.parentElement;
+  return wrap instanceof HTMLElement ? wrap : null;
 }
 
 function moodRows(grid: HTMLElement): { top: number; bottom: number }[] {
@@ -215,11 +236,11 @@ function layoutWideMoods(
     Math.max(16, rect.x + rect.width / 2 - width / 2),
     Math.max(16, viewport.width - 16 - width)
   );
-  const plan = wideMoodRows(grid, cardHeight, viewport.height);
+  const plan = planWideMoods(grid, cardHeight, viewport.height);
   if (plan && plan.rows.length > 0) {
-    // Only ring a row once it has scrolled fully below the clip.
-    const visible = plan.rows.filter((row) => row.top >= plan.minTop - 1);
-    const shown = visible.length > 0 ? visible : [plan.rows[plan.rows.length - 1]];
+    document.documentElement.dataset.moodFit = plan.fit;
+    const visible = plan.rows.filter((row) => row.top >= plan.clipTop - 1);
+    const shown = visible.length > 0 ? visible : plan.rows;
     const topRow = shown[0];
     const bottomRow = shown[shown.length - 1];
     return {
@@ -286,6 +307,23 @@ function layoutDayPanelCard(
   const maxTop = Math.min(viewport.height - bottomInset - cardHeight, quickTop - cardHeight - 12);
   if (maxTop < moodBox.bottom + 8) return null;
   top = Math.min(Math.max(top, moodBox.bottom + 12), maxTop);
+  return { top, left, width };
+}
+
+/** Desktop notes: centred under the toolbar, not pinned to the New Note button. */
+function layoutDesktopNotes(
+  cardHeight: number,
+  viewport: { width: number; height: number }
+): CardSpot | null {
+  const button = visibleQuery("[data-tour='notes-create']");
+  if (!button) return null;
+  const box = button.getBoundingClientRect();
+  const tabs = document.querySelector("[role='tablist'][aria-label='Notes']");
+  const tabsBottom = tabs instanceof HTMLElement ? tabs.getBoundingClientRect().bottom : box.bottom;
+  const width = Math.min(TOUR_CARD_WIDTH, viewport.width - 32);
+  const top = Math.max(box.bottom, tabsBottom) + 24;
+  if (top + cardHeight > viewport.height - 8) return null;
+  const left = Math.max(16, Math.min((viewport.width - width) / 2, viewport.width - 16 - width));
   return { top, left, width };
 }
 
@@ -719,6 +757,8 @@ export default function TourCard({
     let lastSig = "";
     let stableCount = 0;
     let moodScrolls = 0;
+    let moodLift = -1;
+    let moodWaits = 0;
     let timer = 0;
 
     const publish = (box: TargetBox) => {
@@ -836,71 +876,61 @@ export default function TourCard({
       if (step.id === "moods" && !scrolled) {
         const scroller = node.closest(".app-scroll");
         const phoneNow = window.innerWidth < 700;
-        if (!phoneNow && scroller instanceof HTMLElement && moodsSettled.current !== String(index) && moodScrolls < 8) {
-          const cardH = Math.max(200, cardRef.current?.getBoundingClientRect().height ?? 0);
-          const plan = wideMoodRows(node, cardH, window.innerHeight);
-          const first = plan?.rows[0];
-          const last = plan?.rows[plan.rows.length - 1];
-          if (plan && first && last) {
-            let delta = 0;
-            if (last.bottom > plan.minTop + (window.innerHeight - 16 - cardH - plan.gap - plan.minTop)) {
-              delta = last.bottom - (window.innerHeight - 16 - cardH - plan.gap);
+        if (!phoneNow && scroller instanceof HTMLElement && moodsSettled.current !== String(index) && moodScrolls < 6) {
+          const panel = node.closest(".app-workspace-moods");
+          const wrap = moodLiftWrap(node);
+          if (moodScrolls === 0) {
+            if (panel instanceof HTMLElement) {
+              panel.style.paddingTop = "0px";
+              panel.style.marginTop = "-8px";
             }
-            if (first.top - delta < plan.minTop) delta = first.top - plan.minTop;
-            const head = node.closest(".wide-mood-head")?.querySelector("h2");
-            if (head instanceof HTMLElement && plan.rows.length === moodRows(node).length && delta > 0) {
-              const limit = head.getBoundingClientRect().top - plan.clipTop;
-              if (limit >= 0) delta = Math.min(delta, limit);
-            }
-            if (delta > 2) {
-              const scrollRoom = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
-              if (scrollRoom < delta) {
-                const extra = Number.parseFloat(scroller.style.paddingBottom) || 0;
-                scroller.style.paddingBottom = `${extra + (delta - Math.max(0, scrollRoom)) + 8}px`;
-              }
-              scroller.scrollBy({ top: delta, behavior: "auto" });
-              moodScrolls += 1;
-              previous = null;
-              return;
-            }
-            if (first.top < plan.minTop - 1) {
-              const back = first.top - plan.minTop;
-              scroller.scrollBy({ top: back, behavior: "auto" });
-              moodScrolls += 1;
-              previous = null;
-              return;
-            }
-            const sliced = moodRows(node).filter((row) => row.bottom <= first.top + 2 && row.bottom > plan.clipTop + 1 && row.top < plan.clipTop);
-            const hanging = sliced[sliced.length - 1];
-            if (hanging) {
-              const extra = hanging.bottom - plan.clipTop;
-              const room = first.top - plan.minTop;
-              const shift = Math.min(extra, room);
-              if (shift > 2) {
-                const scrollRoom = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
-                if (scrollRoom < shift) {
-                  const extraPad = Number.parseFloat(scroller.style.paddingBottom) || 0;
-                  scroller.style.paddingBottom = `${extraPad + (shift - Math.max(0, scrollRoom)) + 8}px`;
-                }
-                scroller.scrollBy({ top: shift, behavior: "auto" });
-                moodScrolls += 1;
-                previous = null;
-                return;
-              }
-            }
-            if (head instanceof HTMLElement && plan.rows.length === moodRows(node).length) {
-              const want = plan.clipTop - head.getBoundingClientRect().top;
-              const maxBottom = window.innerHeight - 16 - cardH - plan.gap;
-              const room = maxBottom - last.bottom;
-              const back = Math.min(want, Math.max(0, room));
-              if (back > 2) {
-                scroller.scrollBy({ top: -back, behavior: "auto" });
-                moodScrolls += 1;
-                previous = null;
-                return;
-              }
-            }
+            if (wrap) wrap.style.paddingTop = "";
+            const child = scroller.firstElementChild;
+            if (child instanceof HTMLElement) child.style.minHeight = "";
+            scroller.style.paddingBottom = "";
+            scroller.scrollTop = 0;
+            moodScrolls = 1;
+            previous = null;
+            return;
           }
+          const cardH = 232;
+          const plan = planWideMoods(node, cardH, window.innerHeight);
+          if (plan) document.documentElement.dataset.moodFit = plan.fit;
+          // Wait until the same lift comes back twice, so a tile that is still
+          // animating in cannot spend the heading's padding.
+          if (plan && moodWaits < 8 && (moodLift < 0 || Math.abs(plan.delta - moodLift) > 1)) {
+            moodLift = plan.delta;
+            moodWaits += 1;
+            previous = null;
+            return;
+          }
+          moodWaits = 0;
+          if (plan && plan.delta > 0.5 && moodScrolls < 6) {
+            const child = scroller.firstElementChild;
+            if (child instanceof HTMLElement && child.style.minHeight !== "0px") {
+              child.style.minHeight = "0px";
+              moodLift = -1;
+              moodScrolls += 1;
+              previous = null;
+              return;
+            }
+            const childH = child instanceof HTMLElement ? child.getBoundingClientRect().height : 0;
+            const unused = Math.max(0, scroller.clientHeight - childH);
+            const overflow = Math.max(0, scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop);
+            const needed = Math.ceil(plan.delta + unused + 2);
+            if (overflow + 0.5 < plan.delta && (Number.parseFloat(scroller.style.paddingBottom) || 0) < needed) {
+              scroller.style.paddingBottom = `${needed}px`;
+              void scroller.offsetHeight;
+            }
+            scroller.scrollTop += plan.delta;
+            moodLift = -1;
+            moodScrolls += 1;
+            previous = null;
+            return;
+          }
+          moodScrolls = 6;
+          previous = null;
+          return;
         }
         if (!phoneNow) moodsSettled.current = String(index);
         scrolled = true;
@@ -982,10 +1012,13 @@ export default function TourCard({
     };
 
     const onResize = () => {
+      reveal.current = null;
       previous = null;
       published = null;
       stableCount = 0;
       moodScrolls = 0;
+      moodLift = -1;
+      moodWaits = 0;
       scrolled = false;
       moodsSettled.current = "";
       locked = false;
@@ -999,8 +1032,17 @@ export default function TourCard({
     return () => {
       window.clearInterval(timer);
       window.removeEventListener("resize", onResize);
+      moodsSettled.current = "";
       document.querySelectorAll<HTMLElement>(".app-scroll").forEach((node) => {
         if (node.style.paddingBottom) node.style.paddingBottom = "";
+      });
+      document.querySelectorAll<HTMLElement>(".app-workspace-moods").forEach((node) => {
+        node.style.paddingTop = "";
+        node.style.marginTop = "";
+      });
+      document.querySelectorAll<HTMLElement>(".wide-mood-head").forEach((node) => {
+        if (node.parentElement) node.parentElement.style.paddingTop = "";
+        if (node.parentElement) node.parentElement.style.minHeight = "";
       });
       document.querySelectorAll<HTMLElement>(".wide-mood-head [data-tour-keep]").forEach((node) => {
         node.style.marginBottom = "";
@@ -1178,6 +1220,8 @@ export default function TourCard({
     spot = layoutDayPanelCard(cardSize.height, chrome.bottom, viewport) ?? null;
   } else if (phase === "step" && step?.id === "notes" && phone) {
     spot = layoutPhoneNotes(cardSize.height, chrome.top, chrome.bottom, viewport.width > 0 ? viewport : { width: 390, height: 844 });
+  } else if (phase === "step" && step?.id === "notes" && !phone) {
+    spot = layoutDesktopNotes(cardSize.height, viewport.width > 0 ? viewport : { width: 1440, height: 900 });
   }
   if (!spot && holdFlame && chrome.flame) {
     const height = cardSize.height;
@@ -1210,7 +1254,13 @@ export default function TourCard({
   }
   let moodGrow: number | undefined;
   if (spot && viewport.width > 0) {
+    const placedTop = spot.top;
     spot = containTourCard(spot, cardSize.height, viewport, { top: chrome.top, bottom: chrome.bottom }, { phone });
+    // Desktop has no tab bar. The 12px chrome inset would pull the Moods card
+    // up into the ring when the card already fits on the viewport.
+    if (!phone && step?.id === "moods" && placedTop + cardSize.height <= viewport.height + 0.5) {
+      spot = { ...spot, top: placedTop };
+    }
     if (phone && step?.id === "moods" && !loggedMood) {
       const grid = visibleQuery("[data-tour='mood-grid']");
       const rows = grid ? moodRows(grid) : [];
@@ -1556,7 +1606,7 @@ export default function TourCard({
     const headerEl = document.querySelector(".app-header");
     const headerEdge = headerEl instanceof HTMLElement ? headerEl.getBoundingClientRect().bottom : headerBottom;
     const clear = (a: typeof cardBox, b: typeof cardBox) =>
-      a.right + 8 <= b.left || b.right + 8 <= a.left || a.bottom + 8 <= b.top || b.bottom + 8 <= a.top;
+      a.right + 8 <= b.left + 0.5 || b.right + 8 <= a.left + 0.5 || a.bottom + 8 <= b.top + 0.5 || b.bottom + 8 <= a.top + 0.5;
     const onScreen =
       anchorBox.top >= headerEdge - 1 &&
       anchorBox.bottom <= viewport.height + 1 &&
@@ -1576,7 +1626,9 @@ export default function TourCard({
     if (!onScreen || !numeralFits || !clear(anchorBox, cardBox) || !clear(ringBox, cardBox)) drawRing = null;
   }
   const sheetCap = sheet && viewport.height > 0 ? Math.max(1, viewport.height - chrome.bottom - 8) : undefined;
-  const wideCap = !sheet && viewport.height > 0 && spot ? Math.max(1, viewport.height - spot.top - 8) : undefined;
+  const wideCap = !sheet && viewport.height > 0 && spot
+    ? Math.max(1, viewport.height - spot.top - (step?.id === "moods" ? 0 : 8))
+    : undefined;
   const wideMin = Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0);
   const cardCap = sheet ? sheetCap : wideCap;
   const copyCapped = cardCap != null && cardHeight > cardCap + 16;
@@ -1738,7 +1790,10 @@ export default function TourCard({
       ) : null}
       <style>{`@keyframes prysmic-tour-in { from { opacity: 0 } to { opacity: 1 } }
         html:has([data-tour-card="calendar"]) [data-tour-day],
-        html:has([data-tour-card="calendar"]) [data-tour="calendar-today"] { box-shadow: none; }
+        html:has([data-tour-card="calendar"]) [data-tour="calendar-today"] {
+          box-shadow: none;
+          border-color: transparent;
+        }
         [data-tour-card] {
           background-color: #14161c !important;
           background-image: none !important;
