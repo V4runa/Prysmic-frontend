@@ -450,6 +450,7 @@ export default function TourCard({
   );
   const [cardHeight, setCardHeight] = useState(CARD_ESTIMATE);
   const [notesCover, setNotesCover] = useState<number | undefined>(undefined);
+  const [placeTick, setPlaceTick] = useState(0);
   const [chrome, setChrome] = useState<Chrome>({ top: 72, bottom: 16, nav: null, flame: null });
   const measureKey = `${phase}:${index}:${pathname}`;
   const [measured, setMeasured] = useState<{ key: string; box: TargetBox | null }>({
@@ -487,6 +488,11 @@ export default function TourCard({
     window.addEventListener("resize", read);
     return () => window.removeEventListener("resize", read);
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPlaceTick((tick) => tick + 1), 450);
+    return () => window.clearTimeout(timer);
+  }, [phase, index, pathname]);
 
   const cardReady = target != null;
   useLayoutEffect(() => {
@@ -905,7 +911,7 @@ export default function TourCard({
     }
   }
   let phoneSeal: { top: number; minHeight: number } | null = null;
-  if (spot && phone && viewport.width > 0) {
+  if (spot && phone && viewport.width > 0 && step?.id !== "moods") {
     phoneSeal = sealPhoneCard(spot, cardSize.height, chrome.top, viewport.height - chrome.bottom);
     spot = { ...spot, top: phoneSeal.top };
     if (step?.id === "calendar") {
@@ -923,7 +929,7 @@ export default function TourCard({
       );
       if (cut.length > 0) {
         const limit = viewport.height - chrome.bottom;
-        const below = Math.max(...cut.map((rect) => rect.bottom)) + 12;
+        const below = Math.max(...cut.map((rect) => rect.bottom)) + 20;
         if (below + cardSize.height <= limit) {
           phoneSeal = { top: below, minHeight: cardSize.height };
           spot = { ...spot, top: below };
@@ -935,26 +941,27 @@ export default function TourCard({
         }
       }
     }
-    if (step?.id === "moods" && !loggedMood) {
-      const grid = visibleQuery("[data-tour='mood-grid']");
-      if (grid) {
-        const rect = grid.getBoundingClientRect();
-        const above = moodRows(grid).filter((row) => row.bottom <= spot!.top + 1);
-        const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, spot.top);
-        const height = ringBottom - rect.top;
-        if (height >= 24) {
-          phoneMoodRing = {
-            x: rect.x,
-            y: rect.y,
-            width: rect.width,
-            height,
-            radius: getComputedStyle(grid).borderRadius || "24px",
-          };
-        }
+  }
+  if (spot && phone && step?.id === "moods" && !loggedMood) {
+    const grid = visibleQuery("[data-tour='mood-grid']");
+    if (grid) {
+      const rect = grid.getBoundingClientRect();
+      const above = moodRows(grid).filter((row) => row.bottom <= spot.top + 1);
+      const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, spot.top);
+      const height = ringBottom - rect.top;
+      if (height >= 24) {
+        phoneMoodRing = {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height,
+          radius: getComputedStyle(grid).borderRadius || "24px",
+        };
       }
     }
   }
 
+  void placeTick;
   const title = phase === "welcome" ? TOUR_WELCOME.title : phase === "close" ? TOUR_CLOSE.title : step?.title ?? "";
   const body = phase === "welcome" ? TOUR_WELCOME.body : phase === "close" ? TOUR_CLOSE.body : step?.body ?? "";
   const progress = phase === "step" ? tourProgressLabel(index) : null;
@@ -1016,9 +1023,15 @@ export default function TourCard({
   if (spot && phone && step?.id === "moods" && !loggedMood) {
     const grid = visibleQuery("[data-tour='mood-grid']");
     if (grid) {
-      const rows = moodRows(grid);
+      const rows = [
+        ...moodRows(grid),
+        ...[...grid.querySelectorAll("button")].map((button) => {
+          const rect = button.getBoundingClientRect();
+          return { top: rect.top, bottom: rect.bottom };
+        }),
+      ];
       const bottom = spot.top + cardSize.height;
-      const peeking = rows.filter((row) => row.top < bottom - 8 && row.bottom > bottom + 2);
+      const peeking = rows.filter((row) => row.top < bottom - 8 && row.bottom > bottom + 2 && row.bottom - row.top > 8);
       if (peeking.length > 0) {
         const need = Math.max(...peeking.map((row) => row.bottom)) + 28;
         const limit = viewport.height - chrome.bottom;
