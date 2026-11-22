@@ -484,11 +484,14 @@ export default function TourCard({
           const grid = node.getBoundingClientRect();
           const width = Math.min(TOUR_CARD_WIDTH, window.innerWidth - 32);
           const belowTop = grid.bottom + RING_PAD + RING_GAP;
-          const fitsBelow = belowTop + 200 <= window.innerHeight - 16;
+          const fitsBelow = belowTop + 210 <= window.innerHeight - 16;
           const slot = moodRowSlot(node, width, 200, window.innerHeight);
+          const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
+          if (head instanceof HTMLElement) {
+            head.style.marginBottom = !fitsBelow && slot && window.innerHeight < 800 ? "12px" : "";
+          }
           if (!fitsBelow && !slot) {
             scroller.style.paddingBottom = "280px";
-            const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
             const headTop = head instanceof HTMLElement ? head.getBoundingClientRect().top : grid.top;
             const clipTop = Math.max(chrome.top, scroller.getBoundingClientRect().top);
             const fresh = node.getBoundingClientRect();
@@ -533,6 +536,9 @@ export default function TourCard({
       window.clearInterval(timer);
       document.querySelectorAll<HTMLElement>(".app-scroll").forEach((node) => {
         if (node.style.paddingBottom) node.style.paddingBottom = "";
+      });
+      document.querySelectorAll<HTMLElement>(".wide-mood-head [data-tour-keep]").forEach((node) => {
+        node.style.marginBottom = "";
       });
     };
   }, [phase, index, pathname, step, chrome.top, chrome.bottom]);
