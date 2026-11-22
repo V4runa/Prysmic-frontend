@@ -30,7 +30,9 @@ type TourCardProps = {
 type Chrome = SafeInsets & { nav: Box | null; flame: Box | null };
 
 const CARD_ESTIMATE = 220;
-const RING_PAD = 10;
+const RING_PAD = 8;
+/** Clear space from the ring's edge to the card. */
+const RING_GAP = 14;
 
 function focusables(root: ParentNode | null): HTMLElement[] {
   if (!root) return [];
@@ -99,15 +101,7 @@ function keepBoxes(target: HTMLElement | null): Box[] {
   return boxes;
 }
 
-function layoutPhoneMoods(
-  cardHeight: number,
-  topInset: number,
-  bottomInset: number,
-  viewHeight: number
-): { spot: CardSpot; ring: TargetBox } | null {
-  const grid = visibleQuery("[data-tour='mood-grid']");
-  if (!grid) return null;
-  const rect = grid.getBoundingClientRect();
+function moodRows(grid: HTMLElement): { top: number; bottom: number }[] {
   const tiles = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
   const rows: { top: number; bottom: number }[] = [];
   for (const tile of tiles) {
@@ -117,15 +111,28 @@ function layoutPhoneMoods(
     else rows.push({ top: box.top, bottom: box.bottom });
   }
   rows.sort((a, b) => a.top - b.top);
-  let cardTop = Math.max(topInset, viewHeight - bottomInset - cardHeight);
-  const sliced = rows.find((row) => row.top < cardTop - 2 && row.bottom > cardTop + 2);
-  if (sliced) cardTop = Math.max(topInset, sliced.top - 4);
-  let ringBottom = rect.top;
-  for (const row of rows) {
-    if (row.bottom <= cardTop - 1) ringBottom = row.bottom;
+  return rows;
+}
+
+function layoutPhoneMoods(
+  cardHeight: number,
+  topInset: number,
+  bottomInset: number,
+  viewHeight: number
+): { spot: CardSpot; ring: TargetBox } | null {
+  const grid = visibleQuery("[data-tour='mood-grid']");
+  if (!grid) return null;
+  const rect = grid.getBoundingClientRect();
+  const rows = moodRows(grid);
+  if (rows.length === 0) return null;
+  const maxTop = viewHeight - bottomInset - cardHeight;
+  let chosen = 0;
+  for (let i = 0; i < rows.length; i += 1) {
+    const nextTop = rows[i + 1]?.top ?? rows[i].bottom + RING_GAP;
+    if (nextTop >= topInset && nextTop <= maxTop) chosen = i;
     else break;
   }
-  const height = Math.max(24, ringBottom - rect.top);
+  const cardTop = rows[chosen + 1]?.top ?? rows[chosen].bottom + RING_GAP;
   return {
     spot: {
       top: cardTop,
@@ -136,10 +143,68 @@ function layoutPhoneMoods(
       x: rect.x,
       y: rect.y,
       width: rect.width,
-      height,
+      height: Math.max(24, rows[chosen].bottom - rect.top),
       radius: getComputedStyle(grid).borderRadius || "24px",
     },
   };
+}
+
+function layoutWideMoods(
+  cardHeight: number,
+  topInset: number,
+  bottomInset: number,
+  viewport: { width: number; height: number }
+): { spot: CardSpot; ring: TargetBox } | null {
+  const grid = visibleQuery("[data-tour='mood-grid']");
+  if (!grid) return null;
+  const rect = grid.getBoundingClientRect();
+  const rows = moodRows(grid);
+  const width = Math.min(TOUR_CARD_WIDTH, viewport.width - 32);
+  const maxBottom = viewport.height - bottomInset;
+  const gap = RING_PAD + RING_GAP;
+  const fits = (bottom: number) => bottom + gap + cardHeight <= maxBottom + 1 && bottom + gap >= topInset;
+  let ringBottom = rect.bottom;
+  if (!fits(ringBottom) && rows.length > 0) {
+    ringBottom = rows[0].bottom;
+    for (const row of rows) {
+      if (fits(row.bottom)) ringBottom = row.bottom;
+      else break;
+    }
+  }
+  const cardTop = Math.min(ringBottom + gap, Math.max(ringBottom + gap, maxBottom - cardHeight));
+  const left = Math.min(
+    Math.max(16, rect.x + rect.width / 2 - width / 2),
+    Math.max(16, viewport.width - 16 - width)
+  );
+  return {
+    spot: { top: Math.max(topInset, cardTop), left, width },
+    ring: {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: Math.max(24, ringBottom - rect.y),
+      radius: getComputedStyle(grid).borderRadius || "24px",
+    },
+  };
+}
+
+function layoutLoggedMood(
+  entry: TargetBox,
+  cardHeight: number,
+  topInset: number,
+  bottomInset: number,
+  viewport: { width: number; height: number }
+): CardSpot {
+  const width = Math.min(TOUR_CARD_WIDTH, viewport.width - 32);
+  const gap = RING_PAD + RING_GAP;
+  let top = entry.y + entry.height + gap;
+  const maxTop = viewport.height - bottomInset - cardHeight;
+  if (top > maxTop && maxTop >= entry.y + entry.height + RING_GAP) top = maxTop;
+  const left = Math.min(
+    Math.max(16, entry.x + entry.width / 2 - width / 2),
+    Math.max(16, viewport.width - 16 - width)
+  );
+  return { top: Math.max(topInset, top), left, width };
 }
 
 function layoutDayPanelCard(
@@ -153,12 +218,14 @@ function layoutDayPanelCard(
   if (moodBox.width < 2) return null;
   const quick = document.querySelector("[data-tour-keep='quick']");
   const quickTop = quick instanceof HTMLElement ? quick.getBoundingClientRect().top : viewport.height - bottomInset;
-  const width = Math.min(320, Math.max(220, moodBox.width));
+  const aside = mood.closest("aside");
+  const panel = aside instanceof HTMLElement ? aside.getBoundingClientRect() : moodBox;
+  const width = Math.min(Math.max(panel.width - 16, moodBox.width), viewport.width - panel.x - 16);
   let top = moodBox.bottom + 28;
   const maxTop = Math.min(viewport.height - bottomInset - cardHeight, quickTop - cardHeight - 12);
   if (maxTop < moodBox.bottom + 8) return null;
   top = Math.min(Math.max(top, moodBox.bottom + 12), maxTop);
-  return { top, left: moodBox.x, width };
+  return { top, left: panel.x + 8, width };
 }
 
 function todayWeek(): Box | null {
@@ -344,6 +411,30 @@ export default function TourCard({
       }
       const node = visibleQuery(step.target);
       if (step.id === "moods" && !node) {
+        const today = visibleQuery("[data-tour='mood-today']");
+        if (today) {
+          if (!scrolled) {
+            const box = today.getBoundingClientRect();
+            const need = box.bottom + RING_PAD + RING_GAP + CARD_ESTIMATE + chrome.bottom - window.innerHeight;
+            const scroller = today.closest(".app-scroll");
+            const flameTop = readChrome().flame?.y ?? chrome.top;
+            const room = Math.max(0, flameTop - chrome.top);
+            const delta = Math.min(Math.max(0, need), room);
+            if (delta > 2 && scroller instanceof HTMLElement) scroller.scrollBy({ top: delta, behavior: "auto" });
+            scrolled = true;
+            previous = null;
+            return;
+          }
+          const box = measureTarget(today);
+          if (!previous || !sameTarget(previous, box)) {
+            previous = box;
+            return;
+          }
+          locked = true;
+          window.clearInterval(timer);
+          publish(box);
+          return;
+        }
         if (readChrome().flame) {
           locked = true;
           window.clearInterval(timer);
@@ -488,7 +579,8 @@ export default function TourCard({
   const cardSize = { width: TOUR_CARD_WIDTH, height: cardHeight || CARD_ESTIMATE };
   let spot: CardSpot | null = null;
   let phoneMoodRing: TargetBox | null = null;
-  if (phase === "step" && step?.id === "moods" && phone) {
+  const loggedMood = step?.id === "moods" && target != null && !visibleQuery("[data-tour='mood-grid']");
+  if (phase === "step" && step?.id === "moods" && phone && !loggedMood) {
     const laid = layoutPhoneMoods(cardSize.height, chrome.top, chrome.bottom, viewport.height);
     if (laid) {
       spot = laid.spot;
@@ -501,6 +593,20 @@ export default function TourCard({
         width: Math.min(TOUR_CARD_WIDTH, viewport.width - 32),
       };
     }
+  } else if (phase === "step" && step?.id === "moods" && !phone && !loggedMood) {
+    const laid = layoutWideMoods(cardSize.height, chrome.top, chrome.bottom, viewport.width > 0 ? viewport : { width: 1440, height: 900 });
+    if (laid) {
+      spot = laid.spot;
+      phoneMoodRing = laid.ring;
+    }
+  } else if (loggedMood && target) {
+    spot = layoutLoggedMood(
+      target,
+      cardSize.height,
+      chrome.top,
+      chrome.bottom,
+      viewport.width > 0 ? viewport : { width: 1440, height: 900 }
+    );
   } else if (phase === "step" && step?.id === "calendar" && !phone) {
     spot = layoutDayPanelCard(cardSize.height, chrome.bottom, viewport) ?? null;
   }
@@ -542,12 +648,13 @@ export default function TourCard({
   const progressId = "tour-card-progress";
 
   const ringSource = phoneMoodRing ?? target;
+  const ringBottomPad = phone && phoneMoodRing ? 0 : RING_PAD;
   const ring = ringSource
     ? {
         left: ringSource.x - RING_PAD,
         top: ringSource.y - RING_PAD,
         width: ringSource.width + RING_PAD * 2,
-        height: ringSource.height + RING_PAD * 2,
+        height: ringSource.height + RING_PAD + ringBottomPad,
         radius: radiusWithPad(ringSource.radius, RING_PAD),
       }
     : null;
@@ -627,7 +734,7 @@ export default function TourCard({
           aria-describedby={bodyId}
           tabIndex={-1}
           className={`pointer-events-auto fixed z-[81] overflow-y-auto rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
-            viewport.width < 640 ? "p-3.5" : "p-5"
+            viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
           }`}
           style={{
             ...cardStyle,
@@ -646,13 +753,13 @@ export default function TourCard({
           <p id={bodyId} className="mt-2 text-sm leading-relaxed text-slate-300">
             {body}
           </p>
-          <div className={`flex flex-wrap items-center gap-2 ${viewport.width < 640 ? "mt-3" : "mt-5"}`}>
+          <div className={`flex flex-nowrap items-center gap-2 ${viewport.width < 640 ? "mt-3" : "mt-5"}`}>
             {phase !== "close" ? (
               <button type="button" className={btnSecondary} onPointerDown={press(onSkip)}>
                 {TOUR_CONTROLS.skip}
               </button>
             ) : null}
-            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            <div className="ml-auto flex flex-nowrap items-center justify-end gap-2">
               {phase === "step" ? (
                 <button type="button" className={btnSecondary} onPointerDown={press(onBack)}>
                   {TOUR_CONTROLS.back}
@@ -678,7 +785,8 @@ export default function TourCard({
         </div>
       ) : null}
       <style>{`@keyframes prysmic-tour-in { from { opacity: 0 } to { opacity: 1 } }
-        html:has([data-tour-card="calendar"]) [data-tour-day] { box-shadow: none; }`}</style>
+        html:has([data-tour-card="calendar"]) [data-tour-day] { box-shadow: none; }
+        html:has([data-tour-card="welcome"]) [data-tour-quiet] { visibility: hidden; }`}</style>
     </div>
   );
 }

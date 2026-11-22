@@ -123,10 +123,11 @@ export default function MoodTimeline({
               <motion.div
                 key={mood.id}
                 id={`mood-${mood.id}`}
-                initial={{ opacity: 0, y: 25 }}
+                initial={tour.overlay ? false : { opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ delay: i * 0.05 }}
+                transition={tour.overlay ? { duration: 0 } : { delay: i * 0.05 }}
+                data-tour={isToday ? "mood-today" : undefined}
                 className="relative mb-8 grid w-full min-w-0 grid-cols-[3.25rem_1.25rem_minmax(0,1fr)] items-center gap-x-3 sm:mb-12 sm:grid-cols-[4rem_1.25rem_minmax(0,1fr)] sm:gap-x-6"
               >
                 <Link

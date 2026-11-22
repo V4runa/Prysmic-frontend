@@ -402,7 +402,7 @@ export default function NotesOverviewPage() {
             </div>
           ) : filteredNotes.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-slate-400 text-center text-lg">
+              <p data-tour-quiet="" className="text-slate-400 text-center text-lg">
                 {archived && activeTagIds.length === 0
                   ? "No archived notes."
                   : activeTagIds.length > 0
