@@ -479,9 +479,9 @@ export default function TourCard({
           scroller.style.paddingBottom = `${CARD_ESTIMATE + 40}px`;
           const grid = node.getBoundingClientRect();
           const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
-          const headBottom = head instanceof HTMLElement ? head.getBoundingClientRect().bottom : grid.top;
+          const headTop = head instanceof HTMLElement ? head.getBoundingClientRect().top : grid.top;
           const need = grid.bottom + RING_PAD + RING_GAP + 240 + chrome.bottom - window.innerHeight;
-          const room = Math.max(0, headBottom - chrome.top - 4);
+          const room = Math.max(0, headTop - chrome.top - 8);
           const delta = Math.min(Math.max(0, need), room);
           if (delta > 2) scroller.scrollBy({ top: delta, behavior: "auto" });
         }
