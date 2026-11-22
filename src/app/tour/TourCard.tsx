@@ -150,51 +150,27 @@ function layoutPhoneMoods(
 }
 
 function layoutWideMoods(
-  cardHeight: number,
-  topInset: number,
-  bottomInset: number,
+  _cardHeight: number,
+  _topInset: number,
+  _bottomInset: number,
   viewport: { width: number; height: number }
 ): { spot: CardSpot; ring: TargetBox } | null {
   const grid = visibleQuery("[data-tour='mood-grid']");
   if (!grid) return null;
   const rect = grid.getBoundingClientRect();
-  const rows = moodRows(grid);
   const width = Math.min(TOUR_CARD_WIDTH, viewport.width - 32);
-  const maxBottom = viewport.height - bottomInset;
-  const gap = RING_PAD + RING_GAP;
-  const fits = (bottom: number) => bottom + gap + cardHeight <= maxBottom + 1 && bottom + gap >= topInset;
-  let ringBottom = rect.bottom;
-  if (!fits(ringBottom) && rows.length > 0) {
-    ringBottom = rows[0].bottom;
-    for (const row of rows) {
-      if (fits(row.bottom)) ringBottom = row.bottom;
-      else break;
-    }
-  }
-  let cardTop = ringBottom + gap;
-  let cardWidth = width;
-  let left = Math.min(
-    Math.max(16, rect.x + rect.width / 2 - cardWidth / 2),
-    Math.max(16, viewport.width - 16 - cardWidth)
+  const cardTop = rect.bottom + RING_PAD + RING_GAP;
+  const left = Math.min(
+    Math.max(16, rect.x + rect.width / 2 - width / 2),
+    Math.max(16, viewport.width - 16 - width)
   );
-  const tiles = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
-  const hits = tiles.filter((tile) => {
-    const box = tile.getBoundingClientRect();
-    return box.bottom > cardTop + 2 && box.top < cardTop + cardHeight && box.right > left && box.left < left + cardWidth;
-  });
-  if (hits.length > 0) {
-    cardWidth = Math.min(rect.width, viewport.width - 32);
-    left = Math.min(Math.max(16, rect.x), Math.max(16, viewport.width - 16 - cardWidth));
-    const nextRow = rows.find((row) => row.top > ringBottom - 2);
-    cardTop = nextRow ? nextRow.top : ringBottom + gap;
-  }
   return {
-    spot: { top: Math.max(topInset, cardTop), left, width: cardWidth },
+    spot: { top: cardTop, left, width },
     ring: {
       x: rect.x,
       y: rect.y,
       width: rect.width,
-      height: Math.max(24, ringBottom - rect.y),
+      height: rect.height,
       radius: getComputedStyle(grid).borderRadius || "24px",
     },
   };
@@ -470,8 +446,15 @@ export default function TourCard({
         if (phoneNow && scroller instanceof HTMLElement && scroller.scrollTop > 1) {
           scroller.scrollTo({ top: 0, behavior: "auto" });
         }
-        if (!phoneNow && scroller instanceof HTMLElement && scroller.scrollTop > 1) {
-          scroller.scrollTo({ top: 0, behavior: "auto" });
+        if (!phoneNow && scroller instanceof HTMLElement) {
+          if (scroller.scrollTop > 1) scroller.scrollTo({ top: 0, behavior: "auto" });
+          const grid = node.getBoundingClientRect();
+          const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
+          const headBottom = head instanceof HTMLElement ? head.getBoundingClientRect().bottom : grid.top;
+          const need = grid.bottom + RING_PAD + RING_GAP + 200 + chrome.bottom - window.innerHeight;
+          const room = Math.max(0, headBottom - chrome.top - 18);
+          const delta = Math.min(Math.max(0, need), room);
+          if (delta > 2) scroller.scrollBy({ top: delta, behavior: "auto" });
         }
         scrolled = true;
         previous = null;
