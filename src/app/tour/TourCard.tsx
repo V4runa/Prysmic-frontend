@@ -32,7 +32,9 @@ type Chrome = SafeInsets & { nav: Box | null; flame: Box | null };
 const CARD_ESTIMATE = 220;
 const RING_PAD = 8;
 /** Clear space from the ring's edge to the card. */
-const RING_GAP = 14;
+const RING_GAP = 12;
+const CALENDAR_RING_PAD = 4;
+const NOTES_RING_PAD = 2;
 
 function focusables(root: ParentNode | null): HTMLElement[] {
   if (!root) return [];
@@ -259,6 +261,24 @@ function todayWeek(): Box | null {
   return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
 }
 
+/** Framer slides the calendar in. A ring taken during that move stays low after it ends. */
+function motionSettled(node: HTMLElement): boolean {
+  let current: HTMLElement | null = node;
+  while (current && current !== document.body) {
+    const value = getComputedStyle(current).transform;
+    if (value && value !== "none") {
+      const match = value.match(/matrix(?:3d)?\(([^)]+)\)/);
+      if (!match) return false;
+      const parts = match[1].split(",").map((part) => Number.parseFloat(part));
+      const ty = parts.length === 6 ? parts[5] : parts.length === 16 ? parts[13] : 1;
+      const tx = parts.length === 6 ? parts[4] : parts.length === 16 ? parts[12] : 1;
+      if (Math.abs(tx) > 0.5 || Math.abs(ty) > 0.5) return false;
+    }
+    current = current.parentElement;
+  }
+  return true;
+}
+
 function pageBusy(): boolean {
   const main = document.querySelector("main");
   if (!main) return true;
@@ -412,6 +432,8 @@ export default function TourCard({
     let scrolled = false;
     let locked = false;
     let previous: TargetBox | null = null;
+    let published: TargetBox | null = null;
+    let stableCount = 0;
     let timer = 0;
 
     const publish = (box: TargetBox) => {
@@ -510,12 +532,18 @@ export default function TourCard({
       const phone = window.innerWidth < 700;
       const cell = step.id === "calendar" ? node.closest("[data-tour-day]") : null;
       const measured = cell instanceof HTMLElement ? cell : node;
+      if (step.id === "calendar" && !motionSettled(measured)) {
+        previous = null;
+        stableCount = 0;
+        return;
+      }
       const box =
         step.id === "moods"
           ? clipMoodGrid(node, phone ? window.innerHeight - chrome.bottom - 260 - 16 : null)
           : measureTarget(measured);
       if (!previous || !sameTarget(previous, box)) {
         previous = box;
+        stableCount = 1;
         if (!scrolled && step.id !== "moods") {
           scrolled = true;
           scrollTargetClear(
@@ -527,15 +555,30 @@ export default function TourCard({
         }
         return;
       }
+      stableCount += 1;
+      const needed = step.id === "calendar" ? 6 : 2;
+      if (stableCount < needed) return;
+      if (!published || !sameTarget(published, box)) {
+        published = box;
+        publish(box);
+      }
+      if (step.id === "calendar") return;
       locked = true;
       window.clearInterval(timer);
-      publish(box);
     };
 
+    const onResize = () => {
+      previous = null;
+      published = null;
+      stableCount = 0;
+      locked = false;
+    };
     timer = window.setInterval(tick, 40);
+    window.addEventListener("resize", onResize);
     tick();
     return () => {
       window.clearInterval(timer);
+      window.removeEventListener("resize", onResize);
       document.querySelectorAll<HTMLElement>(".app-scroll").forEach((node) => {
         if (node.style.paddingBottom) node.style.paddingBottom = "";
       });
@@ -690,8 +733,11 @@ export default function TourCard({
   const progressId = "tour-card-progress";
 
   const ringSource = phoneMoodRing ?? target;
-  const ringBottomPad = phone && phoneMoodRing ? 0 : RING_PAD;
+  const ringPad =
+    step?.id === "calendar" ? CALENDAR_RING_PAD : step?.id === "notes" ? NOTES_RING_PAD : RING_PAD;
+  const ringBottomPad = phone && phoneMoodRing ? 0 : ringPad;
   const streakLimit = (() => {
+    if (step?.id === "calendar" || step?.id === "notes") return 0;
     const flame = [...document.querySelectorAll("span")].find(
       (node) => node.textContent === "🔥" && /text-6xl|text-8xl/.test(node.parentElement?.className ?? "")
     );
@@ -699,16 +745,17 @@ export default function TourCard({
     if (!(header instanceof HTMLElement)) return 0;
     return header.getBoundingClientRect().bottom + 8;
   })();
-  const ringTop = ringSource ? Math.max(ringSource.y - RING_PAD, streakLimit) : 0;
+  const ringTop = ringSource ? Math.max(ringSource.y - ringPad, streakLimit) : 0;
   const ringBottom = ringSource ? ringSource.y + ringSource.height + ringBottomPad : 0;
   const nearFlame = streakLimit > 0 && ringSource != null && ringSource.y - streakLimit < 36;
+  const tightRing = step?.id === "calendar" || step?.id === "notes";
   const ring = ringSource
     ? {
-        left: ringSource.x - RING_PAD,
+        left: ringSource.x - ringPad,
         top: ringTop,
-        width: ringSource.width + RING_PAD * 2,
+        width: ringSource.width + ringPad * 2,
         height: Math.max(24, ringBottom - ringTop),
-        radius: radiusWithPad(ringSource.radius, RING_PAD),
+        radius: radiusWithPad(ringSource.radius, ringPad),
       }
     : null;
 
@@ -771,9 +818,11 @@ export default function TourCard({
             width: ring.width,
             height: ring.height,
             borderRadius: ring.radius,
-            boxShadow: nearFlame
-              ? "0 0 0 2px rgba(103,232,249,0.95)"
-              : "0 0 0 2px rgba(103,232,249,0.95), 0 0 18px 2px rgba(103,232,249,0.4)",
+            boxShadow: tightRing
+              ? "inset 0 0 0 2px rgba(103,232,249,0.95)"
+              : nearFlame
+                ? "0 0 0 2px rgba(103,232,249,0.95)"
+                : "0 0 0 2px rgba(103,232,249,0.95), 0 0 18px 2px rgba(103,232,249,0.4)",
             opacity: reduceMotion ? 1 : undefined,
             animation: reduceMotion ? undefined : "prysmic-tour-in 150ms ease",
           }}

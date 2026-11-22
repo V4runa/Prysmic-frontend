@@ -4,7 +4,8 @@
  */
 
 export const TOUR_CARD_WIDTH = 400;
-export const TOUR_GAP = 14;
+/** Target edge to card. The ring sits 8px outside the target, so this leaves 12px of clear space. */
+export const TOUR_GAP = 20;
 export const TOUR_MARGIN = 16;
 
 export type Box = {

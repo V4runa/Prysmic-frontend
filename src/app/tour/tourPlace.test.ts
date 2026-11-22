@@ -131,8 +131,8 @@ test("the phone calendar card sits against today's week and off that row", () =>
   assert.ok(spot);
   const placed = asBox(spot, 200);
   assert.equal(overlapArea(placed, week), 0);
-  const below = placed.y >= week.y + week.height;
-  const above = placed.y + placed.height <= week.y;
+  const below = placed.y >= week.y + week.height + 12;
+  const above = placed.y + placed.height <= week.y - 12;
   assert.ok(below || above);
 });
 
