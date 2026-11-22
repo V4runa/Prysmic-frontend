@@ -232,29 +232,23 @@ export function collectOverlaps() {
   }
   if (card instanceof HTMLElement) {
     const style = getComputedStyle(card);
-    const pad =
-      (Number.parseFloat(style.paddingTop) || 0) +
-      (Number.parseFloat(style.paddingBottom) || 0) +
-      (Number.parseFloat(style.borderTopWidth) || 0) +
-      (Number.parseFloat(style.borderBottomWidth) || 0);
     const measure = card.querySelector("[data-tour-measure]");
-    const content = measure instanceof HTMLElement ? measure.scrollHeight : 0;
     const box = card.getBoundingClientRect();
-    if (content > 0 && box.height > content + pad + 2) {
-      let lowest = box.y + content + pad;
-      for (const item of items) {
-        if (misses(boxOf(box), item.box)) continue;
-        lowest = Math.max(lowest, item.box.y + item.box.height);
-      }
-      if (box.y + box.height > lowest + 4) {
-        hits.push({
-          cover: "card",
-          item: "stretch",
-          label: `card is ${Math.round(box.y + box.height - lowest)}px taller than the content it covers`,
-          coverBox: roundBox(boxOf(box)),
-          itemBox: { x: Math.round(box.x), y: Math.round(lowest), w: Math.round(box.width), h: Math.round(box.y + box.height - lowest) },
-        });
-      }
+    const contentBottom = measure instanceof HTMLElement ? measure.getBoundingClientRect().bottom : box.y;
+    const padBottom = (Number.parseFloat(style.paddingBottom) || 0) + (Number.parseFloat(style.borderBottomWidth) || 0);
+    let lowest = contentBottom + padBottom;
+    for (const item of items) {
+      if (misses(boxOf(box), item.box)) continue;
+      lowest = Math.max(lowest, item.box.y + item.box.height);
+    }
+    if (box.y + box.height > lowest + 4) {
+      hits.push({
+        cover: "card",
+        item: "stretch",
+        label: `card is ${Math.round(box.y + box.height - lowest)}px taller than its content`,
+        coverBox: roundBox(boxOf(box)),
+        itemBox: { x: Math.round(box.x), y: Math.round(lowest), w: Math.round(box.width), h: Math.round(box.y + box.height - lowest) },
+      });
     }
   }
   return hits;
