@@ -508,10 +508,12 @@ export default function TourCard({
         return;
       }
       const phone = window.innerWidth < 700;
+      const cell = step.id === "calendar" ? node.closest("[data-tour-day]") : null;
+      const measured = cell instanceof HTMLElement ? cell : node;
       const box =
         step.id === "moods"
           ? clipMoodGrid(node, phone ? window.innerHeight - chrome.bottom - 260 - 16 : null)
-          : measureTarget(node);
+          : measureTarget(measured);
       if (!previous || !sameTarget(previous, box)) {
         previous = box;
         if (!scrolled && step.id !== "moods") {
@@ -837,7 +839,13 @@ export default function TourCard({
         </div>
       ) : null}
       <style>{`@keyframes prysmic-tour-in { from { opacity: 0 } to { opacity: 1 } }
-        html:has([data-tour-card="calendar"]) [data-tour-day] { box-shadow: none; }
+        html:has([data-tour-card="calendar"]) [data-tour-day],
+        html:has([data-tour-card="calendar"]) [data-tour="calendar-today"] { box-shadow: none; }
+        [data-tour-card]:focus,
+        [data-tour-card]:focus-visible {
+          outline: none;
+          box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+        }
         html:has([data-tour-card="welcome"]) [data-tour-quiet],
         html:has([data-tour-card="close"]) [data-tour-quiet] { visibility: hidden; }`}</style>
     </div>
