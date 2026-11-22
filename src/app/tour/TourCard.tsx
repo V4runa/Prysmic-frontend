@@ -698,6 +698,20 @@ function scrollTargetClear(
   else window.scrollBy({ top: delta, behavior: "auto" });
 }
 
+function spotlightDimPath(width: number, height: number, holes: Box[]): string {
+  const outer = `M0,0 H${width} V${height} H0 Z`;
+  const holesPath = holes
+    .filter((hole) => hole.width > 1 && hole.height > 1)
+    .map((hole) => {
+      const r = Math.max(0, Math.min(18, hole.width / 2, hole.height / 2));
+      const right = hole.x + hole.width;
+      const bottom = hole.y + hole.height;
+      return `M${hole.x + r},${hole.y} H${right - r} A${r},${r} 0 0 1 ${right},${hole.y + r} V${bottom - r} A${r},${r} 0 0 1 ${right - r},${bottom} H${hole.x + r} A${r},${r} 0 0 1 ${hole.x},${bottom - r} V${hole.y + r} A${r},${r} 0 0 1 ${hole.x + r},${hole.y} Z`;
+    })
+    .join(" ");
+  return `${outer} ${holesPath}`;
+}
+
 function radiusWithPad(radius: string, pad: number): string {
   const parts = radius.split(" ").map((part) => {
     const value = Number.parseFloat(part);
@@ -2107,41 +2121,41 @@ export default function TourCard({
   }
   const ringOpacity = stage === "show" && drawRing ? 1 : 0;
   const shownRing = stage === "out" ? ringSnap.current : drawRing;
-  // The spotlight is the same fade as the ring. A mask ignores partial
-  // opacity, so the hole is punched with a blend that can actually fade.
-  const punchHoles = stage === "out" ? holeSnap.current : stage === "measure" ? holes : [];
-
+  // Evenodd cutout. The shape never covers the hole. A separate veil of the
+  // same dim colour fades over the hole, so the target goes from dimmed to
+  // fully lit without a black plate.
+  const cutHoles = stage === "out" ? holeSnap.current : drawRing ? holes : [];
+  const holeFill = stage === "show" && drawRing ? 0 : 1;
   const shieldBottom = chrome.nav ? chrome.nav.height : 0;
+  const dimWidth = viewport.width;
+  const dimHeight = Math.max(0, viewport.height - shieldBottom);
 
   return (
     <div className="fixed inset-0 z-[80] pointer-events-none">
       <div className="fixed left-0 right-0 top-0 z-[80]" style={{ bottom: shieldBottom, pointerEvents: tourOpen ? "auto" : "none" }} />
-      {(showFrozenCard || dimAlready) ? (
-        <div
+      {(showFrozenCard || dimAlready) && dimWidth > 0 && dimHeight > 0 ? (
+        <svg
           data-tour-dim=""
-          className="pointer-events-none fixed left-0 right-0 top-0"
+          className="pointer-events-none fixed left-0 right-0 top-0 h-auto w-full"
           aria-hidden="true"
-          style={{ bottom: shieldBottom, opacity: dimOpacity, transition: dimTransition, isolation: "isolate" }}
+          viewBox={`0 0 ${dimWidth} ${dimHeight}`}
+          preserveAspectRatio="none"
+          style={{ bottom: shieldBottom, opacity: dimOpacity, transition: dimTransition }}
         >
-          <div className="absolute inset-0" style={{ background: "rgba(6,7,10,0.55)" }} />
-          {(stage === "show" && drawRing ? holes : punchHoles).map((hole, i) => (
-            <div
+          <path fill="rgba(6,7,10,0.55)" fillRule="evenodd" d={spotlightDimPath(dimWidth, dimHeight, cutHoles)} />
+          {cutHoles.map((hole, i) => (
+            <rect
               key={`${Math.round(hole.x)}:${Math.round(hole.y)}:${i}`}
-              className="tour-dim-hole"
-              style={{
-                position: "absolute",
-                left: hole.x,
-                top: hole.y,
-                width: hole.width,
-                height: hole.height,
-                borderRadius: 18,
-                background: "#000",
-                opacity: ringOpacity,
-                transition: fade,
-              }}
+              x={hole.x}
+              y={hole.y}
+              width={hole.width}
+              height={hole.height}
+              rx={18}
+              fill="rgba(6,7,10,0.55)"
+              style={{ opacity: holeFill, transition: fade }}
             />
           ))}
-        </div>
+        </svg>
       ) : null}
       {shownRing ? (
         <div
@@ -2246,7 +2260,6 @@ export default function TourCard({
         </div>
       ) : null}
       <style>{`@keyframes prysmic-tour-in { from { opacity: 0 } to { opacity: 1 } }
-        .tour-dim-hole { mix-blend-mode: destination-out; }
         html:has([data-tour-card="calendar"]) [data-tour-day],
         html:has([data-tour-card="calendar"]) [data-tour="calendar-today"] {
           box-shadow: none;
