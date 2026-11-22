@@ -57,7 +57,7 @@ export function collectOverlaps() {
     for (const rect of range.getClientRects()) {
       if (rect.width < 2 || rect.height < 2) continue;
       if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) continue;
-      items.push({ kind: "text", label: text.slice(0, 80), box: boxOf(rect) });
+      items.push({ kind: "text", label: text.slice(0, 80), box: boxOf(rect), node: parent });
     }
   }
   for (const button of document.querySelectorAll("button, a")) {
@@ -68,7 +68,7 @@ export function collectOverlaps() {
     if (rect.width < 2 || rect.height < 2) continue;
     if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) continue;
     const label = (button.getAttribute("aria-label") || button.textContent || button.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
-    items.push({ kind: "control", label, box: boxOf(rect) });
+    items.push({ kind: "control", label, box: boxOf(rect), node: button });
   }
   for (const tile of document.querySelectorAll("[data-tour='mood-grid'] > *, [data-tour-day]")) {
     if (!(tile instanceof HTMLElement)) continue;
@@ -78,7 +78,7 @@ export function collectOverlaps() {
     if (rect.width < 2 || rect.height < 2) continue;
     if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) continue;
     const label = (tile.getAttribute("aria-label") || tile.textContent || "tile").replace(/\s+/g, " ").trim().slice(0, 80);
-    items.push({ kind: "tile", label, box: boxOf(rect) });
+    items.push({ kind: "tile", label, box: boxOf(rect), node: tile });
   }
   const hits = [];
   for (const cover of covers) {
@@ -150,5 +150,108 @@ export function collectOverlaps() {
       }
     }
   }
+  if (ring instanceof HTMLElement) {
+    const ringBox = ring.getBoundingClientRect();
+    const tourRoot = ring.parentElement;
+    const obstacles = [];
+    for (const el of document.querySelectorAll("body *")) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (tourRoot && tourRoot.contains(el)) continue;
+      if (el.closest("[data-tour-card]") || el.hasAttribute("data-tour-ring")) continue;
+      const style = getComputedStyle(el);
+      if (style.position !== "fixed" && style.position !== "sticky") continue;
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) continue;
+      if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
+      obstacles.push({ label: (el.getAttribute("aria-label") || el.className || el.tagName).toString().replace(/\s+/g, " ").trim().slice(0, 60), box: boxOf(rect) });
+    }
+    function clippedByScroll(node, box) {
+      let parent = node instanceof HTMLElement ? node.parentElement : null;
+      while (parent && parent !== document.body) {
+        const style = getComputedStyle(parent);
+        const oy = style.overflowY;
+        const ox = style.overflowX;
+        const scrollY = oy === "auto" || oy === "scroll" || (oy === "hidden" && parent.scrollHeight > parent.clientHeight + 1);
+        const scrollX = ox === "auto" || ox === "scroll" || (ox === "hidden" && parent.scrollWidth > parent.clientWidth + 1);
+        if (scrollY || scrollX) {
+          const bounds = parent.getBoundingClientRect();
+          const top = box.y;
+          const bottom = box.y + box.height;
+          const left = box.x;
+          const right = box.x + box.width;
+          if (top < bounds.top - 1 || bottom > bounds.bottom + 1 || left < bounds.left - 1 || right > bounds.right + 1) {
+            return true;
+          }
+        }
+        parent = parent.parentElement;
+      }
+      return false;
+    }
+    for (const obstacle of obstacles) {
+      if (!cuts(boxOf(ringBox), obstacle.box) && !inside(boxOf(ringBox), obstacle.box)) continue;
+      if (misses(boxOf(ringBox), obstacle.box)) continue;
+      hits.push({
+        cover: "ring",
+        item: "sticky",
+        label: `ring crosses ${obstacle.label}`,
+        coverBox: roundBox(boxOf(ringBox)),
+        itemBox: roundBox(obstacle.box),
+      });
+    }
+    for (const item of items) {
+      if (misses(boxOf(ringBox), item.box)) continue;
+      const node = item.node;
+      if (node instanceof HTMLElement && clippedByScroll(node, item.box)) {
+        hits.push({
+          cover: "ring",
+          item: "clip",
+          label: `ringed ${item.label} is clipped by scroll`,
+          coverBox: roundBox(boxOf(ringBox)),
+          itemBox: roundBox(item.box),
+        });
+      }
+      for (const obstacle of obstacles) {
+        if (misses(item.box, obstacle.box)) continue;
+        hits.push({
+          cover: "ring",
+          item: "sticky",
+          label: `${item.label} sits under ${obstacle.label}`,
+          coverBox: roundBox(item.box),
+          itemBox: roundBox(obstacle.box),
+        });
+      }
+    }
+  }
+  if (card instanceof HTMLElement) {
+    const style = getComputedStyle(card);
+    const pad =
+      (Number.parseFloat(style.paddingTop) || 0) +
+      (Number.parseFloat(style.paddingBottom) || 0) +
+      (Number.parseFloat(style.borderTopWidth) || 0) +
+      (Number.parseFloat(style.borderBottomWidth) || 0);
+    const measure = card.querySelector("[data-tour-measure]");
+    const content = measure instanceof HTMLElement ? measure.scrollHeight : 0;
+    const box = card.getBoundingClientRect();
+    if (content > 0 && box.height > content + pad + 2) {
+      hits.push({
+        cover: "card",
+        item: "stretch",
+        label: `card is ${Math.round(box.height - content - pad)}px taller than its content`,
+        coverBox: roundBox(boxOf(box)),
+        itemBox: { x: 0, y: 0, w: Math.round(content), h: Math.round(pad) },
+      });
+    }
+  }
   return hits;
+}
+
+function misses(a, b) {
+  return a.x + a.width <= b.x + 1 || b.x + b.width <= a.x + 1 || a.y + a.height <= b.y + 1 || b.y + b.height <= a.y + 1;
+}
+function inside(cover, item) {
+  return cover.x <= item.x + 1 && cover.y <= item.y + 1 && cover.x + cover.width >= item.x + item.width - 1 && cover.y + cover.height >= item.y + item.height - 1;
+}
+function roundBox(box) {
+  return { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) };
 }

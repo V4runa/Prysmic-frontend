@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cardSpotInside, containTourCard, intersects, moodScrollDelta, overlapArea, placeMoodCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
+import { cardSpotInside, containTourCard, intersects, overlapArea, placeMoodCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
 
 const desktop = { width: 1440, height: 900 };
 const phone = { width: 390, height: 844 };
@@ -179,34 +179,30 @@ test("the card avoids a keep-clear row under the target", () => {
   assert.equal(overlapArea(placed, search), 0);
 });
 
-test("a phone mood card stays full height and sits on whole rows", () => {
+test("a phone mood card sits on its content height directly under the ring", () => {
   const rows: { top: number; bottom: number }[] = [
-    { top: 180, bottom: 320 },
-    { top: 336, bottom: 476 },
-    { top: 492, bottom: 632 },
-    { top: 648, bottom: 788 },
+    { top: 80, bottom: 180 },
+    { top: 196, bottom: 296 },
+    { top: 312, bottom: 412 },
+    { top: 428, bottom: 528 },
   ];
-  const placed = placeMoodCard(rows, 220, 72, 820, 12);
+  const placed = placeMoodCard(rows, 180, 60, 700, 12);
   assert.ok(placed);
-  assert.ok(placed.minHeight >= 220);
-  assert.ok(placed.top + placed.minHeight <= 820);
-  const cardBottom = placed.top + placed.minHeight;
-  for (const row of rows) {
-    const wholly: boolean =
-      row.bottom <= placed.top + 2 ||
-      row.top >= cardBottom - 2 ||
-      (placed.top <= row.top + 2 && cardBottom >= row.bottom - 2);
-    assert.equal(wholly, true);
-  }
-  assert.ok(placed.ringRows >= 1);
+  assert.equal(placed.ringRows, 3);
+  assert.equal(placed.top, 412 + 12);
+  assert.ok(placed.top + 180 <= 700);
 });
 
-test("scrolling the mood grid is skipped when another row will not fit", () => {
-  const rows = [
-    { top: 180, bottom: 320 },
-    { top: 336, bottom: 476 },
+test("a phone mood card leaves out a row hidden under the header", () => {
+  const rows: { top: number; bottom: number }[] = [
+    { top: 40, bottom: 140 },
+    { top: 156, bottom: 256 },
+    { top: 272, bottom: 372 },
   ];
-  assert.equal(moodScrollDelta(rows, 200, 72, 900, 400, 12), 0);
+  const placed = placeMoodCard(rows, 160, 72, 640, 12);
+  assert.ok(placed);
+  assert.equal(placed.ringRows, 2);
+  assert.equal(placed.top, 372 + 12);
 });
 
 test("the tasks ring keeps 8px between its stroke and the More button", () => {

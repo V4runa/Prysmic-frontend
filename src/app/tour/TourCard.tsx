@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { btnPrimary, btnSecondary } from "../components/forms/styles";
-import { containTourCard, moodScrollDelta, placeMoodCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
+import { containTourCard, placeMoodCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
 import {
   TOUR_CLOSE,
   TOUR_CONTROLS,
@@ -131,15 +131,18 @@ function layoutPhoneMoods(
   const placed = placeMoodCard(rows, cardHeight, topInset, viewport.height - bottomInset, RING_GAP);
   if (!placed) return null;
   const width = Math.max(200, viewport.width - 32);
-  const above = rows.filter((row) => row.bottom <= placed.top + 1);
-  const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, placed.top);
+  const included = rows.filter((row) => row.top >= topInset - 1 && row.bottom <= placed.top + 1);
+  const first = included[0];
+  const last = included[included.length - 1];
+  const ringTop = first ? Math.max(first.top, topInset - 12) : rect.y;
+  const ringBottom = last ? last.bottom : Math.min(rect.bottom, placed.top);
   return {
     spot: { top: placed.top, left: 16, width },
     ring: {
       x: rect.x,
-      y: rect.y,
+      y: ringTop,
       width: rect.width,
-      height: Math.max(24, ringBottom - rect.top),
+      height: Math.max(24, ringBottom - ringTop),
       radius: getComputedStyle(grid).borderRadius || "24px",
     },
   };
@@ -315,14 +318,14 @@ function snapPhoneCalendar(
     for (const row of rows) {
       const overlaps = row.bottom > start + 2 && row.top < bottom - 2;
       if (!overlaps) continue;
-      if (row.top < start - 2) {
+      const contains = start <= row.top + 2 && bottom >= row.bottom - 2;
+      if (!contains) {
         ok = false;
         break;
       }
-      bottom = Math.max(bottom, row.bottom + 4);
     }
     if (!ok || bottom > bottomLimit) continue;
-    const spot = { top: start, minHeight: bottom - start };
+    const spot = { top: start, minHeight: height };
     const coversToday = !!today && start <= today.top + 2 && bottom >= today.bottom - 2;
     if (!coversToday) return spot;
     fallback = spot;
@@ -630,7 +633,6 @@ export default function TourCard({
     if (phase !== "step" || !step) return;
     let scrolled = false;
     let locked = false;
-    let moodScrolls = 0;
     let previous: TargetBox | null = null;
     let published: TargetBox | null = null;
     let stableCount = 0;
@@ -652,23 +654,14 @@ export default function TourCard({
         previous = null;
         return;
       }
-      if (step.id === "moods" && window.innerWidth < 700 && moodScrolls < 4) {
+      if (step.id === "moods" && window.innerWidth < 700 && !scrolled) {
         const grid = visibleQuery("[data-tour='mood-grid']");
         const scroller = grid?.closest(".app-scroll");
-        if (grid && scroller instanceof HTMLElement) {
-          const chromeNow = readChrome();
-          const measured = cardRef.current?.querySelector("[data-tour-measure]");
-          const contentHeight =
-            measured instanceof HTMLElement && measured.scrollHeight > 80 ? measured.scrollHeight + 28 : CARD_ESTIMATE;
-          const room = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
-          const delta = moodScrollDelta(moodRows(grid), contentHeight, chromeNow.top, window.innerHeight - chromeNow.bottom, room, RING_GAP);
-          if (delta > 2) {
-            scroller.scrollBy({ top: Math.min(delta, room), behavior: "auto" });
-            moodScrolls += 1;
-            previous = null;
-            stableCount = 0;
-            return;
-          }
+        if (scroller instanceof HTMLElement && scroller.scrollTop > 1) {
+          scroller.scrollTo({ top: 0, behavior: "auto" });
+          previous = null;
+          stableCount = 0;
+          return;
         }
       }
       const node = visibleQuery(step.target);
@@ -950,7 +943,6 @@ export default function TourCard({
       week: step?.id === "calendar" && phone ? todayWeek() : null,
     });
   }
-  let moodGrow: number | undefined;
   if (spot && viewport.width > 0) {
     spot = containTourCard(spot, cardSize.height, viewport, { top: chrome.top, bottom: chrome.bottom }, { phone });
     if (phone && step?.id === "moods" && !loggedMood) {
@@ -959,16 +951,18 @@ export default function TourCard({
       const placed = placeMoodCard(rows, cardSize.height, chrome.top, viewport.height - chrome.bottom, RING_GAP);
       if (placed && spot) {
         spot = { ...spot, top: placed.top };
-        if (placed.minHeight > cardSize.height + 1) moodGrow = placed.minHeight;
         if (grid) {
           const rect = grid.getBoundingClientRect();
-          const above = rows.filter((row) => row.bottom <= placed.top + 1);
-          const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, placed.top);
-          const height = ringBottom - rect.top;
+          const included = rows.filter((row) => row.top >= chrome.top - 1 && row.bottom <= placed.top + 1);
+          const first = included[0];
+          const last = included[included.length - 1];
+          const ringTop = first ? Math.max(first.top, chrome.top - 12) : rect.y;
+          const ringBottom = last ? last.bottom : Math.min(rect.bottom, placed.top);
+          const height = ringBottom - ringTop;
           if (height >= 24) {
             phoneMoodRing = {
               x: rect.x,
-              y: rect.y,
+              y: ringTop,
               width: rect.width,
               height,
               radius: getComputedStyle(grid).borderRadius || "24px",
@@ -1024,7 +1018,7 @@ export default function TourCard({
     while (ringPad > 0 && scope && ringCoversText(targetNode, scope, ringPad)) ringPad -= 2;
   }
   const ringBottomPad = phone && phoneMoodRing ? 0 : ringPad;
-  let ringSides = { left: ringPad, right: ringPad, top: ringPad, bottom: ringBottomPad };
+  let ringSides = { left: ringPad, right: ringPad, top: phone && step?.id === "moods" ? 0 : ringPad, bottom: ringBottomPad };
   if (targetNode && step?.id === "tasks") {
     const box = targetNode.getBoundingClientRect();
     const neighbors = [...document.querySelectorAll("button, a")]
@@ -1057,7 +1051,9 @@ export default function TourCard({
     if (!(header instanceof HTMLElement)) return 0;
     return header.getBoundingClientRect().bottom + 8;
   })();
-  const ringTop = ringSource ? Math.max(ringSource.y - ringSides.top, streakLimit) : 0;
+  const headerBottom = Math.max(0, chrome.top - 12);
+  const ringFloor = phone && step?.id === "moods" ? headerBottom : 0;
+  const ringTop = ringSource ? Math.max(ringSource.y - ringSides.top, streakLimit, ringFloor) : 0;
   const ringBottom = ringSource ? ringSource.y + ringSource.height + ringSides.bottom : 0;
   const nearFlame = streakLimit > 0 && ringSource != null && ringSource.y - streakLimit < 36;
   const tasksTight = step?.id === "tasks" && (ringSides.left < ringPad || ringSides.right < ringPad);
@@ -1089,7 +1085,6 @@ export default function TourCard({
         top: spot.top,
         left: spot.left,
         width: spot.width,
-        minHeight: Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0) || undefined,
         backgroundColor: "#14161c",
       }
     : undefined;

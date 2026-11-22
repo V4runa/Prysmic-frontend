@@ -312,9 +312,10 @@ export function containTourCard(
 export type MoodRow = { top: number; bottom: number };
 
 /**
- * Where a full-height phone mood card can sit. The card is never shorter
- * than its content. A row is wholly above it, wholly inside it, or wholly
- * below it. The lowest legal top that keeps the most rows above the card wins.
+ * Phone moods, with no scrolling. Ring as many whole rows as fit above a
+ * content-sized card, at least one, and sit the card directly under that ring.
+ * Rows tucked under the header are not part of the ring. The card is never
+ * grown past its content: a row it meets is fully inside it or fully clear.
  */
 export function placeMoodCard(
   rows: MoodRow[],
@@ -322,62 +323,29 @@ export function placeMoodCard(
   topInset: number,
   bottomLimit: number,
   gap = 12
-): { top: number; minHeight: number; ringRows: number } | null {
+): { top: number; ringRows: number } | null {
   const height = Math.max(1, contentHeight);
-  const seams = new Set<number>([topInset]);
-  for (const row of rows) {
-    seams.add(row.top);
-    seams.add(row.bottom + gap);
-  }
-  let best: { top: number; minHeight: number; ringRows: number } | null = null;
-  for (const seam of seams) {
-    const top = Math.max(topInset, seam);
-    let bottom = top + height;
-    let ok = true;
+  const visible = rows.filter((row) => row.top >= topInset - 1 && row.bottom - row.top > 8);
+  const legal = (count: number): { top: number; ringRows: number } | null => {
+    if (count < 1 || count > visible.length) return null;
+    const top = visible[count - 1].bottom + gap;
+    const bottom = top + height;
+    if (bottom > bottomLimit) return null;
     for (const row of rows) {
       const overlaps = row.bottom > top + 2 && row.top < bottom - 2;
       if (!overlaps) continue;
-      if (row.top < top - 2 || row.bottom + 4 > bottomLimit) {
-        ok = false;
-        break;
-      }
-      bottom = Math.max(bottom, row.bottom + 4);
+      const contains = top <= row.top + 2 && bottom >= row.bottom - 2;
+      if (!contains) return null;
     }
-    if (!ok || bottom > bottomLimit || bottom - top + 0.5 < height) continue;
-    const ringRows = rows.filter((row) => row.bottom <= top + 1).length;
-    if (!best || ringRows > best.ringRows || (ringRows === best.ringRows && top > best.top)) {
-      best = { top, minHeight: bottom - top, ringRows };
-    }
+    return { top, ringRows: count };
+  };
+  for (let count = visible.length; count >= 1; count -= 1) {
+    const placed = legal(count);
+    if (placed) return placed;
   }
-  return best;
-}
-
-/**
- * How far to scroll the mood grid so more whole rows fit above a full-height card.
- * Returns 0 when scrolling would not reveal another row.
- */
-export function moodScrollDelta(
-  rows: MoodRow[],
-  contentHeight: number,
-  topInset: number,
-  bottomLimit: number,
-  room: number,
-  gap = 12
-): number {
-  if (room < 4) return 0;
-  const current = placeMoodCard(rows, contentHeight, topInset, bottomLimit, gap);
-  const currentRows = current?.ringRows ?? -1;
-  for (let delta = 4; delta <= room; delta += 4) {
-    const shifted = rows.map((row) => ({ top: row.top - delta, bottom: row.bottom - delta }));
-    const placed = placeMoodCard(shifted, contentHeight, topInset, bottomLimit, gap);
-    if (placed && placed.ringRows > currentRows) return delta;
-  }
-  if (current) return 0;
-  for (let delta = 4; delta <= room; delta += 4) {
-    const shifted = rows.map((row) => ({ top: row.top - delta, bottom: row.bottom - delta }));
-    if (placeMoodCard(shifted, contentHeight, topInset, bottomLimit, gap)) return delta;
-  }
-  return 0;
+  const first = visible[0];
+  if (!first) return null;
+  return { top: first.bottom + gap, ringRows: 1 };
 }
 
 export type SidePad = { left: number; right: number; top: number; bottom: number };
