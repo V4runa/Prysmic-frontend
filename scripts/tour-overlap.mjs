@@ -370,5 +370,51 @@ export function collectOverlaps() {
       }
     }
   }
+  if (card instanceof HTMLElement) {
+    const box = card.getBoundingClientRect();
+    if (box.top < -1 || box.bottom > window.innerHeight + 1 || box.left < -1 || box.right > window.innerWidth + 1) {
+      hits.push({
+        cover: "card",
+        item: "viewport",
+        label: "sheet leaves the viewport",
+        coverBox: roundBox(boxOf(box)),
+        itemBox: { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight },
+      });
+    }
+    for (const button of card.querySelectorAll("[data-tour-actions] button")) {
+      if (!(button instanceof HTMLElement) || !visible(button)) continue;
+      const rect = button.getBoundingClientRect();
+      if (rect.height < 2) continue;
+      const clipped = rect.top < -1 || rect.bottom > window.innerHeight + 1 || rect.top < box.top - 1 || rect.bottom > box.bottom + 1;
+      if (!clipped) continue;
+      const label = (button.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+      hits.push({
+        cover: "card",
+        item: "button",
+        label: `button out of reach: ${label}`,
+        coverBox: roundBox(boxOf(box)),
+        itemBox: roundBox(boxOf(rect)),
+      });
+    }
+  }
+  if (card?.getAttribute("data-tour-card") === "moods") {
+    const sheetTop = card.getBoundingClientRect().top;
+    for (const button of document.querySelectorAll("[data-tour='mood-grid'] button")) {
+      if (!(button instanceof HTMLElement)) continue;
+      const style = getComputedStyle(button);
+      if (style.visibility !== "hidden" && style.display !== "none") continue;
+      const rect = button.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > sheetTop) continue;
+      if (rect.height < 8) continue;
+      const label = (button.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+      hits.push({
+        cover: "dim",
+        item: "hidden",
+        label: `hidden instead of dimmed: ${label}`,
+        coverBox: roundBox(boxOf(card.getBoundingClientRect())),
+        itemBox: roundBox(boxOf(rect)),
+      });
+    }
+  }
   return hits;
 }

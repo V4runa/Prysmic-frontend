@@ -532,6 +532,7 @@ export default function TourCard({
     () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
   const [welcomeReady, setWelcomeReady] = useState(phase !== "welcome");
+  const [closeReady, setCloseReady] = useState(false);
   const [holdFlame, setHoldFlame] = useState(false);
 
   const stepKey = phase === "step" ? `step-${index}` : phase;
@@ -929,11 +930,62 @@ export default function TourCard({
     };
   }, [phase, index, pathname, step, chrome.top, chrome.bottom]);
 
+  useLayoutEffect(() => {
+    if (phase !== "close") {
+      setCloseReady(false);
+      return;
+    }
+    let frames = 0;
+    let last = "";
+    let raf = 0;
+    const tick = () => {
+      const ready =
+        pathname === "/notes" &&
+        (!document.fonts || document.fonts.status === "loaded") &&
+        !pageBusy();
+      const main = document.querySelector("main")?.getBoundingClientRect();
+      const sig = ready
+        ? `${Math.round(main?.width ?? 0)}:${Math.round(main?.height ?? 0)}:${window.innerWidth}:${window.innerHeight}`
+        : "";
+      if (!ready || sig !== last) {
+        last = sig;
+        frames = ready ? 1 : 0;
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      frames += 1;
+      if (frames < 3) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      setCloseReady(true);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phase, pathname]);
+
   useEffect(() => {
     const node = cardRef.current;
     if (!node) return;
     node.focus({ preventScroll: true });
-  }, [stepKey, target, phase]);
+    if (phase === "step" && step?.id === "tasks") {
+      const field = document.querySelector("[data-tour='tasks-field']");
+      if (field instanceof HTMLElement && document.activeElement === field) field.blur();
+    }
+  }, [stepKey, target, phase, step?.id]);
+
+  useEffect(() => {
+    if (phase !== "step" || step?.id !== "tasks") return;
+    const blur = () => {
+      const field = document.querySelector("[data-tour='tasks-field']");
+      if (!(field instanceof HTMLElement) || document.activeElement !== field) return;
+      field.blur();
+      cardRef.current?.focus({ preventScroll: true });
+    };
+    blur();
+    document.addEventListener("focusin", blur);
+    return () => document.removeEventListener("focusin", blur);
+  }, [phase, step?.id, pathname]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -1150,24 +1202,10 @@ export default function TourCard({
         : [];
       const first = rows[0];
       const last = rows[rows.length - 1];
-      if (grid) {
-        for (const button of grid.querySelectorAll("button")) {
-          if (!(button instanceof HTMLElement)) continue;
-          const box = button.getBoundingClientRect();
-          if (box.height < 48) {
-            button.style.visibility = "";
-            continue;
-          }
-          const kept = rows.some((row) => Math.abs(box.top - row.top) < 18);
-          button.style.visibility = kept ? "" : "hidden";
-        }
-      }
       if (grid && first && last) {
         const rect = grid.getBoundingClientRect();
-        const clipTop = Math.max(0, first.top - rect.top);
-        const clipBottom = Math.max(0, rect.bottom - last.bottom);
-        document.documentElement.style.setProperty("--tour-mood-clip-top", `${Math.floor(clipTop)}px`);
-        document.documentElement.style.setProperty("--tour-mood-clip", `${Math.ceil(clipBottom)}px`);
+        document.documentElement.style.setProperty("--tour-mood-clip-top", "0px");
+        document.documentElement.style.setProperty("--tour-mood-clip", "0px");
         const tile = [...grid.querySelectorAll("button")].find((button) => {
           const box = button.getBoundingClientRect();
           return box.height > 48 && Math.abs(box.top - first.top) < 18;
@@ -1209,9 +1247,6 @@ export default function TourCard({
   if (!(sheet && step?.id === "moods" && !loggedMood)) {
     document.documentElement.style.setProperty("--tour-mood-clip", "0px");
     document.documentElement.style.setProperty("--tour-mood-clip-top", "0px");
-    document.querySelectorAll<HTMLElement>("[data-tour='mood-grid'] button").forEach((button) => {
-      if (button.style.visibility === "hidden") button.style.visibility = "";
-    });
   }
   if (spot && (phase !== "step" || target || holdFlame)) heldSpot.current = spot;
   if (!spot && phase === "step" && heldSpot.current && viewport.width > 0) {
@@ -1334,9 +1369,14 @@ export default function TourCard({
   if (chrome.flame) holes.push(chrome.flame);
 
   const stepReady = phase !== "step" || target != null || holdFlame;
-  const showLive = showWelcome || phase === "close" || holdFlame || (phase === "step" && (sheet || stepReady));
-  const holdPrevious = phase === "step" && !showLive && frozen.current != null;
-  if (showLive && !sheet && target && spot) {
+  const routeReady = phase !== "step" || pathname === (step?.route ?? pathname);
+  const showLive =
+    showWelcome ||
+    (phase === "close" && closeReady) ||
+    holdFlame ||
+    (phase === "step" && routeReady && stepReady);
+  const holdPrevious = (phase === "step" || phase === "close") && !showLive && frozen.current != null;
+  if (showLive && !sheet && spot && (phase !== "step" || target || holdFlame)) {
     if (!reveal.current || reveal.current.key !== measureKey) {
       const fixed = Math.min(TOUR_CARD_WIDTH, Math.max(240, viewport.width - 32));
       reveal.current = {
@@ -1351,19 +1391,24 @@ export default function TourCard({
     spot = reveal.current.spot;
   }
   if (holdPrevious && frozen.current) spot = frozen.current.spot;
+  const sheetCap = sheet && viewport.height > 0 ? Math.max(1, viewport.height - chrome.bottom - 8) : undefined;
+  const wideCap = !sheet && viewport.height > 0 && spot ? Math.max(1, viewport.height - spot.top - 8) : undefined;
+  const wideMin = Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0);
   const cardStyle: CSSProperties | undefined = spot
     ? sheet
       ? {
           bottom: chrome.bottom,
           left: spot.left,
           width: spot.width,
+          maxHeight: sheetCap,
           backgroundColor: "#14161c",
         }
       : {
           top: spot.top,
           left: spot.left,
           width: spot.width,
-          minHeight: Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0) || undefined,
+          maxHeight: wideCap,
+          minHeight: wideMin > 0 ? Math.min(wideMin, wideCap ?? wideMin) : undefined,
           backgroundColor: "#14161c",
         }
     : undefined;
@@ -1401,7 +1446,7 @@ export default function TourCard({
           </defs>
           <rect width="100%" height="100%" fill="rgba(6,7,10,0.55)" mask="url(#prysmic-tour-dim)" />
         </svg>
-      ) : showWelcome || phase === "close" || showFrozenCard ? (
+      ) : showWelcome || phase === "close" || phase === "step" || showFrozenCard ? (
         <div className="fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom }} />
       ) : null}
       {showLive && stepReady && ring ? (
@@ -1443,8 +1488,8 @@ export default function TourCard({
           }}
           data-tour-card={phase === "step" ? (TOUR_STEPS[index]?.id ?? phase) : phase}
         >
-          <div data-tour-measure="" className="flex min-h-0 flex-col">
-          <div data-tour-body="">
+          <div data-tour-measure="" className="flex min-h-0 flex-col overflow-hidden">
+          <div data-tour-body="" className="min-h-0 overflow-y-auto">
             {shownProgress ? (
             <p id={progressId} className="text-sm text-slate-400">
               {shownProgress}
@@ -1506,8 +1551,19 @@ export default function TourCard({
         html:has([data-tour-card="welcome"]) [data-tour-quiet],
         html:has([data-tour-card="close"]) [data-tour-quiet],
         html:has([data-tour-card="contracts"]) [data-tour-quiet] { visibility: hidden; }
-        html:has([data-tour-card="moods"]) [data-tour="mood-grid"] {
-          clip-path: inset(var(--tour-mood-clip-top, 0px) 0 var(--tour-mood-clip, 0px) 0) !important;
+        html:has([data-tour-card="moods"]) .app-workspace-moods .app-scroll {
+          scrollbar-width: none;
+        }
+        html:has([data-tour-card="moods"]) .app-workspace-moods .app-scroll::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+          display: none;
+        }
+        html:has([data-tour-card="tasks"]) [data-tour="tasks-field"]:focus,
+        html:has([data-tour-card="tasks"]) [data-tour="tasks-field"]:focus-visible {
+          outline: none !important;
+          border-color: rgba(255, 255, 255, 0.1) !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
         }
         html:has([data-tour-card="calendar"]) .app-scroll {
           clip-path: inset(0 0 var(--tour-cal-clip, 0px) 0) !important;
