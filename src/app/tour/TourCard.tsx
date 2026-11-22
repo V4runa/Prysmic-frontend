@@ -294,6 +294,50 @@ function ringCoversText(target: HTMLElement, scope: HTMLElement, pad: number): b
   return false;
 }
 
+/** Sit a phone calendar card on week boundaries so a day is covered or clear. */
+function snapPhoneCalendar(
+  height: number,
+  topInset: number,
+  bottomLimit: number
+): { top: number; minHeight: number } | null {
+  const days = [...document.querySelectorAll("[data-tour-day]")]
+    .map((node) => node.getBoundingClientRect())
+    .filter((rect) => rect.width > 2 && rect.height > 2);
+  const rows: { top: number; bottom: number }[] = [];
+  for (const rect of days) {
+    const row = rows.find((item) => Math.abs(item.top - rect.top) < 12);
+    if (row) {
+      row.top = Math.min(row.top, rect.top);
+      row.bottom = Math.max(row.bottom, rect.bottom);
+    } else rows.push({ top: rect.top, bottom: rect.bottom });
+  }
+  rows.sort((a, b) => a.top - b.top);
+  if (rows.length === 0) return null;
+  const today = document.querySelector("[data-tour='calendar-today']")?.getBoundingClientRect();
+  const starts = [topInset, ...rows.flatMap((row) => [row.top, row.bottom + 16])];
+  let fallback: { top: number; minHeight: number } | null = null;
+  for (const start of starts) {
+    if (start < topInset || start + height > bottomLimit) continue;
+    let bottom = start + height;
+    let ok = true;
+    for (const row of rows) {
+      const overlaps = row.bottom > start + 2 && row.top < bottom - 2;
+      if (!overlaps) continue;
+      if (row.top < start - 2) {
+        ok = false;
+        break;
+      }
+      bottom = Math.max(bottom, row.bottom + 4);
+    }
+    if (!ok || bottom > bottomLimit) continue;
+    const spot = { top: start, minHeight: bottom - start };
+    const coversToday = !!today && start <= today.top + 2 && bottom >= today.bottom - 2;
+    if (!coversToday) return spot;
+    fallback = spot;
+  }
+  return fallback;
+}
+
 /** Grow or shift a phone card so a control is fully under it or fully clear of it. */
 function sealPhoneCard(
   spot: CardSpot,
@@ -915,30 +959,10 @@ export default function TourCard({
     phoneSeal = sealPhoneCard(spot, cardSize.height, chrome.top, viewport.height - chrome.bottom);
     spot = { ...spot, top: phoneSeal.top };
     if (step?.id === "calendar") {
-      const days = [...document.querySelectorAll("[data-tour-day]")]
-        .map((node) => node.getBoundingClientRect())
-        .filter((rect) => rect.width > 2 && rect.height > 2);
-      const placed = spot;
-      const span = phoneSeal.minHeight;
-      const cardBottom = placed.top + span;
-      const cut = days.filter(
-        (rect) =>
-          rect.bottom > placed.top + 2 &&
-          rect.top < cardBottom - 2 &&
-          !(placed.top <= rect.top + 2 && cardBottom >= rect.bottom - 2)
-      );
-      if (cut.length > 0) {
-        const limit = viewport.height - chrome.bottom;
-        const below = Math.max(...cut.map((rect) => rect.bottom)) + 20;
-        if (below + cardSize.height <= limit) {
-          phoneSeal = { top: below, minHeight: cardSize.height };
-          spot = { ...spot, top: below };
-        } else {
-          const nextTop = Math.max(chrome.top, Math.min(...cut.map((rect) => rect.top)) - 6);
-          const nextBottom = Math.min(limit, Math.max(cardBottom, ...cut.map((rect) => rect.bottom + 6)));
-          phoneSeal = { top: nextTop, minHeight: Math.max(cardSize.height, nextBottom - nextTop) };
-          spot = { ...spot, top: nextTop };
-        }
+      const snapped = snapPhoneCalendar(cardSize.height, chrome.top, viewport.height - chrome.bottom);
+      if (snapped) {
+        phoneSeal = snapped;
+        spot = { ...spot, top: snapped.top };
       }
     }
   }
@@ -1108,7 +1132,7 @@ export default function TourCard({
           aria-describedby={bodyId}
           tabIndex={-1}
           className={`pointer-events-auto fixed z-[81] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
-            moodNested ? "px-4 py-3" : viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
+            moodNested ? "px-4 py-3" : phone && step?.id === "moods" ? "px-3.5 pt-3.5 pb-0" : viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
           }`}
           style={{
             ...cardStyle,
