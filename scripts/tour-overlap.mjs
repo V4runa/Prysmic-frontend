@@ -466,7 +466,49 @@ export function collectOverlaps() {
     }
     const overlapW = Math.min(ringRect.right, cardRect.right) - Math.max(ringRect.left, cardRect.left);
     const overlapH = Math.min(ringRect.bottom, cardRect.bottom) - Math.max(ringRect.top, cardRect.top);
-    if (overlapW > 0 && overlapH > 0) {
+    const moodNest = card.getAttribute("data-tour-card") === "moods" && document.documentElement.dataset.moodFit === "c";
+    if (moodNest) {
+      const insetL = cardRect.left - ringRect.left;
+      const insetR = ringRect.right - cardRect.right;
+      const insetT = cardRect.top - ringRect.top;
+      const insetB = ringRect.bottom - cardRect.bottom;
+      const inside = insetL >= 11.5 && insetR >= 11.5 && insetT >= 11.5 && insetB >= 11.5 && cardRect.bottom <= window.innerHeight + 0.5 && cardRect.top >= 0;
+      if (!inside) {
+        hits.push({
+          cover: "ring",
+          item: "card",
+          label: `card is outside the mood ring L${Math.round(insetL)} R${Math.round(insetR)} T${Math.round(insetT)} B${Math.round(insetB)}`,
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: roundBox(boxOf(cardRect)),
+        });
+      }
+      const tileBox = (rect) => ({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom });
+      const cardBox = tileBox(cardRect);
+      const gapOf = (a, b) => {
+        const gapX = Math.max(a.left - b.right, b.left - a.right);
+        const gapY = Math.max(a.top - b.bottom, b.top - a.bottom);
+        if (gapX < 0 && gapY < 0) return 0;
+        if (gapX < 0) return gapY;
+        if (gapY < 0) return gapX;
+        return Math.hypot(gapX, gapY);
+      };
+      for (const button of document.querySelectorAll("[data-tour='mood-grid'] button")) {
+        if (!(button instanceof HTMLElement)) continue;
+        const rect = button.getBoundingClientRect();
+        if (rect.height < 40) continue;
+        const gap = gapOf(cardBox, tileBox(rect));
+        if (gap >= 11.5) continue;
+        const label = (button.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 24);
+        hits.push({
+          cover: "card",
+          item: "tile",
+          label: gap <= 0 ? `card covers a mood tile: ${label}` : `card is under 12px from a tile: ${label}`,
+          coverBox: roundBox(boxOf(cardRect)),
+          itemBox: roundBox(boxOf(rect)),
+        });
+        break;
+      }
+    } else if (overlapW > 0 && overlapH > 0) {
       hits.push({
         cover: "ring",
         item: "card",
@@ -522,7 +564,8 @@ export function collectOverlaps() {
       const insetR = ringRect.right - anchor.right;
       const insetT = anchor.top - ringRect.top;
       const insetB = ringRect.bottom - anchor.bottom;
-      if (Math.abs(insetL - insetR) > 2 || Math.abs(insetT - insetB) > 2) {
+      const moodNestAlign = stepId === "moods" && document.documentElement.dataset.moodFit === "c";
+      if (!moodNestAlign && (Math.abs(insetL - insetR) > 2 || Math.abs(insetT - insetB) > 2)) {
         hits.push({
           cover: "ring",
           item: "align",
@@ -533,9 +576,22 @@ export function collectOverlaps() {
       }
       const header = document.querySelector(".app-header");
       const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
+      const tileCovered =
+        stepId === "moods" &&
+        [...document.querySelectorAll("[data-tour='mood-grid'] button")].some((button) => {
+          if (!(button instanceof HTMLElement)) return false;
+          const rect = button.getBoundingClientRect();
+          if (rect.height < 40) return false;
+          return (
+            Math.min(rect.right, cardRect.right) - Math.max(rect.left, cardRect.left) > 0 &&
+            Math.min(rect.bottom, cardRect.bottom) - Math.max(rect.top, cardRect.top) > 0
+          );
+        });
       const overlapsCard =
-        Math.min(anchor.right, cardRect.right) - Math.max(anchor.left, cardRect.left) > 0 &&
-        Math.min(anchor.bottom, cardRect.bottom) - Math.max(anchor.top, cardRect.top) > 0;
+        stepId === "moods"
+          ? tileCovered
+          : Math.min(anchor.right, cardRect.right) - Math.max(anchor.left, cardRect.left) > 0 &&
+            Math.min(anchor.bottom, cardRect.bottom) - Math.max(anchor.top, cardRect.top) > 0;
       let clipped = false;
       if (anchorNode instanceof HTMLElement) {
         let parent = anchorNode.parentElement;
@@ -630,6 +686,36 @@ export function collectOverlaps() {
           itemBox: roundBox(boxOf(rect)),
         });
         break;
+      }
+      if (stepId === "moods" && window.innerWidth >= 1024) {
+        for (const button of document.querySelectorAll("[data-tour='mood-grid'] button")) {
+          if (!(button instanceof HTMLElement)) continue;
+          const rect = button.getBoundingClientRect();
+          if (rect.height < 40) continue;
+          const fullyInRing =
+            rect.top >= ringRect.top - 1 &&
+            rect.bottom <= ringRect.bottom + 1 &&
+            rect.left >= ringRect.left - 1 &&
+            rect.right <= ringRect.right + 1;
+          if (fullyInRing) continue;
+          const scroller = button.closest(".app-scroll");
+          const clipTop = Math.max(
+            headerBottom,
+            scroller instanceof HTMLElement ? scroller.getBoundingClientRect().top : 0
+          );
+          const visibleTop = Math.max(rect.top, clipTop);
+          const visibleBottom = Math.min(rect.bottom, window.innerHeight);
+          if (visibleBottom - visibleTop <= 2) continue;
+          const label = (button.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 24);
+          hits.push({
+            cover: "ring",
+            item: "peek",
+            label: `partial tile above the ring: ${label}`,
+            coverBox: roundBox(boxOf(ringRect)),
+            itemBox: roundBox(boxOf(rect)),
+          });
+          break;
+        }
       }
       if (window.innerWidth >= 1024 && ringRect.top < headerBottom + 8) {
         hits.push({

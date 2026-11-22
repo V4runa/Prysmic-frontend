@@ -123,12 +123,83 @@ function moodOcclusionTop(grid: HTMLElement, headerBottom: number): number {
 /** Room for the ring's padding and the soft glow, so neither sits in the header. */
 const MOOD_GLOW = 18;
 
-type MoodFit = "a" | "b" | "c";
+type MoodFit = "a" | "b" | "c" | "d";
+
+const NEST_CLEAR = 12;
+const NEST_MIN_WIDTH = 280;
+const NEST_CARD = 210;
+
+type MoodRect = { left: number; top: number; right: number; bottom: number };
+
+function rectGap(a: MoodRect, b: MoodRect): number {
+  const gapX = Math.max(a.left - b.right, b.left - a.right);
+  const gapY = Math.max(a.top - b.bottom, b.top - a.bottom);
+  if (gapX < 0 && gapY < 0) return 0;
+  if (gapX < 0) return gapY;
+  if (gapY < 0) return gapX;
+  return Math.hypot(gapX, gapY);
+}
+
+/**
+ * Card in the empty end of the last row, after `shiftY` of upward scroll.
+ * The ring grows to keep the card 12px inside it. Null when that cannot
+ * be done without covering a tile or leaving the viewport.
+ */
+function nestedMoodSpot(
+  grid: HTMLElement,
+  cardHeight: number,
+  viewportHeight: number,
+  shiftY: number
+): { spot: CardSpot; ring: TargetBox } | null {
+  const buttons = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
+  const own = buttons.find((button) => /your own/i.test(button.textContent ?? ""));
+  if (!own) return null;
+  const moved = (node: HTMLElement): MoodRect => {
+    const rect = node.getBoundingClientRect();
+    return { left: rect.left, top: rect.top - shiftY, right: rect.right, bottom: rect.bottom - shiftY };
+  };
+  const ownBox = moved(own);
+  const tiles = buttons.map((button) => moved(button));
+  const gridBox = moved(grid);
+  const header = document.querySelector(".app-header");
+  const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
+  const clipTop = moodOcclusionTop(grid, headerBottom);
+  const minTop = Math.max(clipTop, headerBottom + 8 + RING_PAD);
+  const firstTop = Math.min(...tiles.map((tile) => tile.top));
+  const lastBottom = Math.max(...tiles.map((tile) => tile.bottom));
+  if (firstTop < minTop - 1 || lastBottom > viewportHeight - 1) return null;
+  const above = tiles.filter((tile) => tile.bottom <= ownBox.top + 8 && tile.right > ownBox.right - 8);
+  const ceiling = above.length > 0 ? Math.max(...above.map((tile) => tile.bottom)) : ownBox.top;
+  const top = Math.max(ownBox.top, ceiling + NEST_CLEAR);
+  const ringRight = gridBox.right + RING_PAD;
+  const left = ownBox.right + NEST_CLEAR;
+  const available = ringRight - NEST_CLEAR - left;
+  if (available < NEST_MIN_WIDTH - 0.5) return null;
+  const width = Math.min(TOUR_CARD_WIDTH, Math.floor(available));
+  if (top + cardHeight + NEST_CLEAR > viewportHeight) return null;
+  const card: MoodRect = { left, top, right: left + width, bottom: top + cardHeight };
+  if (tiles.some((tile) => rectGap(card, tile) < NEST_CLEAR - 0.5)) return null;
+  const ringLeft = Math.min(gridBox.left - RING_PAD, card.left - NEST_CLEAR);
+  const ringTop = Math.min(firstTop - RING_PAD, card.top - NEST_CLEAR);
+  const ringBottom = Math.max(lastBottom + RING_PAD, card.bottom + NEST_CLEAR);
+  const ringFar = Math.max(ringRight, card.right + NEST_CLEAR);
+  return {
+    spot: { top, left, width },
+    ring: {
+      x: ringLeft,
+      y: ringTop,
+      width: ringFar - ringLeft,
+      height: Math.max(24, ringBottom - ringTop),
+      radius: getComputedStyle(grid).borderRadius || "24px",
+    },
+  };
+}
 
 /**
  * Desktop Moods, in order: heading plus the whole grid, heading scrolled
- * away plus the whole grid, or the trailing rows that include Your own.
- * `delta` is how far the panel still needs to scroll for that choice.
+ * away plus the whole grid, the card in the empty end of the last row, or
+ * the trailing rows that include Your own. `delta` is how far the panel
+ * still needs to scroll for that choice.
  */
 function planWideMoods(
   grid: HTMLElement,
@@ -156,14 +227,24 @@ function planWideMoods(
   const wholeStays = first.top - lift >= minTop - 1;
   if (wholeStays && headingStays) return { rows, delta: lift, gap, clipTop: minTop, fit: "a" };
   if (wholeStays) return { rows, delta: lift, gap, clipTop: minTop, fit: "b" };
+  const nestShift = first.top - minTop;
+  if (nestedMoodSpot(grid, NEST_CARD, viewportHeight, nestShift)) {
+    return { rows, delta: nestShift, gap, clipTop: minTop, fit: "c" };
+  }
   let start = rows.length - 1;
   for (let i = rows.length - 1; i >= 0; i -= 1) {
-    if (last.bottom - rows[i].top <= maxBottom - minTop + 0.5) start = i;
+    const span = last.bottom - rows[i].top;
+    if (span > maxBottom - minTop + 0.5) break;
+    const hide = i > 0 ? rows[i - 1].bottom - clipTop + 1 : 0;
+    const room = rows[i].top - minTop;
+    const need = Math.max(0, last.bottom - maxBottom, hide);
+    if (need <= room + 0.5) start = i;
     else break;
   }
-  let delta = lift;
-  if (rows[start].top - delta < minTop) delta = rows[start].top - minTop;
-  return { rows: rows.slice(start), delta: Math.max(0, delta), gap, clipTop: minTop, fit: "c" };
+  const hide = start > 0 ? rows[start - 1].bottom - clipTop + 1 : 0;
+  const room = rows[start].top - minTop;
+  const need = Math.max(0, last.bottom - maxBottom, hide);
+  return { rows: rows.slice(start), delta: Math.max(0, Math.min(room, need)), gap, clipTop: minTop, fit: "d" };
 }
 
 function moodLiftWrap(grid: HTMLElement): HTMLElement | null {
@@ -216,7 +297,7 @@ function layoutPhoneMoods(
 }
 
 function layoutWideMoods(
-  cardHeight: number,
+  _cardHeight: number,
   _topInset: number,
   _bottomInset: number,
   viewport: { width: number; height: number }
@@ -236,7 +317,14 @@ function layoutWideMoods(
     Math.max(16, rect.x + rect.width / 2 - width / 2),
     Math.max(16, viewport.width - 16 - width)
   );
-  const plan = planWideMoods(grid, cardHeight, viewport.height);
+  const plan = planWideMoods(grid, 232, viewport.height);
+  if (plan?.fit === "c") {
+    const nest = nestedMoodSpot(grid, NEST_CARD, viewport.height, 0);
+    if (nest) {
+      document.documentElement.dataset.moodFit = "c";
+      return { spot: nest.spot, ring: nest.ring, nested: true };
+    }
+  }
   if (plan && plan.rows.length > 0) {
     document.documentElement.dataset.moodFit = plan.fit;
     const visible = plan.rows.filter((row) => row.top >= plan.clipTop - 1);
@@ -876,7 +964,7 @@ export default function TourCard({
       if (step.id === "moods" && !scrolled) {
         const scroller = node.closest(".app-scroll");
         const phoneNow = window.innerWidth < 700;
-        if (!phoneNow && scroller instanceof HTMLElement && moodsSettled.current !== String(index) && moodScrolls < 6) {
+        if (!phoneNow && scroller instanceof HTMLElement && moodsSettled.current !== String(index) && moodScrolls < 8) {
           const panel = node.closest(".app-workspace-moods");
           const wrap = moodLiftWrap(node);
           if (moodScrolls === 0) {
@@ -905,30 +993,53 @@ export default function TourCard({
             return;
           }
           moodWaits = 0;
-          if (plan && plan.delta > 0.5 && moodScrolls < 6) {
+          if (plan && plan.fit === "d" && moodScrolls < 8) {
+            const scrollerTop = scroller.getBoundingClientRect().top;
+            const peek = moodRows(node).find((row) => row.top < scrollerTop - 1 && row.bottom > scrollerTop + 2);
+            if (peek) {
+              const extra = peek.bottom - scrollerTop + 2;
+              const child = scroller.firstElementChild;
+              if (child instanceof HTMLElement) child.style.minHeight = "0px";
+              const childH = child instanceof HTMLElement ? child.getBoundingClientRect().height : 0;
+              const unused = Math.max(0, scroller.clientHeight - childH);
+              const overflow = Math.max(0, scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop);
+              if (overflow + 0.5 < extra) {
+                scroller.style.paddingBottom = `${Math.ceil((Number.parseFloat(scroller.style.paddingBottom) || 0) + extra - overflow + 2)}px`;
+                void scroller.offsetHeight;
+              }
+              scroller.scrollTop += extra;
+              moodLift = -1;
+              moodScrolls += 1;
+              previous = null;
+              return;
+            }
+          }
+          if (plan && Math.abs(plan.delta) > 0.5 && moodScrolls < 8) {
             const child = scroller.firstElementChild;
-            if (child instanceof HTMLElement && child.style.minHeight !== "0px") {
+            if (plan.delta > 0 && child instanceof HTMLElement && child.style.minHeight !== "0px") {
               child.style.minHeight = "0px";
               moodLift = -1;
               moodScrolls += 1;
               previous = null;
               return;
             }
-            const childH = child instanceof HTMLElement ? child.getBoundingClientRect().height : 0;
-            const unused = Math.max(0, scroller.clientHeight - childH);
-            const overflow = Math.max(0, scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop);
-            const needed = Math.ceil(plan.delta + unused + 2);
-            if (overflow + 0.5 < plan.delta && (Number.parseFloat(scroller.style.paddingBottom) || 0) < needed) {
-              scroller.style.paddingBottom = `${needed}px`;
-              void scroller.offsetHeight;
+            if (plan.delta > 0) {
+              const childH = child instanceof HTMLElement ? child.getBoundingClientRect().height : 0;
+              const unused = Math.max(0, scroller.clientHeight - childH);
+              const overflow = Math.max(0, scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop);
+              const needed = Math.ceil(plan.delta + unused + 2);
+              if (overflow + 0.5 < plan.delta && (Number.parseFloat(scroller.style.paddingBottom) || 0) < needed) {
+                scroller.style.paddingBottom = `${needed}px`;
+                void scroller.offsetHeight;
+              }
             }
-            scroller.scrollTop += plan.delta;
+            scroller.scrollTop = Math.max(0, scroller.scrollTop + plan.delta);
             moodLift = -1;
             moodScrolls += 1;
             previous = null;
             return;
           }
-          moodScrolls = 6;
+          moodScrolls = 8;
           previous = null;
           return;
         }
@@ -1255,10 +1366,14 @@ export default function TourCard({
   let moodGrow: number | undefined;
   if (spot && viewport.width > 0) {
     const placedTop = spot.top;
+    const placedLeft = spot.left;
+    const placedWidth = spot.width;
     spot = containTourCard(spot, cardSize.height, viewport, { top: chrome.top, bottom: chrome.bottom }, { phone });
     // Desktop has no tab bar. The 12px chrome inset would pull the Moods card
     // up into the ring when the card already fits on the viewport.
-    if (!phone && step?.id === "moods" && placedTop + cardSize.height <= viewport.height + 0.5) {
+    if (!phone && step?.id === "moods" && moodNested) {
+      spot = { top: placedTop, left: placedLeft, width: placedWidth };
+    } else if (!phone && step?.id === "moods" && placedTop + cardSize.height <= viewport.height + 0.5) {
       spot = { ...spot, top: placedTop };
     }
     if (phone && step?.id === "moods" && !loggedMood) {
@@ -1467,6 +1582,9 @@ export default function TourCard({
   if (sheet && step?.id === "calendar") {
     ringSides = { left: 0, right: 0, top: 0, bottom: 0 };
   }
+  if (!sheet && step?.id === "moods" && moodNested) {
+    ringSides = { left: 0, right: 0, top: 0, bottom: 0 };
+  }
   if (sheet && step?.id === "moods" && phoneMoodRing) {
     const grid = visibleQuery("[data-tour='mood-grid']");
     const next = grid
@@ -1552,7 +1670,7 @@ export default function TourCard({
       : {
           top: spot.top,
           left: Math.max(8, Math.min(spot.left, viewport.width - 8 - Math.min(spot.width, fixed))),
-          width: step?.id === "calendar" ? spot.width : fixed,
+          width: step?.id === "calendar" || moodNested ? spot.width : fixed,
         };
     reveal.current = { key: measureKey, spot: nextSpot };
     spot = nextSpot;
@@ -1623,7 +1741,27 @@ export default function TourCard({
         numeral.bottom <= anchorBox.bottom + 1 &&
         numeral.left >= anchorBox.left - 1 &&
         numeral.right <= anchorBox.right + 1);
-    if (!onScreen || !numeralFits || !clear(anchorBox, cardBox) || !clear(ringBox, cardBox)) drawRing = null;
+    if (moodNested && liveAgrees && liveCardBox && liveCardBox.bottom + NEST_CLEAR <= viewport.height && liveCardBox.right + NEST_CLEAR <= viewport.width) {
+      const bottom = liveCardBox.bottom + NEST_CLEAR;
+      const right = liveCardBox.right + NEST_CLEAR;
+      drawRing = {
+        ...drawRing,
+        width: Math.max(drawRing.width, right - drawRing.left),
+        height: Math.max(drawRing.height, bottom - drawRing.top),
+      };
+      ringBox.right = drawRing.left + drawRing.width;
+      ringBox.bottom = drawRing.top + drawRing.height;
+    }
+    const nestInside =
+      moodNested &&
+      cardBox.left >= ringBox.left + NEST_CLEAR - 0.5 &&
+      cardBox.top >= ringBox.top + NEST_CLEAR - 0.5 &&
+      cardBox.right <= ringBox.right - NEST_CLEAR + 0.5 &&
+      cardBox.bottom <= ringBox.bottom - NEST_CLEAR + 0.5 &&
+      cardBox.bottom <= viewport.height + 0.5;
+    if (moodNested) {
+      if (!onScreen || !nestInside) drawRing = null;
+    } else if (!onScreen || !numeralFits || !clear(anchorBox, cardBox) || !clear(ringBox, cardBox)) drawRing = null;
   }
   const sheetCap = sheet && viewport.height > 0 ? Math.max(1, viewport.height - chrome.bottom - 8) : undefined;
   const wideCap = !sheet && viewport.height > 0 && spot
