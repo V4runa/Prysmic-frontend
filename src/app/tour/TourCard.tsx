@@ -127,7 +127,8 @@ type MoodFit = "a" | "b" | "c" | "d";
 
 const NEST_CLEAR = 12;
 const NEST_MIN_WIDTH = 280;
-const NEST_CARD = 210;
+/** The cyan line is a 2px stroke drawn outside the ring element. */
+const RING_STROKE = 2;
 
 type MoodRect = { left: number; top: number; right: number; bottom: number };
 
@@ -141,16 +142,26 @@ function rectGap(a: MoodRect, b: MoodRect): number {
 }
 
 /**
- * Card in the empty end of the last row, after `shiftY` of upward scroll.
- * The ring grows to keep the card 12px inside it. Null when that cannot
- * be done without covering a tile or leaving the viewport.
+ * Lowest ring-element edge whose stroke stays inside the moods panel and
+ * at least 12px above the viewport.
  */
-function nestedMoodSpot(
+function moodRingLimit(grid: HTMLElement, viewportHeight: number): number {
+  const panel = grid.closest(".app-workspace-moods");
+  const panelBottom = panel instanceof HTMLElement ? panel.getBoundingClientRect().bottom : viewportHeight;
+  return Math.min(viewportHeight - 12, panelBottom) - RING_STROKE;
+}
+
+/**
+ * Card in the empty end of the last row, after `shiftY` of upward scroll.
+ * The ring grows to keep the card 12px inside its line. Null when that
+ * covers a tile or clips one. The caller checks the viewport and the panel.
+ */
+function nestedMoodLayout(
   grid: HTMLElement,
   cardHeight: number,
-  viewportHeight: number,
+  _viewportHeight: number,
   shiftY: number
-): { spot: CardSpot; ring: TargetBox } | null {
+): { spot: CardSpot; ring: TargetBox; ringBottom: number } | null {
   const buttons = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
   const own = buttons.find((button) => /your own/i.test(button.textContent ?? ""));
   if (!own) return null;
@@ -167,7 +178,7 @@ function nestedMoodSpot(
   const minTop = Math.round(Math.max(clipTop, headerBottom + 12 + RING_PAD));
   const firstTop = Math.min(...tiles.map((tile) => tile.top));
   const lastBottom = Math.max(...tiles.map((tile) => tile.bottom));
-  if (firstTop < minTop - 1 || lastBottom > viewportHeight - 1) return null;
+  if (firstTop < minTop - 1) return null;
   const above = tiles.filter((tile) => tile.bottom <= ownBox.top + 8 && tile.right > ownBox.right - 8);
   const ceiling = above.length > 0 ? Math.max(...above.map((tile) => tile.bottom)) : ownBox.top;
   const top = Math.max(ownBox.top, ceiling + NEST_CLEAR);
@@ -176,7 +187,6 @@ function nestedMoodSpot(
   const available = ringRight - NEST_CLEAR - left;
   if (available < NEST_MIN_WIDTH - 0.5) return null;
   const width = Math.min(TOUR_CARD_WIDTH, Math.floor(available));
-  if (top + cardHeight + NEST_CLEAR > viewportHeight) return null;
   const card: MoodRect = { left, top, right: left + width, bottom: top + cardHeight };
   if (tiles.some((tile) => rectGap(card, tile) < NEST_CLEAR - 0.5)) return null;
   const ringLeft = Math.min(gridBox.left - RING_PAD, card.left - NEST_CLEAR);
@@ -192,7 +202,51 @@ function nestedMoodSpot(
       height: Math.max(24, ringBottom - ringTop),
       radius: getComputedStyle(grid).borderRadius || "24px",
     },
+    ringBottom,
   };
+}
+
+/** Nested placement whose stroke stays inside the panel and 12px above the viewport. */
+function nestedMoodSpot(
+  grid: HTMLElement,
+  cardHeight: number,
+  viewportHeight: number,
+  shiftY: number
+): { spot: CardSpot; ring: TargetBox } | null {
+  const laid = nestedMoodLayout(grid, cardHeight, viewportHeight, shiftY);
+  if (!laid || laid.ringBottom > moodRingLimit(grid, viewportHeight) + 0.5) return null;
+  return { spot: laid.spot, ring: laid.ring };
+}
+
+/**
+ * Scroll that keeps the nested ring legal. Extra lift is only enough to
+ * clear the panel and the viewport. With `keepHeading`, that lift may not
+ * put the heading under the header.
+ */
+function nestedMoodDelta(
+  grid: HTMLElement,
+  cardHeight: number,
+  viewportHeight: number,
+  shiftY: number,
+  keepHeading: boolean,
+  headerBottom: number
+): number | null {
+  const laid = nestedMoodLayout(grid, cardHeight, viewportHeight, shiftY);
+  if (!laid) return null;
+  const limit = moodRingLimit(grid, viewportHeight);
+  let delta = shiftY;
+  if (laid.ringBottom > limit + 0.5) {
+    const extra = Math.ceil(laid.ringBottom - limit);
+    const lifted = nestedMoodLayout(grid, cardHeight, viewportHeight, shiftY + extra);
+    if (!lifted || lifted.ringBottom > limit + 0.5) return null;
+    delta = shiftY + extra;
+  }
+  if (keepHeading) {
+    const head = grid.closest(".wide-mood-head")?.querySelector("h2");
+    const headTop = head instanceof HTMLElement ? head.getBoundingClientRect().top : headerBottom;
+    if (headTop - delta < headerBottom - 1) return null;
+  }
+  return Math.round(delta);
 }
 
 /**
@@ -211,12 +265,14 @@ function planWideMoods(
   const header = document.querySelector(".app-header");
   const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
   const clipTop = moodOcclusionTop(grid, headerBottom);
-  // The drawn ring sits RING_PAD outside the tiles and must stay 8px under the
-  // header. The card sits `gap` under the last tile, which leaves that 8px.
+  // The card sits `gap` under the last tile when it is outside the ring.
   const gap = RING_PAD + 12;
   const minTop = Math.round(Math.max(clipTop, headerBottom + 12 + RING_PAD));
-  // 4px keeps the card on screen without clipping it; the ring stays 12px above the card.
-  const maxBottom = viewportHeight - 4 - cardHeight - gap;
+  // The ring element sits RING_PAD outside the tiles, and its stroke must stay
+  // inside the panel and 12px above the viewport. The card sits `gap` under
+  // the last tile when it is not nested in the corner.
+  const ringLimit = moodRingLimit(grid, viewportHeight);
+  const maxBottom = Math.min(viewportHeight - 4 - cardHeight - gap, ringLimit - RING_PAD);
   const head = grid.closest(".wide-mood-head")?.querySelector("h2");
   const headTop = head instanceof HTMLElement ? head.getBoundingClientRect().top : clipTop;
   const first = rows[0];
@@ -228,30 +284,30 @@ function planWideMoods(
   const last0 = last.bottom + origin;
   const headBottom0 = (head instanceof HTMLElement ? head.getBoundingClientRect().bottom : headTop) + origin;
   const scrollerBottom = scroller instanceof HTMLElement ? scroller.getBoundingClientRect().bottom : viewportHeight;
-  const clipBottom = Math.min(viewportHeight - 8, scrollerBottom - 2);
+  const clipBottom = Math.min(ringLimit - RING_PAD, scrollerBottom - 2);
   const headingOnScreen = headTop0 >= headerBottom - 1 && headBottom0 <= clipBottom;
   const gridOnScreen = first0 >= minTop - 1 && last0 <= clipBottom;
-  if (headingOnScreen && gridOnScreen && nestedMoodSpot(grid, NEST_CARD, viewportHeight, -origin)) {
-    return { rows, delta: Math.round(-origin), gap, clipTop: minTop, fit: "c" };
+  const nest = (shiftY: number, keepHeading: boolean) =>
+    nestedMoodDelta(grid, cardHeight, viewportHeight, shiftY, keepHeading, headerBottom);
+  const atRest = nest(-origin, true);
+  if (headingOnScreen && gridOnScreen && atRest != null) {
+    return { rows, delta: atRest, gap, clipTop: minTop, fit: "c" };
   }
   const pastClip = Math.max(0, Math.round(last0 - clipBottom));
-  if (
-    pastClip > 0 &&
-    headTop0 - pastClip >= headerBottom - 1 &&
-    nestedMoodSpot(grid, NEST_CARD, viewportHeight, pastClip - origin)
-  ) {
-    return { rows, delta: Math.round(pastClip - origin), gap, clipTop: minTop, fit: "c" };
+  const pastDelta = pastClip > 0 ? nest(pastClip - origin, true) : null;
+  if (pastDelta != null) {
+    return { rows, delta: pastDelta, gap, clipTop: minTop, fit: "c" };
   }
   const targetScroll = Math.round(first0 - minTop);
   const shiftNow = targetScroll - origin;
-  if (
-    targetScroll >= 0 &&
-    headTop0 - targetScroll >= headerBottom - 1 &&
-    headBottom0 - targetScroll <= viewportHeight - 8 &&
-    last0 - targetScroll <= viewportHeight - 8 &&
-    nestedMoodSpot(grid, NEST_CARD, viewportHeight, shiftNow)
-  ) {
-    return { rows, delta: Math.round(shiftNow), gap, clipTop: minTop, fit: "c" };
+  const rowDelta = targetScroll >= 0 ? nest(shiftNow, true) : null;
+  if (rowDelta != null) {
+    return { rows, delta: rowDelta, gap, clipTop: minTop, fit: "c" };
+  }
+  // A little more scroll may put the heading under the header. Tiles stay whole.
+  const lifted = nest(-origin, false);
+  if (lifted != null) {
+    return { rows, delta: lifted, gap, clipTop: minTop, fit: "c" };
   }
   const lift = Math.max(0, last0 - maxBottom);
   const headingLimit = Math.max(clipTop, headerBottom);
@@ -259,10 +315,11 @@ function planWideMoods(
   const wholeStays = first0 - lift >= minTop - 1;
   if (wholeStays && headingStays) return { rows, delta: Math.round(lift - origin), gap, clipTop: minTop, fit: "a" };
   const nestShift = Math.round(first.top - minTop);
-  if (nestedMoodSpot(grid, NEST_CARD, viewportHeight, nestShift)) {
-    return { rows, delta: nestShift, gap, clipTop: minTop, fit: "c" };
+  const nestDelta = nest(nestShift, false);
+  if (nestDelta != null) {
+    return { rows, delta: nestDelta, gap, clipTop: minTop, fit: "c" };
   }
-  const belowMax = viewportHeight - 24 - cardHeight - gap;
+  const belowMax = Math.min(viewportHeight - 24 - cardHeight - gap, ringLimit - RING_PAD);
   const belowLift = Math.max(0, last.bottom - belowMax);
   if (first.top - belowLift >= minTop - 1) {
     return { rows, delta: Math.round(belowLift), gap, clipTop: minTop, fit: "b" };
@@ -353,12 +410,22 @@ function layoutWideMoods(
     Math.max(16, rect.x + rect.width / 2 - width / 2),
     Math.max(16, viewport.width - 16 - width)
   );
-  const plan = planWideMoods(grid, 232, viewport.height);
+  const liveMood = document.querySelector("[data-tour-card='moods']");
+  const liveMoodBox = liveMood instanceof HTMLElement ? liveMood.getBoundingClientRect() : null;
+  const cardH =
+    liveMood instanceof HTMLElement &&
+    /Moods/.test(liveMood.textContent ?? "") &&
+    liveMoodBox &&
+    liveMoodBox.height > 40
+      ? Math.ceil(liveMoodBox.height)
+      : _cardHeight;
+  const plan = planWideMoods(grid, cardH, viewport.height);
   if (plan?.fit === "c") {
-    const nest = nestedMoodSpot(grid, NEST_CARD, viewport.height, 0);
-    if (!nest) return null;
-    document.documentElement.dataset.moodFit = "c";
-    return { spot: nest.spot, ring: nest.ring, nested: true };
+    const nest = nestedMoodSpot(grid, cardH, viewport.height, 0);
+    if (nest) {
+      document.documentElement.dataset.moodFit = "c";
+      return { spot: nest.spot, ring: nest.ring, nested: true };
+    }
   }
   if (plan && plan.rows.length > 0) {
     document.documentElement.dataset.moodFit = plan.fit;
@@ -985,6 +1052,8 @@ export default function TourCard({
     let moodScrolls = 0;
     let moodLift = -1;
     let moodWaits = 0;
+    let moodCardWaits = 0;
+    let moodPlannedH = 0;
     let timer = 0;
 
     const publish = (box: TargetBox) => {
@@ -1127,9 +1196,37 @@ export default function TourCard({
         previous = null;
         return;
       }
+      if (step.id === "moods" && scrolled && window.innerWidth >= 700) {
+        const liveMood = cardRef.current;
+        const liveMoodBox = liveMood?.getBoundingClientRect();
+        const measuredMood =
+          liveMood?.getAttribute("data-tour-card") === "moods" &&
+          /Moods/.test(liveMood.textContent ?? "") &&
+          liveMoodBox &&
+          liveMoodBox.height > 40
+            ? Math.ceil(liveMoodBox.height)
+            : 0;
+        if (measuredMood > moodPlannedH + 8 && moodPlannedH > 0) {
+          moodsSettled.current = "";
+          moodLift = -1;
+          moodWaits = 0;
+          moodScrolls = 1;
+          scrolled = false;
+        }
+      }
       if (step.id === "moods" && !scrolled) {
         const scroller = node.closest(".app-scroll");
         const phoneNow = window.innerWidth < 700;
+        const liveMood = cardRef.current;
+        const liveMoodBox = liveMood?.getBoundingClientRect();
+        const measuredMood =
+          !phoneNow &&
+          liveMood?.getAttribute("data-tour-card") === "moods" &&
+          /Moods/.test(liveMood.textContent ?? "") &&
+          liveMoodBox &&
+          liveMoodBox.height > 40
+            ? Math.ceil(liveMoodBox.height)
+            : 0;
         if (!phoneNow && scroller instanceof HTMLElement && moodsSettled.current !== String(index) && moodScrolls < 12) {
           const panel = node.closest(".app-workspace-moods");
           const wrap = moodLiftWrap(node);
@@ -1147,7 +1244,13 @@ export default function TourCard({
             previous = null;
             return;
           }
-          const cardH = 232;
+          if (measuredMood === 0 && moodCardWaits < 12) {
+            moodCardWaits += 1;
+            previous = null;
+            return;
+          }
+          const cardH = measuredMood || 232;
+          moodPlannedH = cardH;
           const plan = planWideMoods(node, cardH, window.innerHeight);
           if (plan) document.documentElement.dataset.moodFit = plan.fit;
           // Wait until the same lift comes back twice, so a tile that is still
@@ -1343,6 +1446,8 @@ export default function TourCard({
       moodScrolls = 0;
       moodLift = -1;
       moodWaits = 0;
+      moodCardWaits = 0;
+      moodPlannedH = 0;
       scrolled = false;
       moodsSettled.current = "";
       locked = false;
@@ -2005,6 +2110,8 @@ export default function TourCard({
     };
     const headerEl = document.querySelector(".app-header");
     const headerEdge = headerEl instanceof HTMLElement ? headerEl.getBoundingClientRect().bottom : headerBottom;
+    const moodGrid = step?.id === "moods" && !sheet ? visibleQuery("[data-tour='mood-grid']") : null;
+    const moodLimit = moodGrid ? moodRingLimit(moodGrid, viewport.height) : viewport.height + 1;
     const clear = (a: typeof cardBox, b: typeof cardBox) =>
       a.right + 8 <= b.left + 0.5 || b.right + 8 <= a.left + 0.5 || a.bottom + 8 <= b.top + 0.5 || b.bottom + 8 <= a.top + 0.5;
     const onScreen =
@@ -2013,7 +2120,7 @@ export default function TourCard({
       anchorBox.left >= -1 &&
       anchorBox.right <= viewport.width + 1 &&
       ringBox.top >= Math.max(headerEdge, ringFloor) - 1 &&
-      ringBox.bottom <= viewport.height + 1;
+      ringBox.bottom <= (moodGrid ? moodLimit + 0.5 : viewport.height + 1);
     const numeral =
       step?.id === "calendar" && targetNode ? targetNode.getBoundingClientRect() : null;
     const numeralFits =
@@ -2023,7 +2130,14 @@ export default function TourCard({
         numeral.bottom <= anchorBox.bottom + 1 &&
         numeral.left >= anchorBox.left - 1 &&
         numeral.right <= anchorBox.right + 1);
-    if (moodNested && liveAgrees && liveCardBox && liveCardBox.bottom + NEST_CLEAR <= viewport.height && liveCardBox.right + NEST_CLEAR <= viewport.width) {
+    if (
+      moodNested &&
+      moodGrid &&
+      liveAgrees &&
+      liveCardBox &&
+      liveCardBox.bottom + NEST_CLEAR <= moodRingLimit(moodGrid, viewport.height) + 0.5 &&
+      liveCardBox.right + NEST_CLEAR <= viewport.width
+    ) {
       const bottom = liveCardBox.bottom + NEST_CLEAR;
       const right = liveCardBox.right + NEST_CLEAR;
       drawRing = {
