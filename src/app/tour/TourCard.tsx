@@ -242,13 +242,43 @@ function layoutDayPanelCard(
   const quick = document.querySelector("[data-tour-keep='quick']");
   const quickTop = quick instanceof HTMLElement ? quick.getBoundingClientRect().top : viewport.height - bottomInset;
   const aside = mood.closest("aside");
-  const panel = aside instanceof HTMLElement ? aside.getBoundingClientRect() : moodBox;
-  const width = Math.min(Math.max(panel.width - 16, moodBox.width), viewport.width - panel.x - 16);
+  const glass = aside?.querySelector(":scope > .glass-card");
+  const shell = glass instanceof HTMLElement ? glass : aside instanceof HTMLElement ? aside : mood;
+  const panel = shell.getBoundingClientRect();
+  const style = getComputedStyle(shell);
+  const padL = Number.parseFloat(style.paddingLeft) || 16;
+  const padR = Number.parseFloat(style.paddingRight) || 16;
+  const left = panel.x + padL;
+  const width = Math.max(200, panel.width - padL - padR);
   let top = moodBox.bottom + 28;
   const maxTop = Math.min(viewport.height - bottomInset - cardHeight, quickTop - cardHeight - 12);
   if (maxTop < moodBox.bottom + 8) return null;
   top = Math.min(Math.max(top, moodBox.bottom + 12), maxTop);
-  return { top, left: panel.x + 8, width };
+  return { top, left, width };
+}
+
+/** Phone notes: under the Notes/Archived tabs, centred in the page panel. */
+function layoutPhoneNotes(
+  cardHeight: number,
+  topInset: number,
+  bottomInset: number,
+  viewport: { width: number; height: number }
+): CardSpot | null {
+  const tabs = document.querySelector("[role='tablist'][aria-label='Notes']");
+  const panel = document.querySelector("main .glass-card");
+  if (!(tabs instanceof HTMLElement) || !(panel instanceof HTMLElement)) return null;
+  const tabsBox = tabs.getBoundingClientRect();
+  const panelBox = panel.getBoundingClientRect();
+  if (tabsBox.width < 2 || panelBox.width < 2) return null;
+  const style = getComputedStyle(panel);
+  const padL = Number.parseFloat(style.paddingLeft) || 16;
+  const padR = Number.parseFloat(style.paddingRight) || 16;
+  const innerWidth = panelBox.width - padL - padR;
+  const width = Math.min(TOUR_CARD_WIDTH, Math.max(200, innerWidth));
+  const left = panelBox.x + padL + (innerWidth - width) / 2;
+  const top = Math.max(topInset, tabsBox.bottom + RING_GAP);
+  if (viewport.height - bottomInset - top < Math.min(cardHeight, 160)) return null;
+  return { top, left, width };
 }
 
 function todayWeek(): Box | null {
@@ -694,6 +724,8 @@ export default function TourCard({
     );
   } else if (phase === "step" && step?.id === "calendar" && !phone) {
     spot = layoutDayPanelCard(cardSize.height, chrome.bottom, viewport) ?? null;
+  } else if (phase === "step" && step?.id === "notes" && phone) {
+    spot = layoutPhoneNotes(cardSize.height, chrome.top, chrome.bottom, viewport.width > 0 ? viewport : { width: 390, height: 844 });
   }
   if (!spot && holdFlame && chrome.flame) {
     const height = cardSize.height;
