@@ -967,11 +967,12 @@ export default function TourCard({
     }
   }
   if (spot && phone && step?.id === "moods" && !loggedMood) {
+    const placed = spot;
     const grid = visibleQuery("[data-tour='mood-grid']");
-    if (grid) {
+    if (grid && placed) {
       const rect = grid.getBoundingClientRect();
-      const above = moodRows(grid).filter((row) => row.bottom <= spot.top + 1);
-      const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, spot.top);
+      const above = moodRows(grid).filter((row) => row.bottom <= placed.top + 1);
+      const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, placed.top);
       const height = ringBottom - rect.top;
       if (height >= 24) {
         phoneMoodRing = {
@@ -1057,9 +1058,17 @@ export default function TourCard({
       const bottom = spot.top + cardSize.height;
       const peeking = rows.filter((row) => row.top < bottom - 8 && row.bottom > bottom + 2 && row.bottom - row.top > 8);
       if (peeking.length > 0) {
-        const need = Math.max(...peeking.map((row) => row.bottom)) + 28;
+        const placed = spot;
+        const need = Math.max(...peeking.map((row) => row.bottom)) + 8;
         const limit = viewport.height - chrome.bottom;
-        moodCover = Math.max(cardSize.height, Math.min(need, limit) - spot.top);
+        if (need <= limit && placed) moodCover = Math.max(cardSize.height, need - placed.top);
+        else if (placed) {
+          const blockerTop = Math.min(...peeking.filter((row) => row.bottom + 8 > limit).map((row) => row.top));
+          const above = rows.filter((row) => row.bottom <= placed.top + 2 && row.bottom - row.top > 8);
+          const floor = above.length > 0 ? Math.max(...above.map((row) => row.bottom)) + 4 : chrome.top;
+          const nextTop = Math.max(floor, blockerTop - cardSize.height - 8);
+          if (nextTop + cardSize.height <= blockerTop - 2) spot = { ...placed, top: nextTop };
+        }
       }
     }
   }
