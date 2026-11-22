@@ -185,7 +185,8 @@ function layoutWideMoods(
   if (hits.length > 0) {
     cardWidth = Math.min(rect.width, viewport.width - 32);
     left = Math.min(Math.max(16, rect.x), Math.max(16, viewport.width - 16 - cardWidth));
-    cardTop = Math.min(ringBottom + gap, Math.max(ringBottom + RING_GAP, maxBottom - cardHeight));
+    const nextRow = rows.find((row) => row.top > ringBottom - 2);
+    cardTop = nextRow ? nextRow.top : ringBottom + gap;
   }
   return {
     spot: { top: Math.max(topInset, cardTop), left, width: cardWidth },
