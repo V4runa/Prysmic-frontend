@@ -14,6 +14,7 @@ import { Field, TextField, TextArea, SelectField } from "./forms";
 import TagPicker from "./TagPicker";
 import TagChipRow from "./TagChipRow";
 import { useTags } from "../hooks/useTags";
+import { saveDeadline } from "../lib/saveDeadline";
 
 interface QuickTaskInputProps {
   onTaskCreated?: () => void;
@@ -70,11 +71,13 @@ export default function QuickTaskInput({
     };
     if (originNoteId != null) payload.originNoteId = originNoteId;
 
+    const deadline = saveDeadline();
     const postTask = (body: Record<string, unknown>) =>
       apiFetch("/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: deadline.signal,
       });
 
     const finishCreated = () => {
@@ -101,8 +104,9 @@ export default function QuickTaskInput({
       finishCreated();
     } catch (err) {
       console.error("Failed to create task", err);
-      setError("Could not create task");
+      setError("That task didn't save. Try again.");
     } finally {
+      deadline.clear();
       setLoading(false);
     }
   };

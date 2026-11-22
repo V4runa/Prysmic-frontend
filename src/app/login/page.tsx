@@ -9,7 +9,7 @@ import PageTransition from "../components/PageTransition";
 import { TextField, FormButton } from "../components/forms";
 import { landingHref } from "../lib/preferences";
 import { restoreSessionIfNeeded } from "../lib/refreshSession";
-import { applyAuthSession, readLoginNotice } from "../lib/storedSession";
+import { applyAuthSession, clearLoginNotice, readLoginNotice } from "../lib/storedSession";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,11 +22,18 @@ export default function LoginPage() {
   const [slow, setSlow] = useState(false);
   const [ready, setReady] = useState(false);
   const [gateSlow, setGateSlow] = useState(false);
-  const notice = useSyncExternalStore(
+  const storedNotice = useSyncExternalStore(
     () => () => {},
     readLoginNotice,
     () => null
   );
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!storedNotice) return;
+    setNotice(storedNotice);
+    // The next visit, and any login attempt, must not keep this line up.
+    clearLoginNotice();
+  }, [storedNotice]);
 
   useEffect(() => {
     let live = true;
@@ -46,6 +53,8 @@ export default function LoginPage() {
     e.preventDefault();
     if (loading) return;
     setError("");
+    setNotice(null);
+    clearLoginNotice();
     setLoading(true);
     const slowTimer = setTimeout(() => setSlow(true), 3500);
 

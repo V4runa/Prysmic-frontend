@@ -226,6 +226,10 @@ export function setLoginNotice(message: string): void {
   sessionSet(LOGIN_NOTICE_KEY, message);
 }
 
+export function clearLoginNotice(): void {
+  sessionRemove(LOGIN_NOTICE_KEY);
+}
+
 /** Skip the next silent refresh in this tab. Cleared when a new session is stored. */
 export function suppressSessionRestore(): void {
   sessionSet(SKIP_RESTORE_KEY, "1");

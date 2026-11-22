@@ -26,8 +26,8 @@ import {
   type ChromeQuietMemory,
   type TourSeenValue,
 } from "./tourSeen";
-import { adjacentTourRoutes, prefetchTourRoute } from "./tourPrefetch";
-import { tourRouteFor } from "./tourStops";
+import { adjacentTourRoutes, cancelIdleTourPrefetch, prefetchTourRoute } from "./tourPrefetch";
+import { TOUR_FADE_MS, tourRouteFor } from "./tourStops";
 
 export type TourApi = {
   /** Welcome, a step, or the close card is on screen. */
@@ -220,6 +220,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       if (leftStep || leftClose) {
         window.clearTimeout(pendingPush.current);
         ended.current = true;
+        cancelIdleTourPrefetch(queryClient);
         dispatch({ type: "skip" });
       }
       return;
@@ -230,11 +231,16 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       // Let the old card start fading before the address changes, so the
       // previous step's text is not sitting at full opacity on the new page.
       window.clearTimeout(pendingPush.current);
-      pendingPush.current = window.setTimeout(() => router.push(route), 40);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // The old card fades for TOUR_FADE_MS. Wait until that opacity is 0
+      // before the address changes, so the previous title is never readable
+      // on the next page.
+      const wait = reduce ? 0 : TOUR_FADE_MS + 24;
+      pendingPush.current = window.setTimeout(() => router.push(route), wait);
       return;
     }
     stripTourParam(router, pathname);
-  }, [state.phase, state.index, state.returnNotes, pathname, router]);
+  }, [state.phase, state.index, state.returnNotes, pathname, router, queryClient]);
 
   const finishTour = useCallback(() => {
     ended.current = true;
@@ -260,6 +266,8 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     markSeen();
   }, [state.persistSeen, markSeen]);
 
+  const phaseRef = useRef(state.phase);
+  phaseRef.current = state.phase;
   useEffect(() => {
     if (state.phase !== "welcome" && state.phase !== "step" && state.phase !== "close") return;
     const userId = identity.userId ?? readSessionClaims()?.userId ?? null;
@@ -267,6 +275,11 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       router.prefetch(route);
       prefetchTourRoute(queryClient, route, userId);
     }
+    return () => {
+      const next = phaseRef.current;
+      if (next === "welcome" || next === "step" || next === "close") return;
+      cancelIdleTourPrefetch(queryClient);
+    };
   }, [state.phase, state.index, identity.userId, router, queryClient]);
 
   useEffect(() => {

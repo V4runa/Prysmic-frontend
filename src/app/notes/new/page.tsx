@@ -48,6 +48,7 @@ import {
   saveAudience,
 } from "../../lib/sessionBoundary";
 import { bindNewNoteCreate, uploadWithCreatedId } from "../bindNewNoteCreate";
+import { saveDeadline } from "../../lib/saveDeadline";
 import { useWritingGuard } from "../useWritingGuard";
 
 // TipTap is heavy; load it only when the editor actually renders so it stays
@@ -265,6 +266,7 @@ export default function CreateNotePage() {
       saveAudience(startedEpoch, owner, noteOwnerId(getUserFromToken()?.userId));
     const pending = staged.filter((file) => !uploadedKeys.includes(file.id));
 
+    const deadline = saveDeadline();
     try {
       const result = await saveNewNote({
         ...snapshot,
@@ -274,7 +276,7 @@ export default function CreateNotePage() {
         force: pendingOverwrite,
         audience: audienceNow,
         loadLatest: createdId
-          ? () => apiFetch<{ updatedAt?: string | null }>(`/notes/${createdId}`)
+          ? () => apiFetch<{ updatedAt?: string | null }>(`/notes/${createdId}`, { signal: deadline.signal })
           : undefined,
         files: pending.map((file) => ({
           key: file.id,
@@ -284,11 +286,13 @@ export default function CreateNotePage() {
           apiFetch<{ id: number; updatedAt?: string | null }>("/notes", {
             method: "POST",
             body: JSON.stringify(snapshot),
+            signal: deadline.signal,
           }),
         update: (id) =>
           apiFetch<{ updatedAt?: string | null }>(`/notes/${id}`, {
             method: "PUT",
             body: JSON.stringify(snapshot),
+            signal: deadline.signal,
           }),
         onCreated: bindNewNoteCreate({
           createdIdRef,
@@ -324,7 +328,11 @@ export default function CreateNotePage() {
       if (result.status === "error") {
         setUploadedKeys((prev) => [...new Set([...prev, ...result.uploadedKeys])]);
         if (result.createdId != null) setCreatedId(result.createdId);
-        setError(saveErrorMessage(result.kind, result.phase));
+        setError(
+          result.phase !== "attachment" && result.kind !== "unauthorized"
+            ? "That note didn't save. Try again."
+            : saveErrorMessage(result.kind, result.phase)
+        );
         setSaving(false);
         return;
       }
@@ -363,9 +371,10 @@ export default function CreateNotePage() {
       router.push(`/notes/${result.createdId}`);
     } catch {
       console.error("Note save failed");
-      setError(saveErrorMessage("server", "create"));
+      setError("That note didn't save. Try again.");
       setSaving(false);
     } finally {
+      deadline.clear();
       releaseSaveLock(savingRef);
     }
   };

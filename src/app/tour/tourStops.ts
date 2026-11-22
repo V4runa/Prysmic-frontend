@@ -78,6 +78,9 @@ export const TOUR_STEPS: readonly TourStep[] = [
 
 export const TOUR_STEP_COUNT = TOUR_STEPS.length;
 
+/** How long the card takes to fade. The route waits until this has finished. */
+export const TOUR_FADE_MS = 160;
+
 export function tourStepByIndex(index: number): TourStep | null {
   return TOUR_STEPS[index] ?? null;
 }

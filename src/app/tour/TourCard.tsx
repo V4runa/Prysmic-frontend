@@ -6,6 +6,7 @@ import { containTourCard, MOOD_RING_CLEAR, placeMoodCard, placeTourCard, planPho
 import {
   TOUR_CLOSE,
   TOUR_CONTROLS,
+  TOUR_FADE_MS,
   TOUR_STEPS,
   TOUR_WELCOME,
   tourProgressLabel,
@@ -413,13 +414,16 @@ function layoutWideMoods(
   );
   const liveMood = document.querySelector("[data-tour-card='moods']");
   const liveMoodBox = liveMood instanceof HTMLElement ? liveMood.getBoundingClientRect() : null;
-  const cardH =
+  const liveMoodH =
     liveMood instanceof HTMLElement &&
     /Moods/.test(liveMood.textContent ?? "") &&
     liveMoodBox &&
     liveMoodBox.height > 40
       ? Math.ceil(liveMoodBox.height)
       : _cardHeight;
+  // The corner card uses tighter padding. Plan with that, or the tall card
+  // makes the ring look like it will not fit and the ring is dropped.
+  const cardH = document.documentElement.dataset.moodNest === "1" ? liveMoodH : Math.max(160, liveMoodH - 26);
   const plan = planWideMoods(grid, cardH, viewport.height);
   if (plan?.fit === "c") {
     const nest = nestedMoodSpot(grid, cardH, viewport.height, 0);
@@ -1250,7 +1254,11 @@ export default function TourCard({
             previous = null;
             return;
           }
-          const cardH = measuredMood || 232;
+          const cardH = measuredMood
+            ? document.documentElement.dataset.moodNest === "1"
+              ? measuredMood
+              : Math.max(160, measuredMood - 26)
+            : 196;
           moodPlannedH = cardH;
           const plan = planWideMoods(node, cardH, window.innerHeight);
           if (plan) document.documentElement.dataset.moodFit = plan.fit;
@@ -1339,7 +1347,7 @@ export default function TourCard({
             const header = document.querySelector(".app-header");
             const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
             const headTop = head instanceof HTMLElement ? head.getBoundingClientRect().top : headerBottom + 40;
-            if (overflow > 1 && headTop - overflow >= headerBottom + 8) {
+            if (plan?.fit !== "c" && overflow > 1 && headTop - overflow >= headerBottom + 8) {
               scroller.scrollTop = Math.max(0, Math.round(scroller.scrollTop + overflow));
               moodLift = -1;
               moodScrolls += 1;
@@ -1347,7 +1355,7 @@ export default function TourCard({
               return;
             }
           }
-          moodScrolls = 12;
+          moodScrolls = 20;
           previous = null;
           return;
         }
@@ -1532,7 +1540,7 @@ export default function TourCard({
       stageKey.current = measureKeyRef.current;
       shownSig.current = "";
       setStage("measure");
-    }, reduceMotion ? 0 : 160);
+    }, reduceMotion ? 0 : TOUR_FADE_MS);
     return () => window.clearTimeout(timer);
   }, [stage, reduceMotion]);
 
@@ -2245,7 +2253,7 @@ export default function TourCard({
   // The first card fades in with the dim. After that the dim stays put
   // between steps; only the card and the ring fade.
   const dimOpacity = dimAlready || stage === "show" ? 1 : 0;
-  const fade = reduceMotion ? "none" : "opacity 160ms ease";
+  const fade = reduceMotion ? "none" : `opacity ${TOUR_FADE_MS}ms ease`;
   const dimTransition = dimAlready || reduceMotion ? "none" : fade;
   const ringShadow = tightRing
     ? "inset 0 0 0 2px rgba(103,232,249,0.95)"
@@ -2427,10 +2435,12 @@ export default function TourCard({
         html:has([data-tour-card="moods"]) [data-tour="mood-grid"] {
           clip-path: inset(var(--tour-mood-clip-top, 0px) 0 var(--tour-mood-clip, 0px) 0);
         }
-        html:has([data-tour-card="moods"]) .app-workspace-moods .app-scroll {
+        html:has([data-tour-card="moods"]) .app-workspace-moods .app-scroll,
+        html:has([data-tour-card="close"]) .app-workspace-moods .app-scroll {
           scrollbar-width: none;
         }
-        html:has([data-tour-card="moods"]) .app-workspace-moods .app-scroll::-webkit-scrollbar {
+        html:has([data-tour-card="moods"]) .app-workspace-moods .app-scroll::-webkit-scrollbar,
+        html:has([data-tour-card="close"]) .app-workspace-moods .app-scroll::-webkit-scrollbar {
           width: 0;
           height: 0;
           display: none;

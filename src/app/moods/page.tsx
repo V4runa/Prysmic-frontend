@@ -83,7 +83,7 @@ export default function MoodPage() {
   // Warm the mood palette in parallel with /moods. MoodPicker reads the same
   // cache key, so by the time the picker mounts the options are already here
   // instead of kicking off a second, sequential request.
-  useMoodOptions();
+  const moodOptions = useMoodOptions();
 
   const timeline = useMemo(() => normalizeMoods(moodsRaw), [moodsRaw]);
   const todayEntry = useMemo(
@@ -201,7 +201,9 @@ export default function MoodPage() {
     queryClient.invalidateQueries({ queryKey: calendarQueryKey });
   };
 
-  if (loading) {
+  // The palette is what the page shows a new person. Don't hold that grid
+  // behind the history request when the options are already here.
+  if (loading && moodOptions.isLoading) {
     return (
       <PageTransition>
         <div className="flex app-page-h items-center justify-center text-slate-400">

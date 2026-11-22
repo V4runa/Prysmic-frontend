@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { FormButton, TextField } from "./forms";
 import { ApiError, apiFetch } from "../hooks/useApi";
 import { readSessionClaims } from "../hooks/useAuth";
@@ -209,17 +208,15 @@ export default function EmailVerificationPrompt({ defer = false }: { defer?: boo
   };
 
   return (
-    <AnimatePresence>
+    <>
       {show && (
-        <motion.div
+        <div
           ref={bannerRef}
-          initial={false}
-          animate={{ opacity: revealed ? 1 : 0 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
           style={{
             overflow: "hidden",
             height: revealed && fullHeight > 0 ? fullHeight : 0,
-            transition: "height 250ms ease",
+            opacity: revealed ? 1 : 0,
+            transition: "height 250ms ease, opacity 250ms ease",
           }}
           className="no-print"
         >
@@ -268,8 +265,8 @@ export default function EmailVerificationPrompt({ defer = false }: { defer?: boo
             </div>
           </div>
           </div>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }
