@@ -99,6 +99,68 @@ function keepBoxes(target: HTMLElement | null): Box[] {
   return boxes;
 }
 
+function layoutPhoneMoods(
+  cardHeight: number,
+  topInset: number,
+  bottomInset: number,
+  viewHeight: number
+): { spot: CardSpot; ring: TargetBox } | null {
+  const grid = visibleQuery("[data-tour='mood-grid']");
+  if (!grid) return null;
+  const rect = grid.getBoundingClientRect();
+  const tiles = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
+  const rows: { top: number; bottom: number }[] = [];
+  for (const tile of tiles) {
+    const box = tile.getBoundingClientRect();
+    const row = rows.find((item) => Math.abs(item.top - box.top) < 18);
+    if (row) row.bottom = Math.max(row.bottom, box.bottom);
+    else rows.push({ top: box.top, bottom: box.bottom });
+  }
+  rows.sort((a, b) => a.top - b.top);
+  let cardTop = Math.max(topInset, viewHeight - bottomInset - cardHeight);
+  const sliced = rows.find((row) => row.top < cardTop - 4 && row.bottom > cardTop + 4);
+  if (sliced) cardTop = Math.max(topInset, sliced.top - 8);
+  let ringBottom = rect.top;
+  for (const row of rows) {
+    if (row.bottom <= cardTop - 8) ringBottom = row.bottom;
+    else break;
+  }
+  const height = Math.max(24, ringBottom - rect.top);
+  return {
+    spot: {
+      top: cardTop,
+      left: 16,
+      width: Math.min(TOUR_CARD_WIDTH, window.innerWidth - 32),
+    },
+    ring: {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height,
+      radius: getComputedStyle(grid).borderRadius || "24px",
+    },
+  };
+}
+
+function layoutDayPanelCard(
+  cardHeight: number,
+  bottomInset: number,
+  viewport: { width: number; height: number }
+): CardSpot | null {
+  const mood = document.querySelector("[data-tour-keep='mood']");
+  if (!(mood instanceof HTMLElement)) return null;
+  const moodBox = mood.getBoundingClientRect();
+  if (moodBox.width < 2) return null;
+  const quick = document.querySelector("[data-tour-keep='quick']");
+  const quickTop = quick instanceof HTMLElement ? quick.getBoundingClientRect().top : viewport.height - bottomInset;
+  const width = Math.min(320, Math.max(220, moodBox.width));
+  let top = moodBox.bottom + 16;
+  const maxTop = Math.min(viewport.height - bottomInset - cardHeight, quickTop - cardHeight - 12);
+  if (maxTop < moodBox.bottom + 8) return null;
+  top = Math.min(Math.max(top, moodBox.bottom + 12), maxTop);
+  return { top, left: moodBox.x, width };
+}
+
 function todayWeek(): Box | null {
   const numeral = visibleQuery("[data-tour='calendar-today']");
   const cell = numeral?.closest("[data-tour-day]");
@@ -231,14 +293,24 @@ export default function TourCard({
     if (phase !== "welcome") return;
     let timer = 0;
     let cancelled = false;
+    let calm = 0;
     const check = () => {
       if (cancelled) return;
-      if (!pageBusy()) {
-        setWelcomeReady(true);
+      const main = document.querySelector("main");
+      const text = main?.textContent ?? "";
+      const busy = !main || pageBusy() || !/Your Notes|Nothing written yet/.test(text);
+      if (busy) {
+        calm = 0;
+        setWelcomeReady(false);
+        timer = window.setTimeout(check, 40);
         return;
       }
-      setWelcomeReady(false);
-      timer = window.setTimeout(check, 40);
+      calm += 1;
+      if (calm < 4) {
+        timer = window.setTimeout(check, 40);
+        return;
+      }
+      setWelcomeReady(true);
     };
     timer = window.setTimeout(check, 0);
     return () => {
@@ -291,13 +363,22 @@ export default function TourCard({
       }
       if (step.id === "moods" && !scrolled) {
         const scroller = node.closest(".app-scroll");
-        if (scroller instanceof HTMLElement && scroller.scrollTop > 1) {
+        const phoneNow = window.innerWidth < 700;
+        if (phoneNow && scroller instanceof HTMLElement && scroller.scrollTop > 1) {
           scroller.scrollTo({ top: 0, behavior: "auto" });
-          scrolled = true;
-          previous = null;
-          return;
+        }
+        if (!phoneNow && scroller instanceof HTMLElement) {
+          const grid = node.getBoundingClientRect();
+          const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
+          const headBottom = head instanceof HTMLElement ? head.getBoundingClientRect().bottom : grid.top;
+          const need = grid.bottom + 20 + CARD_ESTIMATE + chrome.bottom - window.innerHeight;
+          const room = headBottom - chrome.top - 8;
+          const delta = Math.min(Math.max(0, need), Math.max(0, room));
+          if (delta > 2) scroller.scrollBy({ top: delta, behavior: "auto" });
         }
         scrolled = true;
+        previous = null;
+        return;
       }
       const phone = window.innerWidth < 700;
       const box =
@@ -400,14 +481,24 @@ export default function TourCard({
   ];
   const cardSize = { width: TOUR_CARD_WIDTH, height: cardHeight || CARD_ESTIMATE };
   let spot: CardSpot | null = null;
+  let phoneMoodRing: TargetBox | null = null;
   if (phase === "step" && step?.id === "moods" && phone) {
-    const height = cardSize.height;
-    spot = {
-      top: Math.max(chrome.top, viewport.height - chrome.bottom - height),
-      left: 16,
-      width: Math.min(TOUR_CARD_WIDTH, viewport.width - 32),
-    };
-  } else if (holdFlame && chrome.flame) {
+    const laid = layoutPhoneMoods(cardSize.height, chrome.top, chrome.bottom, viewport.height);
+    if (laid) {
+      spot = laid.spot;
+      phoneMoodRing = laid.ring;
+    } else {
+      const height = cardSize.height;
+      spot = {
+        top: Math.max(chrome.top, viewport.height - chrome.bottom - height),
+        left: 16,
+        width: Math.min(TOUR_CARD_WIDTH, viewport.width - 32),
+      };
+    }
+  } else if (phase === "step" && step?.id === "calendar" && !phone) {
+    spot = layoutDayPanelCard(cardSize.height, chrome.bottom, viewport) ?? null;
+  }
+  if (!spot && holdFlame && chrome.flame) {
     const height = cardSize.height;
     const width = Math.min(TOUR_CARD_WIDTH, Math.max(200, viewport.width - 32));
     spot = {
@@ -418,7 +509,7 @@ export default function TourCard({
       left: Math.max(16, (viewport.width - width) / 2),
       width,
     };
-  } else {
+  } else if (!spot) {
     spot = placeTourCard({
       viewport: viewport.width > 0 ? viewport : { width: 390, height: 844 },
       insets: { top: chrome.top, bottom: chrome.bottom },
@@ -444,23 +535,24 @@ export default function TourCard({
   const bodyId = "tour-card-body";
   const progressId = "tour-card-progress";
 
-  const ring = target
+  const ringSource = phoneMoodRing ?? target;
+  const ring = ringSource
     ? {
-        left: target.x - RING_PAD,
-        top: target.y - RING_PAD,
-        width: target.width + RING_PAD * 2,
-        height: target.height + RING_PAD * 2,
-        radius: radiusWithPad(target.radius, RING_PAD),
+        left: ringSource.x - RING_PAD,
+        top: ringSource.y - RING_PAD,
+        width: ringSource.width + RING_PAD * 2,
+        height: ringSource.height + RING_PAD * 2,
+        radius: radiusWithPad(ringSource.radius, RING_PAD),
       }
     : null;
 
   const holes: Box[] = [];
-  if (target) {
+  if (ringSource) {
     holes.push({
-      x: target.x - 6,
-      y: target.y - 6,
-      width: target.width + 12,
-      height: target.height + 12,
+      x: ringSource.x - 6,
+      y: ringSource.y - 6,
+      width: ringSource.width + 12,
+      height: ringSource.height + 12,
     });
   }
   if (chrome.nav) holes.push(chrome.nav);
