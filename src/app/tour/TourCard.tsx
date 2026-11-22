@@ -452,8 +452,9 @@ export default function TourCard({
           const grid = node.getBoundingClientRect();
           const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
           const headBottom = head instanceof HTMLElement ? head.getBoundingClientRect().bottom : grid.top;
-          const need = grid.bottom + RING_PAD + RING_GAP + 240 + chrome.bottom - window.innerHeight;
-          const room = Math.max(0, headBottom - chrome.top - 12);
+          const clipTop = Math.max(chrome.top, scroller.getBoundingClientRect().top);
+          const need = grid.bottom + RING_PAD + RING_GAP + 220 + chrome.bottom - window.innerHeight;
+          const room = Math.max(0, headBottom - clipTop - 16);
           const delta = Math.min(Math.max(0, need), room);
           if (delta > 2) scroller.scrollBy({ top: delta, behavior: "auto" });
         }
