@@ -250,10 +250,10 @@ function nestedMoodDelta(
 }
 
 /**
- * Desktop Moods, in order: heading plus the whole grid, heading scrolled
- * away plus the whole grid, the card in the empty end of the last row, or
- * the trailing rows that include Your own. `delta` is how far the panel
- * still needs to scroll for that choice.
+ * Desktop Moods. The first row stays fully on screen and inside the ring.
+ * Prefer the whole grid with the card in the corner. If that cannot fit,
+ * keep a prefix of rows that starts at the first row and leave later rows
+ * out. `delta` is how far the panel still needs to scroll.
  */
 function planWideMoods(
   grid: HTMLElement,
@@ -324,20 +324,21 @@ function planWideMoods(
   if (first.top - belowLift >= minTop - 1) {
     return { rows, delta: Math.round(belowLift), gap, clipTop: minTop, fit: "b" };
   }
-  let start = rows.length - 1;
-  for (let i = rows.length - 1; i >= 0; i -= 1) {
-    const span = last.bottom - rows[i].top;
+  // Later rows drop off. The first row never does.
+  let count = 1;
+  const room = first.top - minTop;
+  for (let i = 0; i < rows.length; i += 1) {
+    const span = rows[i].bottom - first.top;
     if (span > maxBottom - minTop + 0.5) break;
-    const hide = i > 0 ? rows[i - 1].bottom - clipTop + 1 : 0;
-    const room = rows[i].top - minTop;
-    const need = Math.max(0, last.bottom - maxBottom, hide);
-    if (need <= room + 0.5) start = i;
-    else break;
+    const need = Math.max(0, rows[i].bottom - maxBottom);
+    if (room >= 0 && need > room + 0.5) break;
+    count = i + 1;
   }
-  const hide = start > 0 ? rows[start - 1].bottom - clipTop + 1 : 0;
-  const room = rows[start].top - minTop;
-  const need = Math.max(0, last.bottom - maxBottom, hide);
-  return { rows: rows.slice(start), delta: Math.max(0, Math.min(room, need)), gap, clipTop: minTop, fit: "d" };
+  const shownLast = rows[count - 1];
+  const need = Math.max(0, shownLast.bottom - maxBottom);
+  // A negative room means the first row is already above the header. Scroll back.
+  const delta = room < 0 ? room : Math.min(room, need);
+  return { rows: rows.slice(0, count), delta: Math.round(delta), gap, clipTop: minTop, fit: "d" };
 }
 
 function moodLiftWrap(grid: HTMLElement): HTMLElement | null {
@@ -1227,7 +1228,7 @@ export default function TourCard({
           liveMoodBox.height > 40
             ? Math.ceil(liveMoodBox.height)
             : 0;
-        if (!phoneNow && scroller instanceof HTMLElement && moodsSettled.current !== String(index) && moodScrolls < 12) {
+        if (!phoneNow && scroller instanceof HTMLElement && moodsSettled.current !== String(index) && moodScrolls < 20) {
           const panel = node.closest(".app-workspace-moods");
           const wrap = moodLiftWrap(node);
           if (moodScrolls === 0) {
@@ -1253,6 +1254,18 @@ export default function TourCard({
           moodPlannedH = cardH;
           const plan = planWideMoods(node, cardH, window.innerHeight);
           if (plan) document.documentElement.dataset.moodFit = plan.fit;
+          const firstRow = moodRows(node)[0];
+          const scrollerTop = scroller.getBoundingClientRect().top;
+          const headerEl = document.querySelector(".app-header");
+          const headerEdge = headerEl instanceof HTMLElement ? headerEl.getBoundingClientRect().bottom : 0;
+          const rowLimit = Math.max(scrollerTop, headerEdge);
+          if (firstRow && firstRow.top < rowLimit - 1 && moodScrolls < 16) {
+            scroller.scrollTop = Math.max(0, Math.round(scroller.scrollTop - (rowLimit - firstRow.top + 2)));
+            moodLift = -1;
+            moodScrolls += 1;
+            previous = null;
+            return;
+          }
           // Wait until the same lift comes back twice, so a tile that is still
           // animating in cannot spend the heading's padding.
           if (plan && moodWaits < 8 && (moodLift < 0 || Math.abs(plan.delta - moodLift) > 1)) {
@@ -1262,28 +1275,7 @@ export default function TourCard({
             return;
           }
           moodWaits = 0;
-          if (plan && plan.fit === "d" && moodScrolls < 12) {
-            const scrollerTop = scroller.getBoundingClientRect().top;
-            const peek = moodRows(node).find((row) => row.top < scrollerTop - 1 && row.bottom > scrollerTop + 2);
-            if (peek) {
-              const extra = peek.bottom - scrollerTop + 2;
-              const child = scroller.firstElementChild;
-              if (child instanceof HTMLElement) child.style.minHeight = "0px";
-              const childH = child instanceof HTMLElement ? child.getBoundingClientRect().height : 0;
-              const unused = Math.max(0, scroller.clientHeight - childH);
-              const overflow = Math.max(0, scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop);
-              if (overflow + 0.5 < extra) {
-                scroller.style.paddingBottom = `${Math.ceil((Number.parseFloat(scroller.style.paddingBottom) || 0) + extra - overflow + 2)}px`;
-                void scroller.offsetHeight;
-              }
-              scroller.scrollTop = Math.max(0, Math.round(scroller.scrollTop + extra));
-              moodLift = -1;
-              moodScrolls += 1;
-              previous = null;
-              return;
-            }
-          }
-          if (plan && Math.abs(plan.delta) > 0.5 && moodScrolls < 12) {
+          if (plan && Math.abs(plan.delta) > 0.5 && moodScrolls < 20) {
             const child = scroller.firstElementChild;
             if (plan.delta > 0 && child instanceof HTMLElement && child.style.minHeight !== "0px") {
               child.style.minHeight = "0px";
