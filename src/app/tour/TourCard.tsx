@@ -394,7 +394,7 @@ export default function TourCard({
     }
   }
   const obstacles = [
-    ...keepBoxes(visibleQuery(step?.target ?? "")),
+    ...keepBoxes(step ? visibleQuery(step.target) : null),
     ...(chrome.flame ? [chrome.flame] : []),
     ...(chrome.nav ? [chrome.nav] : []),
   ];

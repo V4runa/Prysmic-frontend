@@ -8,7 +8,7 @@ import type { Box } from "./tourPlace";
 export type TargetBox = Box & { radius: string };
 
 export function visibleQuery(selector: string): HTMLElement | null {
-  if (typeof document === "undefined") return null;
+  if (typeof document === "undefined" || !selector) return null;
   const nodes = document.querySelectorAll<HTMLElement>(selector);
   for (const node of nodes) {
     const style = getComputedStyle(node);
