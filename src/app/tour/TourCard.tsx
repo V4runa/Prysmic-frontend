@@ -583,6 +583,24 @@ export default function TourCard({
     }
     const covered = rect.top >= cardRect.top - 1 && rect.bottom <= cardRect.bottom + 1;
     if (covered) return;
+    const nav = document.querySelector(".app-bottom-nav");
+    const sheet = nav instanceof HTMLElement && getComputedStyle(nav).display !== "none";
+    if (sheet) {
+      const above = cardRect.top - 12 - rect.height;
+      const tabs = document.querySelector("[role='tablist'][aria-label='Notes']");
+      const floor = tabs instanceof HTMLElement ? tabs.getBoundingClientRect().bottom + 8 : chrome.top;
+      if (above >= floor) {
+        line.style.transform = `translateY(${above - rect.top}px)`;
+        setNotesCover((current) => (current === undefined ? current : undefined));
+        return () => {
+          line.style.transform = "";
+        };
+      }
+      line.style.visibility = "hidden";
+      return () => {
+        line.style.visibility = "";
+      };
+    }
     const shift = cardRect.bottom + 16 - rect.top;
     const limit = window.innerHeight - chrome.bottom;
     if (rect.top + shift + rect.height <= limit - 4) {
@@ -749,11 +767,14 @@ export default function TourCard({
       const phone = window.innerWidth < 700;
       const cell = step.id === "calendar" ? node.closest("[data-tour-day]") : null;
       const measured = cell instanceof HTMLElement ? cell : node;
-      if (sheetNow && step.id !== "moods" && !scrolled) {
+      if (sheetNow && step.id !== "moods") {
         const bar = readChrome();
         const cardNode = cardRef.current?.querySelector("[data-tour-measure]");
         const cardBox = cardNode instanceof HTMLElement ? cardNode.getBoundingClientRect().height : 0;
-        const cardPad = cardRef.current ? Number.parseFloat(getComputedStyle(cardRef.current).paddingTop) + Number.parseFloat(getComputedStyle(cardRef.current).paddingBottom) : 28;
+        const cardPad = cardRef.current
+          ? Number.parseFloat(getComputedStyle(cardRef.current).paddingTop) +
+            Number.parseFloat(getComputedStyle(cardRef.current).paddingBottom)
+          : 28;
         const cardH = cardBox > 40 ? Math.ceil(cardBox + (Number.isFinite(cardPad) ? cardPad : 28)) : CARD_ESTIMATE;
         const sheetTop = window.innerHeight - bar.bottom - cardH;
         const rect = measured.getBoundingClientRect();
@@ -761,11 +782,10 @@ export default function TourCard({
         if (rect.bottom > sheetTop - 8) delta = rect.bottom - (sheetTop - 8);
         if (rect.top + delta < bar.top) delta = bar.top - rect.top;
         const scroller = measured.closest(".app-scroll");
-        if (Math.abs(delta) > 2 && scroller instanceof HTMLElement) {
+        if (Math.abs(delta) > 2 && scroller instanceof HTMLElement && stableCount < 6) {
           scroller.scrollBy({ top: delta, behavior: "auto" });
-          scrolled = true;
           previous = null;
-          stableCount = 0;
+          stableCount += 1;
           return;
         }
       }

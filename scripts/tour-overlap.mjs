@@ -272,12 +272,18 @@ export function collectOverlaps() {
       if (rect.width > window.innerWidth * 0.9 && rect.height > window.innerHeight * 0.7) continue;
       const item = boxOf(rect);
       if (misses(ringBox, item)) continue;
-      const contains =
+      const containsRing =
+        item.x <= ringBox.x + 2 &&
+        item.y <= ringBox.y + 2 &&
+        item.x + item.width >= ringBox.x + ringBox.width - 2 &&
+        item.y + item.height >= ringBox.y + ringBox.height - 2;
+      if (containsRing) continue;
+      const ringContains =
         ringBox.x <= item.x + 2 &&
         ringBox.y <= item.y + 2 &&
         ringBox.x + ringBox.width >= item.x + item.width - 2 &&
         ringBox.y + ringBox.height >= item.y + item.height - 2;
-      if (contains) continue;
+      if (ringContains) continue;
       const label = (el.getAttribute("aria-label") || el.textContent || el.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
       hits.push({
         cover: "ring",
