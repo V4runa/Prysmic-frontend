@@ -847,7 +847,6 @@ export default function TourCard({
   const [holdFlame, setHoldFlame] = useState(false);
   const [moodCompact, setMoodCompact] = useState(false);
   const [stage, setStage] = useState<"out" | "measure" | "show">("measure");
-  const [leaving, setLeaving] = useState(false);
   const stageKey = useRef("");
   const stageIdentity = useRef("");
   const shownSig = useRef("");
@@ -1574,7 +1573,6 @@ export default function TourCard({
   useEffect(() => {
     if (stage === "show") {
       navLock.current = false;
-      setLeaving(false);
     }
   }, [stage, measureKey]);
 
@@ -1585,7 +1583,6 @@ export default function TourCard({
         event.stopPropagation();
         if (navLock.current || stage !== "show") return;
         navLock.current = true;
-        setLeaving(true);
         setStage("out");
         if (phase === "close") onDone();
         else onSkip();
@@ -2210,7 +2207,6 @@ export default function TourCard({
       : phase === "close"
         ? "close"
         : "step";
-  const lookNested = showFrozenLook && frozen.current ? frozen.current.nested : moodNested;
   if (stage === "show" && showLive && spot) {
     const sig = `${stepIdentity}|${Math.round(spot.top)}|${Math.round(spot.left)}|${Math.round(spot.width)}`;
     if (!shownSig.current.startsWith(`${stepIdentity}|`)) {
@@ -2230,10 +2226,10 @@ export default function TourCard({
         body: shownBody,
         progress: shownProgress,
         kind: shownKind,
-        nested: moodNested,
       };
     }
   }
+  const lookNested = (stage === "show" || showFrozenLook) && frozen.current ? frozen.current.nested : moodNested;
   const placedSpot = (stage === "show" || showFrozenLook) && frozen.current ? frozen.current.spot : spot;
   const showFrozenCard = stage === "out" || stage === "measure" || (stage === "show" && showLive && spot != null);
   const tourOpen = stage === "show";
@@ -2243,11 +2239,9 @@ export default function TourCard({
     event.stopPropagation();
     if (navLock.current || stage !== "show") return;
     navLock.current = true;
-    setLeaving(true);
     setStage("out");
     action();
   };
-  const pending = leaving || stage !== "show";
   const dimAlready = dimHeld.current;
   if (stage === "show") dimHeld.current = true;
   // The first card fades in with the dim. After that the dim stays put
@@ -2383,28 +2377,28 @@ export default function TourCard({
           ) : null}
           <div data-tour-actions="" className={`flex shrink-0 flex-nowrap items-center gap-2 ${moodCompact && viewport.width < 640 && !moodNested ? "mt-2" : moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
             {shownKind !== "close" ? (
-              <button type="button" className={btnSecondary} disabled={!tourOpen} onPointerDown={guarded(onSkip)}>
+              <button type="button" className={`${btnSecondary} transition-none`} style={{ opacity: 1 }} disabled={!tourOpen} onPointerDown={guarded(onSkip)}>
                 {TOUR_CONTROLS.skip}
               </button>
             ) : null}
             <div className="ml-auto flex flex-nowrap items-center justify-end gap-2">
               {shownKind === "step" || shownKind === "close" ? (
-                <button type="button" className={btnSecondary} disabled={!tourOpen} onPointerDown={guarded(onBack)} aria-busy={pending || undefined}>
-                  {pending ? "…" : TOUR_CONTROLS.back}
+                <button type="button" className={`${btnSecondary} transition-none`} style={{ opacity: 1 }} disabled={!tourOpen} onPointerDown={guarded(onBack)}>
+                  {TOUR_CONTROLS.back}
                 </button>
               ) : null}
               {shownKind === "welcome" ? (
-                <button type="button" className={btnPrimary} disabled={!tourOpen} onPointerDown={guarded(onStart)}>
-                  {pending ? "…" : TOUR_WELCOME.start}
+                <button type="button" className={`${btnPrimary} transition-none`} style={{ opacity: 1 }} disabled={!tourOpen} onPointerDown={guarded(onStart)}>
+                  {TOUR_WELCOME.start}
                 </button>
               ) : null}
               {shownKind === "step" ? (
-                <button type="button" className={btnPrimary} disabled={!tourOpen} onPointerDown={guarded(onNext)} aria-busy={pending || undefined}>
-                  {pending ? "…" : TOUR_CONTROLS.next}
+                <button type="button" className={`${btnPrimary} transition-none`} style={{ opacity: 1 }} disabled={!tourOpen} onPointerDown={guarded(onNext)}>
+                  {TOUR_CONTROLS.next}
                 </button>
               ) : null}
               {shownKind === "close" ? (
-                <button type="button" className={btnPrimary} disabled={!tourOpen} onPointerDown={guarded(onDone)}>
+                <button type="button" className={`${btnPrimary} transition-none`} style={{ opacity: 1 }} disabled={!tourOpen} onPointerDown={guarded(onDone)}>
                   {TOUR_CLOSE.done}
                 </button>
               ) : null}
