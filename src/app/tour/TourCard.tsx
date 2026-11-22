@@ -772,6 +772,7 @@ export default function TourCard({
     radius: string;
     shadow: string;
   } | null>(null);
+  const holeSnap = useRef<Box[]>([]);
   const liveSpot = useRef<CardSpot | null>(null);
   const liveReady = useRef(false);
 
@@ -2102,9 +2103,13 @@ export default function TourCard({
           shadow: ringShadow,
         }
       : null;
+    holeSnap.current = drawRing ? holes.map((hole) => ({ ...hole })) : [];
   }
   const ringOpacity = stage === "show" && drawRing ? 1 : 0;
   const shownRing = stage === "out" ? ringSnap.current : drawRing;
+  // The spotlight is the same fade as the ring. A mask ignores partial
+  // opacity, so the hole is punched with a blend that can actually fade.
+  const punchHoles = stage === "out" ? holeSnap.current : stage === "measure" ? holes : [];
 
   const shieldBottom = chrome.nav ? chrome.nav.height : 0;
 
@@ -2112,32 +2117,31 @@ export default function TourCard({
     <div className="fixed inset-0 z-[80] pointer-events-none">
       <div className="fixed left-0 right-0 top-0 z-[80]" style={{ bottom: shieldBottom, pointerEvents: tourOpen ? "auto" : "none" }} />
       {(showFrozenCard || dimAlready) ? (
-        <svg
+        <div
           data-tour-dim=""
-          className="pointer-events-none fixed left-0 right-0 top-0 h-auto w-full"
+          className="pointer-events-none fixed left-0 right-0 top-0"
           aria-hidden="true"
-          style={{ bottom: shieldBottom, opacity: dimOpacity, transition: dimTransition }}
+          style={{ bottom: shieldBottom, opacity: dimOpacity, transition: dimTransition, isolation: "isolate" }}
         >
-          <defs>
-            <mask id="prysmic-tour-dim">
-              <rect width="100%" height="100%" fill="white" />
-              {holes.map((hole, i) => (
-                <rect
-                  key={i}
-                  x={hole.x}
-                  y={hole.y}
-                  width={hole.width}
-                  height={hole.height}
-                  rx={18}
-                  fill="black"
-                  opacity={ringOpacity}
-                  style={{ transition: fade }}
-                />
-              ))}
-            </mask>
-          </defs>
-          <rect width="100%" height="100%" fill="rgba(6,7,10,0.55)" mask="url(#prysmic-tour-dim)" />
-        </svg>
+          <div className="absolute inset-0" style={{ background: "rgba(6,7,10,0.55)" }} />
+          {(stage === "show" && drawRing ? holes : punchHoles).map((hole, i) => (
+            <div
+              key={`${Math.round(hole.x)}:${Math.round(hole.y)}:${i}`}
+              className="tour-dim-hole"
+              style={{
+                position: "absolute",
+                left: hole.x,
+                top: hole.y,
+                width: hole.width,
+                height: hole.height,
+                borderRadius: 18,
+                background: "#000",
+                opacity: ringOpacity,
+                transition: fade,
+              }}
+            />
+          ))}
+        </div>
       ) : null}
       {shownRing ? (
         <div
@@ -2242,6 +2246,7 @@ export default function TourCard({
         </div>
       ) : null}
       <style>{`@keyframes prysmic-tour-in { from { opacity: 0 } to { opacity: 1 } }
+        .tour-dim-hole { mix-blend-mode: destination-out; }
         html:has([data-tour-card="calendar"]) [data-tour-day],
         html:has([data-tour-card="calendar"]) [data-tour="calendar-today"] {
           box-shadow: none;
