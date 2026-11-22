@@ -149,8 +149,26 @@ function layoutPhoneMoods(
   };
 }
 
+/** Empty cells to the right of the last mood row, when a 5-column grid is not full. */
+function moodRowSlot(grid: HTMLElement, cardWidth: number, cardHeight: number, viewportHeight: number): CardSpot | null {
+  const buttons = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
+  const rows = moodRows(grid);
+  const last = rows[rows.length - 1];
+  if (!last || buttons.length === 0) return null;
+  const lastTiles = buttons.filter((button) => Math.abs(button.getBoundingClientRect().top - last.top) < 18);
+  if (lastTiles.length === 0) return null;
+  const right = Math.max(...lastTiles.map((button) => button.getBoundingClientRect().right));
+  const columnGap = Number.parseFloat(getComputedStyle(grid).columnGap);
+  const slotLeft = right + (Number.isFinite(columnGap) ? columnGap : 16);
+  if (slotLeft + cardWidth > window.innerWidth - 16) return null;
+  const rowHeight = last.bottom - last.top;
+  const top = cardHeight < rowHeight ? last.top + (rowHeight - cardHeight) / 2 : last.top;
+  if (top + cardHeight > viewportHeight - 16) return null;
+  return { top, left: slotLeft, width: cardWidth };
+}
+
 function layoutWideMoods(
-  _cardHeight: number,
+  cardHeight: number,
   _topInset: number,
   _bottomInset: number,
   viewport: { width: number; height: number }
@@ -159,21 +177,28 @@ function layoutWideMoods(
   if (!grid) return null;
   const rect = grid.getBoundingClientRect();
   const width = Math.min(TOUR_CARD_WIDTH, viewport.width - 32);
-  const cardTop = rect.bottom + RING_PAD + RING_GAP;
+  const ring: TargetBox = {
+    x: rect.x,
+    y: rect.y,
+    width: rect.width,
+    height: rect.height,
+    radius: getComputedStyle(grid).borderRadius || "24px",
+  };
+  const belowTop = rect.bottom + RING_PAD + RING_GAP;
+  if (belowTop + cardHeight <= viewport.height - 16) {
+    const left = Math.min(
+      Math.max(16, rect.x + rect.width / 2 - width / 2),
+      Math.max(16, viewport.width - 16 - width)
+    );
+    return { spot: { top: belowTop, left, width }, ring };
+  }
+  const slot = moodRowSlot(grid, width, cardHeight, viewport.height);
+  if (slot) return { spot: slot, ring };
   const left = Math.min(
     Math.max(16, rect.x + rect.width / 2 - width / 2),
     Math.max(16, viewport.width - 16 - width)
   );
-  return {
-    spot: { top: cardTop, left, width },
-    ring: {
-      x: rect.x,
-      y: rect.y,
-      width: rect.width,
-      height: rect.height,
-      radius: getComputedStyle(grid).borderRadius || "24px",
-    },
-  };
+  return { spot: { top: belowTop, left, width }, ring };
 }
 
 function layoutLoggedMood(
@@ -447,16 +472,25 @@ export default function TourCard({
           scroller.scrollTo({ top: 0, behavior: "auto" });
         }
         if (!phoneNow && scroller instanceof HTMLElement) {
-          scroller.style.paddingBottom = "280px";
           if (scroller.scrollTop > 1) scroller.scrollTo({ top: 0, behavior: "auto" });
           const grid = node.getBoundingClientRect();
-          const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
-          const headBottom = head instanceof HTMLElement ? head.getBoundingClientRect().bottom : grid.top;
-          const clipTop = Math.max(chrome.top, scroller.getBoundingClientRect().top);
-          const need = grid.bottom + RING_PAD + RING_GAP + 220 + chrome.bottom - window.innerHeight;
-          const room = Math.max(0, headBottom - clipTop - 16);
-          const delta = Math.min(Math.max(0, need), room);
-          if (delta > 2) scroller.scrollBy({ top: delta, behavior: "auto" });
+          const width = Math.min(TOUR_CARD_WIDTH, window.innerWidth - 32);
+          const belowTop = grid.bottom + RING_PAD + RING_GAP;
+          const fitsBelow = belowTop + 200 <= window.innerHeight - 16;
+          const slot = moodRowSlot(node, width, 200, window.innerHeight);
+          if (!fitsBelow && !slot) {
+            scroller.style.paddingBottom = "280px";
+            const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
+            const headTop = head instanceof HTMLElement ? head.getBoundingClientRect().top : grid.top;
+            const clipTop = Math.max(chrome.top, scroller.getBoundingClientRect().top);
+            const fresh = node.getBoundingClientRect();
+            const need = fresh.bottom + RING_PAD + RING_GAP + 200 + 16 - window.innerHeight;
+            const room = Math.max(0, headTop - clipTop);
+            const delta = Math.min(Math.max(0, need), room);
+            if (delta > 2) scroller.scrollBy({ top: delta, behavior: "auto" });
+          } else {
+            scroller.style.paddingBottom = "";
+          }
         }
         scrolled = true;
         previous = null;
@@ -788,7 +822,8 @@ export default function TourCard({
       ) : null}
       <style>{`@keyframes prysmic-tour-in { from { opacity: 0 } to { opacity: 1 } }
         html:has([data-tour-card="calendar"]) [data-tour-day] { box-shadow: none; }
-        html:has([data-tour-card="welcome"]) [data-tour-quiet] { visibility: hidden; }`}</style>
+        html:has([data-tour-card="welcome"]) [data-tour-quiet],
+        html:has([data-tour-card="close"]) [data-tour-quiet] { visibility: hidden; }`}</style>
     </div>
   );
 }
