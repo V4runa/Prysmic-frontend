@@ -533,6 +533,27 @@ export default function TourCard({
     return () => window.removeEventListener("resize", read);
   }, []);
 
+  useLayoutEffect(() => {
+    const buttons = [...document.querySelectorAll("[data-tour='mood-grid'] button")];
+    const restore = () => {
+      for (const button of buttons) {
+        if (button instanceof HTMLElement) button.style.visibility = "";
+      }
+    };
+    restore();
+    const card = cardRef.current;
+    if (!(card instanceof HTMLElement) || phase !== "step" || step?.id !== "moods") return restore;
+    const cardRect = card.getBoundingClientRect();
+    for (const button of buttons) {
+      if (!(button instanceof HTMLElement)) continue;
+      const rect = button.getBoundingClientRect();
+      const overlaps = rect.bottom > cardRect.top + 2 && rect.top < cardRect.bottom - 2;
+      const contains = cardRect.top <= rect.top + 2 && cardRect.bottom >= rect.bottom - 2;
+      if (overlaps && !contains) button.style.visibility = "hidden";
+    }
+    return restore;
+  }, [phase, step?.id, cardHeight, placeTick, viewport.width, viewport.height]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => setPlaceTick((tick) => tick + 1), 450);
     return () => window.clearTimeout(timer);
