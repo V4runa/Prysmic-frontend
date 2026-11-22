@@ -35,6 +35,7 @@ const RING_PAD = 8;
 const RING_GAP = 12;
 const CALENDAR_RING_PAD = 4;
 const NOTES_RING_PAD = 2;
+const CONTRACTS_RING_PAD = 0;
 
 function focusables(root: ParentNode | null): HTMLElement[] {
   if (!root) return [];
@@ -387,6 +388,7 @@ export default function TourCard({
       : { width: window.innerWidth, height: window.innerHeight }
   );
   const [cardHeight, setCardHeight] = useState(CARD_ESTIMATE);
+  const [notesCover, setNotesCover] = useState<number | undefined>(undefined);
   const [chrome, setChrome] = useState<Chrome>({ top: 72, bottom: 16, nav: null, flame: null });
   const measureKey = `${phase}:${index}:${pathname}`;
   const [measured, setMeasured] = useState<{ key: string; box: TargetBox | null }>({
@@ -446,6 +448,40 @@ export default function TourCard({
     observer.observe(node);
     return () => observer.disconnect();
   }, [stepKey, cardReady]);
+
+  useLayoutEffect(() => {
+    const line = document.querySelector("main [data-tour-quiet]");
+    const card = cardRef.current;
+    if (line instanceof HTMLElement) line.style.transform = "";
+    if (!(line instanceof HTMLElement) || !(card instanceof HTMLElement) || phase !== "step" || step?.id !== "notes") {
+      setNotesCover((current) => (current === undefined ? current : undefined));
+      return;
+    }
+    const rect = line.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    if (rect.height < 2 || cardRect.height < 2) return;
+    const overlaps = rect.bottom > cardRect.top + 2 && rect.top < cardRect.bottom - 2;
+    if (!overlaps) {
+      setNotesCover((current) => (current === undefined ? current : undefined));
+      return;
+    }
+    const covered = rect.top >= cardRect.top - 1 && rect.bottom <= cardRect.bottom + 1;
+    if (covered) return;
+    const shift = cardRect.bottom + 16 - rect.top;
+    const limit = window.innerHeight - chrome.bottom;
+    if (rect.top + shift + rect.height <= limit - 4) {
+      line.style.transform = `translateY(${shift}px)`;
+      setNotesCover((current) => (current === undefined ? current : undefined));
+      return () => {
+        line.style.transform = "";
+      };
+    }
+    const need = Math.ceil(rect.bottom + 12 - cardRect.top);
+    if (cardRect.top + need <= limit) setNotesCover((current) => (current === need ? current : need));
+    return () => {
+      line.style.transform = "";
+    };
+  }, [phase, step?.id, cardHeight, chrome.bottom, viewport.width, viewport.height, notesCover]);
 
   useEffect(() => {
     if (phase !== "welcome") return;
@@ -817,7 +853,14 @@ export default function TourCard({
 
   const ringSource = phoneMoodRing ?? target;
   const targetNode = step ? visibleQuery(step.target) : null;
-  let ringPad = step?.id === "calendar" ? CALENDAR_RING_PAD : step?.id === "notes" ? NOTES_RING_PAD : RING_PAD;
+  let ringPad =
+    step?.id === "calendar"
+      ? CALENDAR_RING_PAD
+      : step?.id === "notes"
+        ? NOTES_RING_PAD
+        : step?.id === "contracts"
+          ? CONTRACTS_RING_PAD
+          : RING_PAD;
   if (targetNode && step?.id !== "calendar" && step?.id !== "moods") {
     const scope = targetNode.parentElement;
     while (ringPad > 0 && scope && ringCoversText(targetNode, scope, ringPad)) ringPad -= 2;
@@ -835,7 +878,7 @@ export default function TourCard({
   const ringTop = ringSource ? Math.max(ringSource.y - ringPad, streakLimit) : 0;
   const ringBottom = ringSource ? ringSource.y + ringSource.height + ringBottomPad : 0;
   const nearFlame = streakLimit > 0 && ringSource != null && ringSource.y - streakLimit < 36;
-  const tightRing = step?.id === "calendar" || step?.id === "notes";
+  const tightRing = step?.id === "calendar" || step?.id === "notes" || step?.id === "contracts";
   const ring = ringSource
     ? {
         left: ringSource.x - ringPad,
@@ -879,7 +922,7 @@ export default function TourCard({
         left: spot.left,
         width: spot.width,
         maxHeight: Math.max(0, viewport.height - chrome.bottom - spot.top),
-        minHeight: moodCover,
+        minHeight: moodCover ?? notesCover,
       }
     : undefined;
 
@@ -914,6 +957,7 @@ export default function TourCard({
       {ring ? (
         <div
           aria-hidden="true"
+          data-tour-ring=""
           className="pointer-events-none fixed"
           style={{
             left: ring.left,

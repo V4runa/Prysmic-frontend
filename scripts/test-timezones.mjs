@@ -65,6 +65,7 @@ const notes = spawnSync(
       "src/app/tour/tourMachine.test.ts",
       "src/app/tour/tourSeen.test.ts",
       "src/app/tour/tourPlace.test.ts",
+      "src/app/tour/tourOverlap.test.ts",
       "src/app/tour/tourFlag.test.ts",
     "src/app/lib/missingRecord.test.ts",
     "src/app/lib/installPrompt.test.ts",
