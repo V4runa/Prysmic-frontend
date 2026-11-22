@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FormButton, TextField } from "./forms";
 import { ApiError, apiFetch } from "../hooks/useApi";
@@ -95,7 +95,7 @@ export function syncVerificationProfile(input: {
   refreshPrompt();
 }
 
-export default function EmailVerificationPrompt() {
+export default function EmailVerificationPrompt({ defer = false }: { defer?: boolean }) {
   const prompt = useSyncExternalStore(subscribe, readSnapshot, () => HIDDEN);
   const bannerRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
@@ -128,6 +128,26 @@ export default function EmailVerificationPrompt() {
     emailVerified: prompt.verified,
     dismissed: prompt.dismissed,
   });
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [fullHeight, setFullHeight] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  useLayoutEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    setFullHeight(el.scrollHeight);
+  }, [show, notice, prompt.email]);
+  useEffect(() => {
+    if (!show) {
+      setRevealed(false);
+      return;
+    }
+    if (!defer) {
+      setRevealed(true);
+      return;
+    }
+    const timer = window.setTimeout(() => setRevealed(true), 180);
+    return () => window.clearTimeout(timer);
+  }, [show, defer]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -193,12 +213,17 @@ export default function EmailVerificationPrompt() {
       {show && (
         <motion.div
           ref={bannerRef}
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.25 }}
-          className="no-print px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3"
+          initial={false}
+          animate={{ opacity: revealed ? 1 : 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          style={{
+            overflow: "hidden",
+            height: revealed && fullHeight > 0 ? fullHeight : 0,
+            transition: "height 250ms ease",
+          }}
+          className="no-print"
         >
+          <div ref={innerRef} className="px-3 pt-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20">
           <div
             role="region"
             aria-label="Email confirmation"
@@ -241,6 +266,7 @@ export default function EmailVerificationPrompt() {
                 Not now
               </button>
             </div>
+          </div>
           </div>
         </motion.div>
       )}

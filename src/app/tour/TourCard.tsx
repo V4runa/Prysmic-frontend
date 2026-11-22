@@ -1424,15 +1424,20 @@ export default function TourCard({
     return () => document.removeEventListener("focusin", blur);
   }, [phase, step?.id, pathname]);
 
+  const measureKeyRef = useRef(measureKey);
+  measureKeyRef.current = measureKey;
   useEffect(() => {
     if (stage !== "out") return;
+    // The key changes while this fade is running. Restarting the timer
+    // would hold the old card until 180ms after the new page, which is the
+    // long gap between steps.
     const timer = window.setTimeout(() => {
-      stageKey.current = measureKey;
+      stageKey.current = measureKeyRef.current;
       shownSig.current = "";
       setStage("measure");
-    }, reduceMotion ? 0 : 180);
+    }, reduceMotion ? 0 : 160);
     return () => window.clearTimeout(timer);
-  }, [stage, measureKey, reduceMotion]);
+  }, [stage, reduceMotion]);
 
   useEffect(() => {
     if (stage !== "measure") return;
@@ -1448,7 +1453,7 @@ export default function TourCard({
         return;
       }
       if (since === 0) since = now;
-      if (now - since >= 150) {
+      if (now - since >= 80) {
         window.clearInterval(timer);
         setStage("show");
       }
@@ -1468,6 +1473,10 @@ export default function TourCard({
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
+        if (navLock.current || stage !== "show") return;
+        navLock.current = true;
+        setLeaving(true);
+        setStage("out");
         if (phase === "close") onDone();
         else onSkip();
         return;
@@ -1492,7 +1501,7 @@ export default function TourCard({
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, [phase, onSkip, onDone]);
+  }, [phase, stage, onSkip, onDone]);
 
   useEffect(() => {
     const block = (event: Event) => {

@@ -218,7 +218,7 @@ export default function MoodPage() {
 
   return (
     <PageTransition>
-      <div className={outerClass}>
+      <div data-app-route="/moods" className={outerClass}>
         <GlassPanel className={panelClass}>
           <AnimatePresence mode="wait">
             {/* 🌞 Pick Phase */}

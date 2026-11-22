@@ -65,8 +65,11 @@ export function decideTourStart(input: {
 }): TourStartDecision {
   if (input.requested) return { start: true, reason: "request" };
 
+  // A Done or Skip writes this mirror before the server answers. A reload
+  // or a hard navigation in that window must not start the walk again.
+  if (input.localSeen) return { start: false, reason: "seen" };
+
   if (!input.userLoaded) {
-    if (input.localSeen) return { start: false, reason: "seen" };
     if (input.signupFresh) return { start: true, reason: "signup" };
     return { start: false, reason: "wait" };
   }
@@ -261,14 +264,10 @@ export function tourQuietsChrome(input: {
   landing: ChromeQuietMemory;
 }): boolean {
   if (input.phase === "active") return true;
-  if (
-    input.phase === "done" &&
-    input.landing.landingPath != null &&
-    input.pathname === input.landing.landingPath
-  ) {
-    return true;
-  }
+  // Once the walk is done the confirmation banner may enter. The prompt
+  // itself eases its height in, after the card has faded.
+  if (input.phase === "done") return false;
   if (!input.userLoaded && input.phase === "idle") return true;
-  if (input.seenAt === null && input.phase !== "done") return true;
+  if (input.seenAt === null) return true;
   return false;
 }

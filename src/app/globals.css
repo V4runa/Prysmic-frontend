@@ -32,6 +32,26 @@
   scrollbar-width: none; /* Firefox */
 }
 
+/* The highlighted destination follows the page that is actually in the DOM,
+   so it cannot lag a route change by a frame. */
+.app-header a[data-nav-link],
+.app-bottom-nav a[data-nav-link] {
+  color: rgb(203 213 225);
+}
+.app-bottom-nav a[data-nav-link] {
+  color: rgb(148 163 184);
+}
+html:has([data-app-route="/notes"]) a[data-nav-link][href="/notes"],
+html:has([data-app-route="/tasks"]) a[data-nav-link][href="/tasks"],
+html:has([data-app-route="/habits"]) a[data-nav-link][href="/habits"],
+html:has([data-app-route="/calendar"]) a[data-nav-link][href="/calendar"],
+html:has([data-app-route="/moods"]) a[data-nav-link][href="/moods"],
+html:has([data-app-route="/tags"]) a[data-nav-link][href="/tags"],
+html:has([data-app-route="/settings"]) a[data-nav-link][href="/settings"],
+html:has([data-app-route="/account"]) a[data-nav-link][href="/settings"] {
+  color: rgb(103 232 249);
+}
+
 /* --- Design Tokens --- */
 :root {
   --background: linear-gradient(to bottom right, #0b0c0f, #13161a);

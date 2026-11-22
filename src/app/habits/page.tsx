@@ -131,7 +131,7 @@ export default function HabitsPage() {
 
   return (
     <PageTransition>
-      <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
+      <div data-app-route="/habits" className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
       <GlassPanel className="app-workspace flex h-full min-h-0 flex-col gap-4 sm:gap-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div className="min-w-0">

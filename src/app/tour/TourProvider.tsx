@@ -2,6 +2,7 @@
 
 import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../hooks/useApi";
 import { readSessionClaims, useSessionIdentity } from "../hooks/useAuth";
 import { saveTourSeen } from "./tourClient";
@@ -15,6 +16,7 @@ import {
   QUIET_CHROME_MEMORY,
   localSeenRecently,
   readLocalSeen,
+  readLocalSeenAt,
   takeTourReplay,
   readSignupFresh,
   readTourSeenAt,
@@ -24,6 +26,7 @@ import {
   type ChromeQuietMemory,
   type TourSeenValue,
 } from "./tourSeen";
+import { adjacentTourRoutes, prefetchTourRoute } from "./tourPrefetch";
 import { tourRouteFor } from "./tourStops";
 
 export type TourApi = {
@@ -89,6 +92,7 @@ function stripTourParam(router: { replace: (href: string, options?: { scroll?: b
 
 function TourProviderInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const identity = useSessionIdentity();
   const [state, dispatch] = useReducer(tourReducer, initialTourState);
@@ -102,6 +106,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   const appliedRoute = useRef("");
   const closePath = useRef("");
   const pendingPush = useRef(0);
+  const notesHandoff = useRef(false);
   const [landing, setLanding] = useState<ChromeQuietMemory>(QUIET_CHROME_MEMORY);
 
   const onTourQuery = useCallback((event: { rising: boolean }) => {
@@ -115,7 +120,19 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     apiFetch<unknown>("/users")
       .then((body) => {
         if (cancelled) return;
-        setSeenAt(readTourSeenAt(body, userId));
+        const server = readTourSeenAt(body, userId);
+        setSeenAt((current) => {
+          if (typeof server === "string") return server;
+          if (typeof current === "string") return current;
+          try {
+            if (server === null && localSeenRecently(window.localStorage, userId)) {
+              return readLocalSeenAt(window.localStorage, userId);
+            }
+          } catch {
+            // Storage can be blocked. The server value still applies.
+          }
+          return server;
+        });
         setUserLoaded(true);
       })
       .catch(() => {
@@ -180,12 +197,21 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   }, [identity.userId, userLoaded, seenAt, requestSerial, state.phase, pathname, router]);
 
   useEffect(() => {
-    if (state.phase === "idle") return;
-    if (state.phase === "done") {
-      stripTourParam(router, pathname);
-      if (state.returnNotes && pathname !== "/notes") router.push("/notes");
+    if (state.phase === "idle") {
+      notesHandoff.current = false;
       return;
     }
+    if (state.phase === "done") {
+      stripTourParam(router, pathname);
+      // Done asks for Notes once. Later clicks, including Settings, must stay
+      // on the page the person asked for.
+      if (state.returnNotes && !notesHandoff.current) {
+        notesHandoff.current = true;
+        if (pathname !== "/notes") router.push("/notes");
+      }
+      return;
+    }
+    notesHandoff.current = false;
     const route = tourRouteFor(state.phase, state.index);
     const key = `${state.phase}:${state.index}:${route ?? "stay"}`;
     if (appliedRoute.current === key) {
@@ -204,7 +230,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       // Let the old card start fading before the address changes, so the
       // previous step's text is not sitting at full opacity on the new page.
       window.clearTimeout(pendingPush.current);
-      pendingPush.current = window.setTimeout(() => router.push(route), 120);
+      pendingPush.current = window.setTimeout(() => router.push(route), 40);
       return;
     }
     stripTourParam(router, pathname);
@@ -217,7 +243,8 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     const userId = identity.userId ?? readSessionClaims()?.userId ?? null;
     if (!saved.current && userId != null) {
       saved.current = true;
-      void saveTourSeen(userId);
+      const at = saveTourSeen(userId);
+      if (at) setSeenAt(at);
     }
   }, [identity.userId, pathname, router, requestSerial]);
 
@@ -232,6 +259,15 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     }
     markSeen();
   }, [state.persistSeen, markSeen]);
+
+  useEffect(() => {
+    if (state.phase !== "welcome" && state.phase !== "step" && state.phase !== "close") return;
+    const userId = identity.userId ?? readSessionClaims()?.userId ?? null;
+    for (const route of adjacentTourRoutes(state.phase, state.index)) {
+      router.prefetch(route);
+      prefetchTourRoute(queryClient, route, userId);
+    }
+  }, [state.phase, state.index, identity.userId, router, queryClient]);
 
   useEffect(() => {
     if (state.phase !== "done") return;
@@ -286,11 +322,11 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
             onBack={() => dispatch({ type: "back" })}
             onSkip={() => {
               finishTour();
-              dispatch({ type: "skip" });
+              window.setTimeout(() => dispatch({ type: "skip" }), 160);
             }}
             onDone={() => {
               finishTour();
-              dispatch({ type: "done" });
+              window.setTimeout(() => dispatch({ type: "done" }), 160);
             }}
           />
         ) : null}

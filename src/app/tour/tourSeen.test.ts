@@ -75,6 +75,16 @@ test("an explicit null plays, and any timestamp never auto-plays", () => {
       signupFresh: false,
       localSeen: true,
     }),
+    { start: false, reason: "seen" }
+  );
+  assert.deepEqual(
+    decideTourStart({
+      requested: false,
+      userLoaded: true,
+      seenAt: null,
+      signupFresh: false,
+      localSeen: false,
+    }),
     { start: true, reason: "unseen" }
   );
   assert.deepEqual(
@@ -118,7 +128,7 @@ test("a missing field plays only for a brand-new signup", () => {
       signupFresh: true,
       localSeen: true,
     }),
-    { start: false, reason: "existing" }
+    { start: false, reason: "seen" }
   );
 });
 
@@ -221,7 +231,7 @@ test("fresh-account chrome stays quiet until the tour ends and the route changes
   assert.equal(landed.landingPath, "/moods");
   assert.equal(
     tourQuietsChrome({ ...fresh, phase: "done", pathname: "/moods", landing: landed }),
-    true
+    false
   );
   const left = nextChromeQuiet(landed, "done", "/notes");
   assert.equal(left.released, true);

@@ -214,6 +214,7 @@ export default function CalendarPage() {
   return (
     <PageTransition>
       <div
+        data-app-route="/calendar"
         className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4"
       >
         <div className="app-workspace flex h-full min-h-0 gap-4 xl:gap-6">

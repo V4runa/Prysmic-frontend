@@ -920,7 +920,7 @@ export default function SettingsPage() {
 
   return (
     <PageTransition>
-      <div className="w-full app-page-h overflow-y-auto app-scroll px-4 py-6 sm:px-6">
+      <div data-app-route="/settings" className="w-full app-page-h overflow-y-auto app-scroll px-4 py-6 sm:px-6">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-4 pb-8">
           <InstallHint />
           <ProfileSection userId={identity.userId} />
