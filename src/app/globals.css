@@ -460,6 +460,14 @@ select option {
   outline: none;
 }
 
+/* Where focus lands when the tour closes. It is not a control, so the
+   programmatic focus must not draw the keyboard ring. */
+[data-tour-return]:focus,
+[data-tour-return]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 /* Form controls with .focus-band handle their own glow. */
 input.focus-band:focus-visible,
 textarea.focus-band:focus-visible,

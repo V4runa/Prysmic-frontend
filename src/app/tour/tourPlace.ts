@@ -309,6 +309,34 @@ export function containTourCard(
   return { top, left, width };
 }
 
+export type SidePad = { left: number; right: number; top: number; bottom: number };
+
+/**
+ * Keep a ring's stroke at least `clear` px from a control beside the target.
+ * A neighbor above or below does not change the pad.
+ */
+export function ringSidePad(
+  target: { left: number; top: number; right: number; bottom: number },
+  neighbors: { left: number; top: number; right: number; bottom: number }[],
+  pad: number,
+  clear = 8,
+  stroke = 2
+): SidePad {
+  const sides: SidePad = { left: pad, right: pad, top: pad, bottom: pad };
+  for (const rect of neighbors) {
+    const beside = rect.bottom > target.top + 4 && rect.top < target.bottom - 4;
+    if (!beside) continue;
+    if (rect.left >= target.right - 2) {
+      const max = Math.floor(rect.left - target.right - clear - stroke);
+      sides.right = Math.max(0, Math.min(sides.right, max));
+    } else if (rect.right <= target.left + 2) {
+      const max = Math.floor(target.left - rect.right - clear - stroke);
+      sides.left = Math.max(0, Math.min(sides.left, max));
+    }
+  }
+  return sides;
+}
+
 export function cardSpotInside(
   spot: CardSpot,
   cardHeight: number,

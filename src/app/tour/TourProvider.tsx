@@ -216,7 +216,12 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     const heading = document.querySelector("main h1, main h2");
     if (!(heading instanceof HTMLElement)) return;
     if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
-    heading.focus({ preventScroll: true });
+    document.querySelectorAll<HTMLElement>("[data-tour-return]").forEach((node) => {
+      if (node !== heading) node.removeAttribute("data-tour-return");
+    });
+    heading.setAttribute("data-tour-return", "");
+    const focus = heading.focus.bind(heading) as (options?: FocusOptions & { focusVisible?: boolean }) => void;
+    focus({ preventScroll: true, focusVisible: false });
   }, [state.phase]);
 
   const phaseKind = state.phase === "idle" || state.phase === "done" ? state.phase : "active";

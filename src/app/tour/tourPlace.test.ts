@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cardSpotInside, containTourCard, intersects, overlapArea, placeTourCard, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
+import { cardSpotInside, containTourCard, intersects, overlapArea, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
 
 const desktop = { width: 1440, height: 900 };
 const phone = { width: 390, height: 844 };
@@ -177,4 +177,14 @@ test("the card avoids a keep-clear row under the target", () => {
   const placed = asBox(spot, card.height);
   assert.equal(overlapArea(placed, field), 0);
   assert.equal(overlapArea(placed, search), 0);
+});
+
+test("the tasks ring keeps 8px between its stroke and the More button", () => {
+  const field = { left: 80, top: 160, right: 900, bottom: 204 };
+  const more = { left: 912, top: 160, right: 990, bottom: 204 };
+  const sides = ringSidePad(field, [more], 8);
+  assert.equal(sides.right, 2);
+  assert.equal(sides.left, 8);
+  const strokeEdge = field.right + sides.right + 2;
+  assert.ok(more.left - strokeEdge >= 8);
 });

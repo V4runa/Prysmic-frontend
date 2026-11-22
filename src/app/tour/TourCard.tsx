@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { btnPrimary, btnSecondary } from "../components/forms/styles";
-import { containTourCard, placeTourCard, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
+import { containTourCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
 import {
   TOUR_CLOSE,
   TOUR_CONTROLS,
@@ -115,6 +115,87 @@ function moodRows(grid: HTMLElement): { top: number; bottom: number }[] {
   }
   rows.sort((a, b) => a.top - b.top);
   return rows;
+}
+
+/** Scroll the last mood tile up until it can sit fully above the tab bar. */
+function liftMoodTail(bottomLimit: number): boolean {
+  const grid = visibleQuery("[data-tour='mood-grid']");
+  if (!grid) return false;
+  const tiles = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
+  const last = tiles[tiles.length - 1];
+  if (!last) return false;
+  const rect = last.getBoundingClientRect();
+  if (rect.bottom <= bottomLimit - 4) return false;
+  const scroller = grid.closest(".app-scroll");
+  if (!(scroller instanceof HTMLElement)) return false;
+  const delta = Math.ceil(rect.bottom - (bottomLimit - 8));
+  const room = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+  if (room < 4 || delta < 2) return false;
+  scroller.scrollBy({ top: Math.min(delta, room), behavior: "auto" });
+  return true;
+}
+
+/**
+ * A phone mood row is fully under the card or fully clear of it.
+ * `lock` means the card must stop at `height` even when the copy is taller.
+ */
+function sealMoodRows(
+  spot: CardSpot,
+  contentHeight: number,
+  topInset: number,
+  bottomLimit: number
+): { top: number; height: number; lock: boolean } {
+  const grid = visibleQuery("[data-tour='mood-grid']");
+  const rows = grid ? moodRows(grid) : [];
+  let top = Math.max(topInset, spot.top);
+  let bottom = top + contentHeight;
+  let lock = false;
+  for (let pass = 0; pass < 8; pass += 1) {
+    let changed = false;
+    for (const row of rows) {
+      const overlaps = row.bottom > top + 2 && row.top < bottom - 2;
+      const contains = top <= row.top + 2 && bottom >= row.bottom - 2;
+      if (!overlaps || contains) continue;
+      if (row.bottom + 4 <= bottomLimit) {
+        if (bottom < row.bottom + 4) {
+          bottom = row.bottom + 4;
+          changed = true;
+        }
+        continue;
+      }
+      const clear = row.top - RING_GAP;
+      if (bottom > clear) {
+        bottom = clear;
+        lock = true;
+        changed = true;
+      }
+      if (top > row.top - 2 && top < row.bottom - 2) {
+        const above = rows.filter((item) => item.bottom <= row.top - 2);
+        const nextTop = above.length > 0 ? above[above.length - 1].bottom + RING_GAP : topInset;
+        const raised = Math.max(topInset, nextTop);
+        if (Math.abs(top - raised) > 1) {
+          top = raised;
+          changed = true;
+        }
+      }
+    }
+    for (const row of rows) {
+      if (top > row.top + 2 && top < row.bottom - 2 && row.bottom + 4 <= bottomLimit) {
+        top = row.top;
+        bottom = Math.max(bottom, Math.min(bottomLimit, row.bottom + 4));
+        changed = true;
+      }
+    }
+    if (bottom > bottomLimit) {
+      bottom = bottomLimit;
+      lock = true;
+      changed = true;
+    }
+    if (!changed) break;
+  }
+  if (bottom < top + 140) top = Math.max(topInset, bottom - 140);
+  const height = Math.max(140, bottom - top);
+  return { top, height, lock: lock || height > contentHeight + 1 };
 }
 
 function layoutPhoneMoods(
@@ -487,6 +568,7 @@ export default function TourCard({
   onDone,
 }: TourCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const heldSpot = useRef<CardSpot | null>(null);
   const [viewport, setViewport] = useState(() =>
     typeof window === "undefined"
       ? { width: 0, height: 0 }
@@ -533,27 +615,6 @@ export default function TourCard({
     return () => window.removeEventListener("resize", read);
   }, []);
 
-  useLayoutEffect(() => {
-    const buttons = [...document.querySelectorAll("[data-tour='mood-grid'] button")];
-    const restore = () => {
-      for (const button of buttons) {
-        if (button instanceof HTMLElement) button.style.visibility = "";
-      }
-    };
-    restore();
-    const card = cardRef.current;
-    if (!(card instanceof HTMLElement) || phase !== "step" || step?.id !== "moods") return restore;
-    const cardRect = card.getBoundingClientRect();
-    for (const button of buttons) {
-      if (!(button instanceof HTMLElement)) continue;
-      const rect = button.getBoundingClientRect();
-      const overlaps = rect.bottom > cardRect.top + 2 && rect.top < cardRect.bottom - 2;
-      const contains = cardRect.top <= rect.top + 2 && cardRect.bottom >= rect.bottom - 2;
-      if (overlaps && !contains) button.style.visibility = "hidden";
-    }
-    return restore;
-  }, [phase, step?.id, cardHeight, placeTick, viewport.width, viewport.height]);
-
   useEffect(() => {
     const timer = window.setTimeout(() => setPlaceTick((tick) => tick + 1), 450);
     return () => window.clearTimeout(timer);
@@ -565,14 +626,23 @@ export default function TourCard({
     if (!node) return;
     const read = () => {
       const measured = node.querySelector("[data-tour-measure]");
-      const box = measured instanceof HTMLElement ? measured.getBoundingClientRect() : node.getBoundingClientRect();
       const style = getComputedStyle(node);
       const pad =
         Number.parseFloat(style.paddingTop) +
         Number.parseFloat(style.paddingBottom) +
         Number.parseFloat(style.borderTopWidth) +
         Number.parseFloat(style.borderBottomWidth);
-      const next = Math.ceil(box.height + (Number.isFinite(pad) ? pad : 0));
+      const body = node.querySelector("[data-tour-body]");
+      const actions = node.querySelector("[data-tour-actions]");
+      const actionsMargin =
+        actions instanceof HTMLElement ? Number.parseFloat(getComputedStyle(actions).marginTop) : 0;
+      const content =
+        body instanceof HTMLElement && actions instanceof HTMLElement
+          ? body.scrollHeight + actions.offsetHeight + (Number.isFinite(actionsMargin) ? actionsMargin : 0)
+          : measured instanceof HTMLElement
+            ? measured.scrollHeight
+            : node.getBoundingClientRect().height;
+      const next = Math.ceil(content + (Number.isFinite(pad) ? pad : 0));
       setCardHeight((current) => (current === next ? current : next));
     };
     read();
@@ -649,6 +719,7 @@ export default function TourCard({
     if (phase !== "step" || !step) return;
     let scrolled = false;
     let locked = false;
+    let moodLifted = false;
     let previous: TargetBox | null = null;
     let published: TargetBox | null = null;
     let stableCount = 0;
@@ -669,6 +740,14 @@ export default function TourCard({
       if (pageBusy()) {
         previous = null;
         return;
+      }
+      if (step.id === "moods" && window.innerWidth < 700 && !moodLifted) {
+        moodLifted = true;
+        if (liftMoodTail(window.innerHeight - readChrome().bottom)) {
+          previous = null;
+          stableCount = 0;
+          return;
+        }
       }
       const node = visibleQuery(step.target);
       if (step.id === "moods" && !node) {
@@ -809,7 +888,6 @@ export default function TourCard({
   useEffect(() => {
     const node = cardRef.current;
     if (!node) return;
-    if (phase === "step" && !target) return;
     node.focus({ preventScroll: true });
   }, [stepKey, target, phase]);
 
@@ -987,13 +1065,16 @@ export default function TourCard({
       }
     }
   }
-  if (spot && phone && step?.id === "moods" && !loggedMood) {
-    const placed = spot;
+  let moodFrame: { height: number; lock: boolean } | null = null;
+  if (spot && phone && step?.id === "moods" && !loggedMood && viewport.width > 0) {
+    const sealed = sealMoodRows(spot, cardSize.height, chrome.top, viewport.height - chrome.bottom);
+    spot = { ...spot, top: sealed.top };
+    moodFrame = { height: sealed.height, lock: sealed.lock };
     const grid = visibleQuery("[data-tour='mood-grid']");
-    if (grid && placed) {
+    if (grid) {
       const rect = grid.getBoundingClientRect();
-      const above = moodRows(grid).filter((row) => row.bottom <= placed.top + 1);
-      const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, placed.top);
+      const above = moodRows(grid).filter((row) => row.bottom <= sealed.top + 1);
+      const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, sealed.top);
       const height = ringBottom - rect.top;
       if (height >= 24) {
         phoneMoodRing = {
@@ -1005,6 +1086,16 @@ export default function TourCard({
         };
       }
     }
+  }
+  if (spot && (phase !== "step" || target || holdFlame)) heldSpot.current = spot;
+  if (!spot && phase === "step" && heldSpot.current && viewport.width > 0) {
+    spot = containTourCard(
+      heldSpot.current,
+      cardSize.height,
+      viewport,
+      { top: chrome.top, bottom: chrome.bottom },
+      { phone }
+    );
   }
 
   void placeTick;
@@ -1030,6 +1121,30 @@ export default function TourCard({
     while (ringPad > 0 && scope && ringCoversText(targetNode, scope, ringPad)) ringPad -= 2;
   }
   const ringBottomPad = phone && phoneMoodRing ? 0 : ringPad;
+  let ringSides = { left: ringPad, right: ringPad, top: ringPad, bottom: ringBottomPad };
+  if (targetNode && step?.id === "tasks") {
+    const box = targetNode.getBoundingClientRect();
+    const neighbors = [...document.querySelectorAll("button, a")]
+      .filter((el): el is HTMLElement => {
+        if (!(el instanceof HTMLElement)) return false;
+        if (el.closest("[data-tour-card]")) return false;
+        if (targetNode.contains(el) || el.contains(targetNode)) return false;
+        const style = getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden") return false;
+        const rect = el.getBoundingClientRect();
+        return rect.width > 2 && rect.height > 2;
+      })
+      .map((el) => {
+        const rect = el.getBoundingClientRect();
+        return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+      });
+    const fitted = ringSidePad(
+      { left: box.left, top: box.top, right: box.right, bottom: box.bottom },
+      neighbors,
+      ringPad
+    );
+    ringSides = { left: fitted.left, right: fitted.right, top: ringPad, bottom: ringBottomPad };
+  }
   const streakLimit = (() => {
     if (step?.id === "calendar" || step?.id === "notes") return 0;
     const flame = [...document.querySelectorAll("span")].find(
@@ -1039,17 +1154,18 @@ export default function TourCard({
     if (!(header instanceof HTMLElement)) return 0;
     return header.getBoundingClientRect().bottom + 8;
   })();
-  const ringTop = ringSource ? Math.max(ringSource.y - ringPad, streakLimit) : 0;
-  const ringBottom = ringSource ? ringSource.y + ringSource.height + ringBottomPad : 0;
+  const ringTop = ringSource ? Math.max(ringSource.y - ringSides.top, streakLimit) : 0;
+  const ringBottom = ringSource ? ringSource.y + ringSource.height + ringSides.bottom : 0;
   const nearFlame = streakLimit > 0 && ringSource != null && ringSource.y - streakLimit < 36;
-  const tightRing = step?.id === "calendar" || step?.id === "notes" || step?.id === "contracts";
+  const tasksTight = step?.id === "tasks" && (ringSides.left < ringPad || ringSides.right < ringPad);
+  const tightRing = step?.id === "calendar" || step?.id === "notes" || step?.id === "contracts" || tasksTight;
   const ring = ringSource
     ? {
-        left: ringSource.x - ringPad,
+        left: ringSource.x - ringSides.left,
         top: ringTop,
-        width: ringSource.width + ringPad * 2,
+        width: ringSource.width + ringSides.left + ringSides.right,
         height: Math.max(24, ringBottom - ringTop),
-        radius: radiusWithPad(ringSource.radius, ringPad),
+        radius: radiusWithPad(ringSource.radius, Math.max(ringSides.top, ringSides.left)),
       }
     : null;
 
@@ -1065,44 +1181,26 @@ export default function TourCard({
   if (chrome.nav) holes.push(chrome.nav);
   if (chrome.flame) holes.push(chrome.flame);
 
-  let moodCover: number | undefined;
-  if (spot && phone && step?.id === "moods" && !loggedMood) {
-    const grid = visibleQuery("[data-tour='mood-grid']");
-    if (grid) {
-      const rows = [
-        ...moodRows(grid),
-        ...[...grid.querySelectorAll("button")].map((button) => {
-          const rect = button.getBoundingClientRect();
-          return { top: rect.top, bottom: rect.bottom };
-        }),
-      ];
-      const bottom = spot.top + cardSize.height;
-      const peeking = rows.filter((row) => row.top < bottom - 8 && row.bottom > bottom + 2 && row.bottom - row.top > 8);
-      if (peeking.length > 0) {
-        const placed = spot;
-        const need = Math.max(...peeking.map((row) => row.bottom)) + 8;
-        const limit = viewport.height - chrome.bottom;
-        if (need <= limit && placed) moodCover = Math.max(cardSize.height, need - placed.top);
-        else if (placed) {
-          const blockerTop = Math.min(...peeking.filter((row) => row.bottom + 8 > limit).map((row) => row.top));
-          const above = rows.filter((row) => row.bottom <= placed.top + 2 && row.bottom - row.top > 8);
-          const floor = above.length > 0 ? Math.max(...above.map((row) => row.bottom)) + 4 : chrome.top;
-          const nextTop = Math.max(floor, blockerTop - cardSize.height - 8);
-          if (nextTop + cardSize.height <= blockerTop - 2) spot = { ...placed, top: nextTop };
-        }
-      }
-    }
-  }
-
+  const room = spot ? Math.max(0, viewport.height - chrome.bottom - spot.top) : 0;
+  const moodShort = moodFrame != null && moodFrame.lock && moodFrame.height + 1 < cardSize.height;
+  const moodTall = moodFrame != null && moodFrame.height > cardSize.height + 1;
   const cardStyle: CSSProperties | undefined = spot
     ? {
         top: spot.top,
         left: spot.left,
         width: spot.width,
-        maxHeight: Math.max(0, viewport.height - chrome.bottom - spot.top),
-        minHeight: Math.max(moodCover ?? 0, notesCover ?? 0, phoneSeal?.minHeight ?? 0) || undefined,
+        height: moodShort && moodFrame ? moodFrame.height : undefined,
+        maxHeight: moodShort && moodFrame ? Math.min(room, moodFrame.height) : room,
+        minHeight:
+          moodShort && moodFrame
+            ? Math.min(room, moodFrame.height)
+            : moodTall && moodFrame
+              ? moodFrame.height
+              : Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0) || undefined,
+        backgroundColor: "#14161c",
       }
     : undefined;
+  const holdingCard = phase === "step" && target == null && !holdFlame && spot != null;
 
   const shieldBottom = chrome.nav ? chrome.nav.height : 0;
 
@@ -1129,7 +1227,7 @@ export default function TourCard({
           </defs>
           <rect width="100%" height="100%" fill="rgba(6,7,10,0.55)" mask="url(#prysmic-tour-dim)" />
         </svg>
-      ) : showWelcome || phase === "close" ? (
+      ) : showWelcome || phase === "close" || holdingCard ? (
         <div className="fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom }} />
       ) : null}
       {ring ? (
@@ -1153,7 +1251,7 @@ export default function TourCard({
           }}
         />
       ) : null}
-      {showCard && spot ? (
+      {(showCard || holdingCard) && spot ? (
         <div
           ref={cardRef}
           role="dialog"
@@ -1166,12 +1264,12 @@ export default function TourCard({
           }`}
           style={{
             ...cardStyle,
-            animation: reduceMotion ? undefined : "prysmic-tour-in 150ms ease",
+            animation: reduceMotion ? undefined : "prysmic-tour-in 150ms ease forwards",
           }}
           data-tour-card={phase === "step" ? (TOUR_STEPS[index]?.id ?? phase) : phase}
         >
-          <div data-tour-measure="" className="flex min-h-0 flex-col">
-          <div className="min-h-0 overflow-y-auto">
+          <div data-tour-measure="" className={`flex min-h-0 flex-col ${moodShort ? "h-full" : ""}`}>
+          <div data-tour-body="" className={`min-h-0 overflow-y-auto ${moodShort ? "flex-1" : ""}`}>
           {progress ? (
             <p id={progressId} className="text-sm text-slate-400">
               {progress}
@@ -1184,7 +1282,7 @@ export default function TourCard({
             {body}
           </p>
           </div>
-          <div className={`flex shrink-0 flex-nowrap items-center gap-2 ${moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
+          <div data-tour-actions="" className={`flex shrink-0 flex-nowrap items-center gap-2 ${moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
             {phase !== "close" ? (
               <button type="button" className={btnSecondary} onPointerDown={press(onSkip)}>
                 {TOUR_CONTROLS.skip}
@@ -1219,6 +1317,12 @@ export default function TourCard({
       <style>{`@keyframes prysmic-tour-in { from { opacity: 0 } to { opacity: 1 } }
         html:has([data-tour-card="calendar"]) [data-tour-day],
         html:has([data-tour-card="calendar"]) [data-tour="calendar-today"] { box-shadow: none; }
+        [data-tour-card] {
+          background-color: #14161c !important;
+          background-image: none !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+        }
         [data-tour-card]:focus,
         [data-tour-card]:focus-visible {
           outline: none;
