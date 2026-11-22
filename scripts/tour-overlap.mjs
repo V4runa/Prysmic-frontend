@@ -118,6 +118,29 @@ export function collectOverlaps() {
     }
   }
   if (card instanceof HTMLElement) {
+    const cardRect = card.getBoundingClientRect();
+    for (const node of document.querySelectorAll("main h1, main h2, main h3, main p")) {
+      if (!(node instanceof HTMLElement) || node.closest("[data-tour-card]")) continue;
+      const style = getComputedStyle(node);
+      if (style.visibility === "hidden" || style.display === "none" || Number(style.opacity) === 0) continue;
+      const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+      if (text.length < 12) continue;
+      const rect = node.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) continue;
+      if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
+      const overlapW = Math.min(cardRect.right, rect.right) - Math.max(cardRect.left, rect.left);
+      const overlapH = Math.min(cardRect.bottom, rect.bottom) - Math.max(cardRect.top, rect.top);
+      if (overlapW > 2 && overlapH > 2) {
+        hits.push({
+          cover: "card",
+          item: "copy",
+          label: `card covers copy: ${text.slice(0, 48)}`,
+          coverBox: { x: Math.round(cardRect.x), y: Math.round(cardRect.y), w: Math.round(cardRect.width), h: Math.round(cardRect.height) },
+          itemBox: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
+        });
+        break;
+      }
+    }
     if (card.scrollHeight > card.clientHeight + 1) {
       const rect = card.getBoundingClientRect();
       hits.push({
@@ -657,7 +680,11 @@ export function collectOverlaps() {
           const tour = document.querySelector("[data-tour-ring]")?.parentElement;
           const top = document.elementsFromPoint(x, y).find((hit) => !(tour && tour.contains(hit)));
           const wrapsTile = top instanceof Element && top.contains(node) && top.getBoundingClientRect().height < rect.height + 48;
-          if (!(top === node || (top instanceof Element && node.contains(top)) || wrapsTile)) {
+          const sameGrid =
+            top instanceof Element &&
+            node.closest("[data-tour='mood-grid']") instanceof Element &&
+            node.closest("[data-tour='mood-grid']")?.contains(top);
+          if (!(top === node || (top instanceof Element && node.contains(top)) || wrapsTile || sameGrid)) {
             hidden = true;
             break;
           }

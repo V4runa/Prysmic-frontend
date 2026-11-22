@@ -100,6 +100,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   const handledRequest = useRef(0);
   const ended = useRef(false);
   const appliedRoute = useRef("");
+  const closePath = useRef("");
   const [landing, setLanding] = useState<ChromeQuietMemory>(QUIET_CHROME_MEMORY);
 
   const onTourQuery = useCallback((event: { rising: boolean }) => {
@@ -186,8 +187,17 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     }
     const route = tourRouteFor(state.phase, state.index);
     const key = `${state.phase}:${state.index}:${route ?? "stay"}`;
-    if (appliedRoute.current === key) return;
+    if (appliedRoute.current === key) {
+      const leftStep = route != null && pathname !== route;
+      const leftClose = route == null && closePath.current !== "" && pathname !== closePath.current;
+      if (leftStep || leftClose) {
+        ended.current = true;
+        dispatch({ type: "skip" });
+      }
+      return;
+    }
     appliedRoute.current = key;
+    if (route == null) closePath.current = pathname;
     if (route && pathname !== route) router.push(route);
     else stripTourParam(router, pathname);
   }, [state.phase, state.index, state.returnNotes, pathname, router]);

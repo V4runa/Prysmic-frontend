@@ -262,7 +262,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Legend and lens — the same source toggles apply to the grid and the agenda. */}
-            {!isLoading && !isError && (
+            {!isError && (
               <CalendarFilters value={sources} onChange={changeSources} />
             )}
 

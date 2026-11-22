@@ -164,7 +164,7 @@ function nestedMoodSpot(
   const header = document.querySelector(".app-header");
   const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
   const clipTop = moodOcclusionTop(grid, headerBottom);
-  const minTop = Math.round(Math.max(clipTop, headerBottom + 8 + RING_PAD));
+  const minTop = Math.round(Math.max(clipTop, headerBottom + 12 + RING_PAD));
   const firstTop = Math.min(...tiles.map((tile) => tile.top));
   const lastBottom = Math.max(...tiles.map((tile) => tile.bottom));
   if (firstTop < minTop - 1 || lastBottom > viewportHeight - 1) return null;
@@ -184,7 +184,7 @@ function nestedMoodSpot(
   const ringBottom = Math.max(lastBottom + RING_PAD, card.bottom + NEST_CLEAR);
   const ringFar = Math.max(ringRight, card.right + NEST_CLEAR);
   return {
-    spot: { top, left, width },
+    spot: { top: Math.round(top), left: Math.round(left), width: Math.round(width) },
     ring: {
       x: ringLeft,
       y: ringTop,
@@ -214,7 +214,7 @@ function planWideMoods(
   // The drawn ring sits RING_PAD outside the tiles and must stay 8px under the
   // header. The card sits `gap` under the last tile, which leaves that 8px.
   const gap = RING_PAD + 12;
-  const minTop = Math.round(Math.max(clipTop, headerBottom + 8 + RING_PAD));
+  const minTop = Math.round(Math.max(clipTop, headerBottom + 12 + RING_PAD));
   // 4px keeps the card on screen without clipping it; the ring stays 12px above the card.
   const maxBottom = viewportHeight - 4 - cardHeight - gap;
   const head = grid.closest(".wide-mood-head")?.querySelector("h2");
@@ -226,6 +226,33 @@ function planWideMoods(
   const headTop0 = headTop + origin;
   const first0 = first.top + origin;
   const last0 = last.bottom + origin;
+  const headBottom0 = (head instanceof HTMLElement ? head.getBoundingClientRect().bottom : headTop) + origin;
+  const scrollerBottom = scroller instanceof HTMLElement ? scroller.getBoundingClientRect().bottom : viewportHeight;
+  const clipBottom = Math.min(viewportHeight - 8, scrollerBottom - 2);
+  const headingOnScreen = headTop0 >= headerBottom - 1 && headBottom0 <= clipBottom;
+  const gridOnScreen = first0 >= minTop - 1 && last0 <= clipBottom;
+  if (headingOnScreen && gridOnScreen && nestedMoodSpot(grid, NEST_CARD, viewportHeight, -origin)) {
+    return { rows, delta: Math.round(-origin), gap, clipTop: minTop, fit: "c" };
+  }
+  const pastClip = Math.max(0, Math.round(last0 - clipBottom));
+  if (
+    pastClip > 0 &&
+    headTop0 - pastClip >= headerBottom - 1 &&
+    nestedMoodSpot(grid, NEST_CARD, viewportHeight, pastClip - origin)
+  ) {
+    return { rows, delta: Math.round(pastClip - origin), gap, clipTop: minTop, fit: "c" };
+  }
+  const targetScroll = Math.round(first0 - minTop);
+  const shiftNow = targetScroll - origin;
+  if (
+    targetScroll >= 0 &&
+    headTop0 - targetScroll >= headerBottom - 1 &&
+    headBottom0 - targetScroll <= viewportHeight - 8 &&
+    last0 - targetScroll <= viewportHeight - 8 &&
+    nestedMoodSpot(grid, NEST_CARD, viewportHeight, shiftNow)
+  ) {
+    return { rows, delta: Math.round(shiftNow), gap, clipTop: minTop, fit: "c" };
+  }
   const lift = Math.max(0, last0 - maxBottom);
   const headingLimit = Math.max(clipTop, headerBottom);
   const headingStays = headTop0 - lift >= headingLimit - 1;
@@ -415,11 +442,33 @@ function layoutContracts(
   if (!button) return null;
   const box = button.getBoundingClientRect();
   if (box.width < 2 || box.height < 2) return null;
+  const quiet = document.querySelector("[data-tour-quiet]");
+  const quietBox = quiet instanceof HTMLElement ? quiet.getBoundingClientRect() : null;
+  const belowCopy = quietBox && quietBox.height > 8 && quietBox.bottom > box.top ? quietBox.bottom + 12 : 0;
   const width = Math.min(TOUR_CARD_WIDTH, viewport.width - 32);
-  const top = Math.round(box.bottom + 16);
+  const top = Math.round(Math.max(box.bottom + 16, belowCopy));
   const left = Math.round(Math.max(16, Math.min(box.right - width, viewport.width - 16 - width)));
   if (top + Math.min(cardHeight, 160) > viewport.height - 8) return null;
   return { top, left, width };
+}
+
+/** Drop the card below any heading or sentence it would cover. */
+function clearOfCopy(spot: CardSpot, cardHeight: number, viewportHeight: number): CardSpot {
+  let top = spot.top;
+  for (const node of document.querySelectorAll("main h1, main h2, main h3, main p")) {
+    if (!(node instanceof HTMLElement) || node.closest("[data-tour-card]")) continue;
+    const style = getComputedStyle(node);
+    if (style.visibility === "hidden" || style.display === "none" || Number(style.opacity) === 0) continue;
+    const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+    if (text.length < 12) continue;
+    const rect = node.getBoundingClientRect();
+    if (rect.width < 8 || rect.height < 8) continue;
+    const overlapW = Math.min(spot.left + spot.width, rect.right) - Math.max(spot.left, rect.left);
+    const overlapH = Math.min(top + cardHeight, rect.bottom) - Math.max(top, rect.top);
+    if (overlapW > 2 && overlapH > 2) top = Math.max(top, Math.round(rect.bottom + 12));
+  }
+  if (top !== spot.top && top + Math.min(cardHeight, 180) > viewportHeight - 8) return spot;
+  return { ...spot, top: Math.round(top) };
 }
 
 /** Welcome and the closing card: the same centre, whichever way you arrive. */
@@ -430,7 +479,7 @@ function layoutCentered(
 ): CardSpot {
   const width = Math.min(TOUR_CARD_WIDTH, Math.max(240, viewport.width - 32));
   const left = Math.round(Math.max(16, (viewport.width - width) / 2));
-  const top = Math.round(Math.max(topInset, (viewport.height - cardHeight) / 2));
+  const top = Math.round(Math.max(topInset + 24, (viewport.height - 260) / 2));
   return { top, left, width };
 }
 
@@ -659,15 +708,6 @@ function radiusWithPad(radius: string, pad: number): string {
   return parts.join(" ") || `${12 + pad}px`;
 }
 
-function press(action: () => void) {
-  return (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    action();
-  };
-}
-
 export default function TourCard({
   phase,
   index,
@@ -686,6 +726,7 @@ export default function TourCard({
     body: string;
     progress: string | null;
     kind: "welcome" | "close" | "step";
+    nested: boolean;
   } | null>(null);
   const reveal = useRef<{ key: string; spot: CardSpot } | null>(null);
   const moodsSettled = useRef("");
@@ -717,9 +758,11 @@ export default function TourCard({
   const [welcomeReady, setWelcomeReady] = useState(phase !== "welcome");
   const [closeReady, setCloseReady] = useState(false);
   const [holdFlame, setHoldFlame] = useState(false);
-  const [veil, setVeil] = useState<"show" | "out" | "hold">("hold");
-  const [navWait, setNavWait] = useState(false);
-  const veilKey = useRef("");
+  const [stage, setStage] = useState<"out" | "measure" | "show">("measure");
+  const stageKey = useRef("");
+  const shownSig = useRef("");
+  const settledKey = useRef("");
+  const navLock = useRef(false);
   const liveSpot = useRef<CardSpot | null>(null);
   const liveReady = useRef(false);
 
@@ -799,6 +842,33 @@ export default function TourCard({
     const line = document.querySelector("main [data-tour-quiet]");
     const card = cardRef.current;
     if (line instanceof HTMLElement) line.style.transform = "";
+    for (const shifted of document.querySelectorAll("main p[data-tour-shift]")) {
+      if (shifted instanceof HTMLElement) {
+        shifted.style.transform = "";
+        shifted.removeAttribute("data-tour-shift");
+      }
+    }
+    const navNow = document.querySelector(".app-bottom-nav");
+    const sheetNow = navNow instanceof HTMLElement && getComputedStyle(navNow).display !== "none";
+    if (sheetNow && card instanceof HTMLElement && phase === "step") {
+      const cardRect = card.getBoundingClientRect();
+      if (cardRect.top > 0 && cardRect.height > 40) {
+        for (const node of document.querySelectorAll("main p")) {
+          if (!(node instanceof HTMLElement) || node.closest("[data-tour-card]")) continue;
+          const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+          if (text.length < 12) continue;
+          node.style.transform = "";
+          const rect = node.getBoundingClientRect();
+          const overlaps = rect.bottom > cardRect.top + 2 && rect.top < cardRect.bottom - 2 && rect.height > 8;
+          if (!overlaps) continue;
+          const above = cardRect.top - 12 - rect.height;
+          if (above >= chrome.top + 8) {
+            node.style.transform = `translateY(${Math.round(above - rect.top)}px)`;
+            node.setAttribute("data-tour-shift", "1");
+          }
+        }
+      }
+    }
     if (!(line instanceof HTMLElement) || !(card instanceof HTMLElement) || phase !== "step" || step?.id !== "notes") {
       setNotesCover((current) => (current === undefined ? current : undefined));
       return;
@@ -811,10 +881,10 @@ export default function TourCard({
       setNotesCover((current) => (current === undefined ? current : undefined));
       return;
     }
-    const covered = rect.top >= cardRect.top - 1 && rect.bottom <= cardRect.bottom + 1;
-    if (covered) return;
     const nav = document.querySelector(".app-bottom-nav");
     const sheet = nav instanceof HTMLElement && getComputedStyle(nav).display !== "none";
+    const covered = rect.top >= cardRect.top - 1 && rect.bottom <= cardRect.bottom + 1;
+    if (covered && !sheet) return;
     if (sheet) {
       const above = cardRect.top - 12 - rect.height;
       const tabs = document.querySelector("[role='tablist'][aria-label='Notes']");
@@ -845,7 +915,7 @@ export default function TourCard({
     return () => {
       line.style.transform = "";
     };
-  }, [phase, step?.id, cardHeight, chrome.bottom, viewport.width, viewport.height, notesCover]);
+  }, [phase, step?.id, cardHeight, chrome.bottom, chrome.top, viewport.width, viewport.height, notesCover, stage]);
 
   useEffect(() => {
     if (phase !== "welcome") return;
@@ -884,6 +954,7 @@ export default function TourCard({
     let previous: TargetBox | null = null;
     let published: TargetBox | null = null;
     let lastSig = "";
+    let copySig = "";
     let stableCount = 0;
     let moodScrolls = 0;
     let moodLift = -1;
@@ -911,6 +982,18 @@ export default function TourCard({
         previous = null;
         stableCount = 0;
         return;
+      }
+      const copyNow = [...document.querySelectorAll("main h1, main h2, main p")]
+        .map((node) => {
+          if (!(node instanceof HTMLElement) || node.closest("[data-tour-card]")) return "";
+          const rect = node.getBoundingClientRect();
+          if (rect.height < 8) return "";
+          return `${Math.round(rect.top)}:${Math.round(rect.bottom)}:${Math.round(rect.left)}`;
+        })
+        .join("|");
+      if (copyNow !== copySig) {
+        copySig = copyNow;
+        setPlaceTick((tick) => tick + 1);
       }
       const navNow = document.querySelector(".app-bottom-nav");
       const sheetNow =
@@ -1080,6 +1163,53 @@ export default function TourCard({
             previous = null;
             return;
           }
+          if (moodScrolls < 14) {
+            let overflow = 0;
+            for (const button of node.querySelectorAll("button")) {
+              if (!(button instanceof HTMLElement)) continue;
+              const rect = button.getBoundingClientRect();
+              if (rect.height < 40) continue;
+              if (rect.bottom > window.innerHeight - 4) overflow = Math.max(overflow, rect.bottom - (window.innerHeight - 8));
+              const corners = [
+                [rect.left + 2, rect.bottom - 2],
+                [rect.right - 2, rect.bottom - 2],
+              ];
+              for (const [x, y] of corners) {
+                const overlay = document.querySelector("[data-tour-card]")?.parentElement;
+                const hit = document.elementsFromPoint(x, y).find((node) => {
+                  if (!(node instanceof Element)) return false;
+                  if (overlay && overlay.contains(node)) return false;
+                  return true;
+                });
+                const grid = button.closest("[data-tour='mood-grid']");
+                const seen =
+                  hit === button ||
+                  (hit instanceof Element && (button.contains(hit) || (grid instanceof Element && grid.contains(hit))));
+                if (!seen) overflow = Math.max(overflow, 14);
+              }
+              let parent = button.parentElement;
+              while (parent && parent !== document.body) {
+                const style = getComputedStyle(parent);
+                const clips = [style.overflow, style.overflowX, style.overflowY].some((value) => value === "hidden" || value === "auto" || value === "scroll");
+                if (clips) {
+                  const bounds = parent.getBoundingClientRect();
+                  if (rect.bottom > bounds.bottom - 4) overflow = Math.max(overflow, rect.bottom - (bounds.bottom - 8));
+                }
+                parent = parent.parentElement;
+              }
+            }
+            const head = node.closest(".wide-mood-head")?.querySelector("h2");
+            const header = document.querySelector(".app-header");
+            const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
+            const headTop = head instanceof HTMLElement ? head.getBoundingClientRect().top : headerBottom + 40;
+            if (overflow > 1 && headTop - overflow >= headerBottom + 8) {
+              scroller.scrollTop = Math.max(0, Math.round(scroller.scrollTop + overflow));
+              moodLift = -1;
+              moodScrolls += 1;
+              previous = null;
+              return;
+            }
+          }
           moodScrolls = 12;
           previous = null;
           return;
@@ -1185,20 +1315,6 @@ export default function TourCard({
       window.clearInterval(timer);
       window.removeEventListener("resize", onResize);
       moodsSettled.current = "";
-      document.querySelectorAll<HTMLElement>(".app-scroll").forEach((node) => {
-        if (node.style.paddingBottom) node.style.paddingBottom = "";
-      });
-      document.querySelectorAll<HTMLElement>(".app-workspace-moods").forEach((node) => {
-        node.style.paddingTop = "";
-        node.style.marginTop = "";
-      });
-      document.querySelectorAll<HTMLElement>(".wide-mood-head").forEach((node) => {
-        if (node.parentElement) node.parentElement.style.paddingTop = "";
-        if (node.parentElement) node.parentElement.style.minHeight = "";
-      });
-      document.querySelectorAll<HTMLElement>(".wide-mood-head [data-tour-keep]").forEach((node) => {
-        node.style.marginBottom = "";
-      });
       document.documentElement.style.removeProperty("--tour-mood-clip");
       document.documentElement.style.removeProperty("--tour-mood-clip-top");
       document.documentElement.style.removeProperty("--tour-cal-clip");
@@ -1262,50 +1378,41 @@ export default function TourCard({
     return () => document.removeEventListener("focusin", blur);
   }, [phase, step?.id, pathname]);
 
-  useLayoutEffect(() => {
-    if (veilKey.current === "") {
-      veilKey.current = measureKey;
-      return;
-    }
-    if (veilKey.current === measureKey) return;
-    veilKey.current = measureKey;
-    if (frozen.current) setVeil("out");
-  }, [measureKey]);
-
   useEffect(() => {
-    if (veil !== "out") return;
-    const timer = window.setTimeout(() => setVeil("hold"), reduceMotion ? 0 : 140);
+    if (stage !== "out") return;
+    const timer = window.setTimeout(() => {
+      stageKey.current = measureKey;
+      shownSig.current = "";
+      setStage("measure");
+    }, reduceMotion ? 0 : 180);
     return () => window.clearTimeout(timer);
-  }, [veil, reduceMotion, measureKey]);
+  }, [stage, measureKey, reduceMotion]);
 
   useEffect(() => {
-    if (veil === "show") {
-      setNavWait(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setNavWait(true), 300);
-    return () => window.clearTimeout(timer);
-  }, [veil, measureKey]);
-
-  useEffect(() => {
-    if (veil !== "hold") return;
-    let frames = 0;
+    if (stage !== "measure") return;
     let last = "";
+    let since = 0;
     const timer = window.setInterval(() => {
       const current = liveSpot.current;
       const sig = current ? `${Math.round(current.top)}:${Math.round(current.left)}:${Math.round(current.width)}` : "";
+      const now = performance.now();
       if (!liveReady.current || !sig || sig !== last) {
         last = sig;
-        frames = liveReady.current && sig ? 1 : 0;
+        since = liveReady.current && sig ? now : 0;
         return;
       }
-      frames += 1;
-      if (frames < 3) return;
-      window.clearInterval(timer);
-      setVeil("show");
-    }, 40);
+      if (since === 0) since = now;
+      if (now - since >= 150) {
+        window.clearInterval(timer);
+        setStage("show");
+      }
+    }, 30);
     return () => window.clearInterval(timer);
-  }, [veil, measureKey]);
+  }, [stage, measureKey]);
+
+  useEffect(() => {
+    if (stage === "show") navLock.current = false;
+  }, [stage, measureKey]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -1341,7 +1448,8 @@ export default function TourCard({
   useEffect(() => {
     const block = (event: Event) => {
       const card = cardRef.current;
-      if (card && event.target instanceof Node && card.contains(event.target)) return;
+      if (!card || Number(getComputedStyle(card).opacity) < 0.5) return;
+      if (event.target instanceof Node && card.contains(event.target)) return;
       const nav = document.querySelector(".app-bottom-nav");
       if (nav && event.target instanceof Node && nav.contains(event.target)) return;
       event.preventDefault();
@@ -1353,6 +1461,11 @@ export default function TourCard({
       document.removeEventListener("touchmove", block, true);
     };
   }, []);
+
+  if (stageKey.current === "") stageKey.current = measureKey;
+  if (stage === "show" && stageKey.current !== measureKey && frozen.current) {
+    setStage("out");
+  }
 
   const showWelcome = phase === "welcome" && welcomeReady;
   const showStep = phase === "step" && (target != null || holdFlame);
@@ -1600,6 +1713,14 @@ export default function TourCard({
     document.documentElement.style.setProperty("--tour-mood-clip", "0px");
     document.documentElement.style.setProperty("--tour-mood-clip-top", "0px");
   }
+  if (
+    spot &&
+    !sheet &&
+    viewport.height > 0 &&
+    (step?.id === "notes" || step?.id === "tasks" || step?.id === "contracts")
+  ) {
+    spot = clearOfCopy(spot, cardSize.height, viewport.height);
+  }
   if (spot && (phase !== "step" || target || holdFlame)) heldSpot.current = spot;
   if (!spot && phase === "step" && heldSpot.current && viewport.width > 0) {
     spot = containTourCard(
@@ -1759,7 +1880,7 @@ export default function TourCard({
       saved.spot.left + saved.spot.width <= viewport.width + 8;
     const fixed = Math.min(TOUR_CARD_WIDTH, Math.max(240, viewport.width - 32));
     const calendarIntoPanel = step?.id === "calendar" && saved != null && spot.left > saved.spot.left + 48;
-    const nextSpot = savedFits && saved && step?.id !== "moods" && !calendarIntoPanel
+    const nextSpot = savedFits && saved && step?.id !== "moods" && step?.id !== "contracts" && !calendarIntoPanel
       ? saved.spot
       : {
           top: spot.top,
@@ -1882,33 +2003,83 @@ export default function TourCard({
           backgroundColor: "#14161c",
         }
     : undefined;
-  const showFrozenLook = veil === "out" && frozen.current != null;
+  const showFrozenLook = stage === "out" && frozen.current != null;
   if (showFrozenLook && frozen.current) spot = frozen.current.spot;
   liveSpot.current = spot;
-  liveReady.current = showLive && !showFrozenLook;
+  liveReady.current = stage === "measure" && showLive && spot != null;
   if (moodNested) document.documentElement.dataset.moodNest = "1";
   else delete document.documentElement.dataset.moodNest;
-  const shownTitle = (showFrozenLook || holdPrevious) && frozen.current ? frozen.current.title : title;
-  const shownBody = (showFrozenLook || holdPrevious) && frozen.current ? frozen.current.body : body;
-  const shownProgress = (showFrozenLook || holdPrevious) && frozen.current ? frozen.current.progress : progress;
-  const shownKind = (showFrozenLook || holdPrevious) && frozen.current
+  const shownTitle = showFrozenLook && frozen.current ? frozen.current.title : title;
+  const shownBody = showFrozenLook && frozen.current ? frozen.current.body : body;
+  const shownProgress = showFrozenLook && frozen.current ? frozen.current.progress : progress;
+  const shownKind = showFrozenLook && frozen.current
     ? frozen.current.kind
     : phase === "welcome"
       ? "welcome"
       : phase === "close"
         ? "close"
         : "step";
-  if (showLive && spot && veil !== "out") {
-    frozen.current = { spot: { ...spot }, title: shownTitle, body: shownBody, progress: shownProgress, kind: shownKind };
+  const lookNested = showFrozenLook && frozen.current ? frozen.current.nested : moodNested;
+  if (stage === "show" && showLive && spot) {
+    const sig = `${measureKey}|${Math.round(spot.top)}|${Math.round(spot.left)}|${Math.round(spot.width)}`;
+    if (shownSig.current === sig) {
+      frozen.current = {
+        spot: { ...spot },
+        title: shownTitle,
+        body: shownBody,
+        progress: shownProgress,
+        kind: shownKind,
+        nested: moodNested,
+      };
+    } else if (shownSig.current.startsWith(`${measureKey}|`) && frozen.current) {
+      const parts = shownSig.current.split("|");
+      const moved =
+        Math.abs(spot.top - Number(parts[1])) > 8 ||
+        Math.abs(spot.left - Number(parts[2])) > 8 ||
+        Math.abs(spot.width - Number(parts[3])) > 8;
+      if (moved && settledKey.current !== measureKey) {
+        settledKey.current = measureKey;
+        setStage("out");
+      } else {
+        shownSig.current = sig;
+        frozen.current = {
+          spot: { ...spot },
+          title: shownTitle,
+          body: shownBody,
+          progress: shownProgress,
+          kind: shownKind,
+          nested: moodNested,
+        };
+      }
+    } else {
+      shownSig.current = sig;
+      frozen.current = {
+        spot: { ...spot },
+        title: shownTitle,
+        body: shownBody,
+        progress: shownProgress,
+        kind: shownKind,
+        nested: moodNested,
+      };
+    }
   }
-  const showFrozenCard = (showLive || holdPrevious) && spot != null;
+  const showFrozenCard = stage === "out" || stage === "measure" || (stage === "show" && showLive && spot != null);
+  const tourOpen = stage === "show";
+  const guarded = (action: () => void) => (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (navLock.current || stage !== "show") return;
+    navLock.current = true;
+    action();
+  };
 
   const shieldBottom = chrome.nav ? chrome.nav.height : 0;
 
   return (
     <div className="fixed inset-0 z-[80] pointer-events-none">
-      <div className="fixed left-0 right-0 top-0 z-[80]" style={{ bottom: shieldBottom, pointerEvents: "auto" }} />
-      {veil === "show" && phase === "step" && showLive && (drawRing || holdFlame) ? (
+      <div className="fixed left-0 right-0 top-0 z-[80]" style={{ bottom: shieldBottom, pointerEvents: tourOpen ? "auto" : "none" }} />
+      {tourOpen && phase === "step" && showLive && (drawRing || holdFlame) ? (
         <svg className="pointer-events-none fixed inset-0 h-full w-full" aria-hidden="true">
           <defs>
             <mask id="prysmic-tour-dim">
@@ -1928,10 +2099,10 @@ export default function TourCard({
           </defs>
           <rect width="100%" height="100%" fill="rgba(6,7,10,0.55)" mask="url(#prysmic-tour-dim)" />
         </svg>
-      ) : showWelcome || phase === "close" || phase === "step" || showFrozenCard ? (
-        <div className="fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom }} />
+      ) : stage !== "measure" && (showWelcome || phase === "close" || phase === "step" || showFrozenCard) ? (
+        <div className="pointer-events-none fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom }} />
       ) : null}
-      {veil === "show" && showLive && stepReady && drawRing ? (
+      {tourOpen && showLive && stepReady && drawRing ? (
         <div
           aria-hidden="true"
           data-tour-ring=""
@@ -1965,13 +2136,18 @@ export default function TourCard({
           aria-labelledby={progress ? `${progressId} ${titleId}` : titleId}
           aria-describedby={bodyId}
           tabIndex={-1}
-          className={`pointer-events-auto fixed z-[81] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
-            moodNested ? "px-4 py-3" : viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
+          className={`fixed z-[81] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
+            lookNested ? "px-4 py-3" : viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
           }`}
           style={{
             ...cardStyle,
-            opacity: veil === "show" ? 1 : 0,
-            transition: reduceMotion ? undefined : "opacity 140ms ease",
+            top: stage === "measure" ? -4000 : showFrozenLook && frozen.current ? frozen.current.spot.top : cardStyle?.top,
+            left: stage === "measure" ? 0 : showFrozenLook && frozen.current ? frozen.current.spot.left : cardStyle?.left,
+            width: showFrozenLook && frozen.current ? frozen.current.spot.width : cardStyle?.width,
+            opacity: stage === "show" ? 1 : 0,
+            visibility: stage === "measure" ? "hidden" : "visible",
+            pointerEvents: stage === "show" ? "auto" : "none",
+            transition: stage === "measure" || reduceMotion ? "none" : "opacity 160ms ease",
           }}
           data-tour-card={phase === "step" ? (TOUR_STEPS[index]?.id ?? phase) : phase}
         >
@@ -2002,28 +2178,28 @@ export default function TourCard({
           ) : null}
           <div data-tour-actions="" className={`flex shrink-0 flex-nowrap items-center gap-2 ${moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
             {shownKind !== "close" ? (
-              <button type="button" className={btnSecondary} disabled={holdPrevious} onPointerDown={press(onSkip)}>
+              <button type="button" className={btnSecondary} disabled={!tourOpen} onPointerDown={guarded(onSkip)}>
                 {TOUR_CONTROLS.skip}
               </button>
             ) : null}
             <div className="ml-auto flex flex-nowrap items-center justify-end gap-2">
               {shownKind === "step" ? (
-                <button type="button" className={btnSecondary} disabled={holdPrevious} onPointerDown={press(onBack)}>
+                <button type="button" className={btnSecondary} disabled={!tourOpen} onPointerDown={guarded(onBack)}>
                   {TOUR_CONTROLS.back}
                 </button>
               ) : null}
               {shownKind === "welcome" ? (
-                <button type="button" className={btnPrimary} disabled={holdPrevious} onPointerDown={press(onStart)}>
+                <button type="button" className={btnPrimary} disabled={!tourOpen} onPointerDown={guarded(onStart)}>
                   {TOUR_WELCOME.start}
                 </button>
               ) : null}
               {shownKind === "step" ? (
-                <button type="button" className={btnPrimary} disabled={holdPrevious || (veil !== "show" && navWait)} onPointerDown={press(onNext)} aria-busy={veil !== "show" && navWait ? true : undefined}>
-                  {veil !== "show" && navWait ? "…" : TOUR_CONTROLS.next}
+                <button type="button" className={btnPrimary} disabled={!tourOpen} onPointerDown={guarded(onNext)} aria-busy={!tourOpen || undefined}>
+                  {tourOpen ? TOUR_CONTROLS.next : "…"}
                 </button>
               ) : null}
               {shownKind === "close" ? (
-                <button type="button" className={btnPrimary} disabled={holdPrevious} onPointerDown={press(onDone)}>
+                <button type="button" className={btnPrimary} disabled={!tourOpen} onPointerDown={guarded(onDone)}>
                   {TOUR_CLOSE.done}
                 </button>
               ) : null}
