@@ -176,7 +176,7 @@ function layoutWideMoods(
   _topInset: number,
   _bottomInset: number,
   viewport: { width: number; height: number }
-): { spot: CardSpot; ring: TargetBox } | null {
+): { spot: CardSpot; ring: TargetBox; nested: boolean } | null {
   const grid = visibleQuery("[data-tour='mood-grid']");
   if (!grid) return null;
   const rect = grid.getBoundingClientRect();
@@ -189,20 +189,24 @@ function layoutWideMoods(
     radius: getComputedStyle(grid).borderRadius || "24px",
   };
   const belowTop = rect.bottom + RING_PAD + RING_GAP;
-  if (belowTop + cardHeight <= viewport.height - 16) {
+  // A fixed height keeps this choice from flipping as the card measures itself.
+  if (belowTop + 210 <= viewport.height - 16) {
     const left = Math.min(
       Math.max(16, rect.x + rect.width / 2 - width / 2),
       Math.max(16, viewport.width - 16 - width)
     );
-    return { spot: { top: belowTop, left, width }, ring };
+    return { spot: { top: belowTop, left, width }, ring, nested: false };
   }
   const slot = moodRowSlot(grid, width, cardHeight, viewport.height);
-  if (slot) return { spot: slot, ring };
+  if (slot) {
+    const covered = Math.max(rect.bottom, slot.top + cardHeight);
+    return { spot: slot, ring: { ...ring, height: covered - rect.y }, nested: true };
+  }
   const left = Math.min(
     Math.max(16, rect.x + rect.width / 2 - width / 2),
     Math.max(16, viewport.width - 16 - width)
   );
-  return { spot: { top: belowTop, left, width }, ring };
+  return { spot: { top: belowTop, left, width }, ring, nested: false };
 }
 
 function layoutLoggedMood(
@@ -607,6 +611,7 @@ export default function TourCard({
   const cardSize = { width: TOUR_CARD_WIDTH, height: cardHeight || CARD_ESTIMATE };
   let spot: CardSpot | null = null;
   let phoneMoodRing: TargetBox | null = null;
+  let moodNested = false;
   const loggedMood = step?.id === "moods" && target != null && !visibleQuery("[data-tour='mood-grid']");
   if (phase === "step" && step?.id === "moods" && phone && !loggedMood) {
     const laid = layoutPhoneMoods(cardSize.height, chrome.top, chrome.bottom, viewport.height);
@@ -626,6 +631,7 @@ export default function TourCard({
     if (laid) {
       spot = laid.spot;
       phoneMoodRing = laid.ring;
+      moodNested = laid.nested;
     }
   } else if (loggedMood && target) {
     spot = layoutLoggedMood(
@@ -774,7 +780,7 @@ export default function TourCard({
           aria-describedby={bodyId}
           tabIndex={-1}
           className={`pointer-events-auto fixed z-[81] overflow-y-auto rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
-            viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
+            moodNested ? "px-4 py-3" : viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
           }`}
           style={{
             ...cardStyle,
@@ -790,10 +796,10 @@ export default function TourCard({
           <h2 id={titleId} className={`text-lg font-semibold tracking-wide text-slate-50 ${progress ? "mt-1" : ""}`}>
             {title}
           </h2>
-          <p id={bodyId} className="mt-2 text-sm leading-relaxed text-slate-300">
+          <p id={bodyId} className={`text-sm text-slate-300 ${moodNested ? "mt-1.5 leading-snug" : "mt-2 leading-relaxed"}`}>
             {body}
           </p>
-          <div className={`flex flex-nowrap items-center gap-2 ${viewport.width < 640 ? "mt-3" : "mt-5"}`}>
+          <div className={`flex flex-nowrap items-center gap-2 ${moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
             {phase !== "close" ? (
               <button type="button" className={btnSecondary} onPointerDown={press(onSkip)}>
                 {TOUR_CONTROLS.skip}
