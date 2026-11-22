@@ -1065,12 +1065,17 @@ export default function TourCard({
       const last = rows[rows.length - 1];
       if (grid && first && last) {
         const rect = grid.getBoundingClientRect();
+        const tile = [...grid.querySelectorAll("button")].find((button) => {
+          const box = button.getBoundingClientRect();
+          return box.height > 48 && Math.abs(box.top - first.top) < 18;
+        });
+        const tileRadius = tile ? getComputedStyle(tile).borderRadius : "";
         phoneMoodRing = {
           x: rect.x,
           y: first.top,
           width: rect.width,
           height: Math.max(24, last.bottom - first.top),
-          radius: getComputedStyle(grid).borderRadius || "24px",
+          radius: tileRadius && tileRadius !== "0px" ? tileRadius : "16px",
         };
       } else {
         phoneMoodRing = null;
@@ -1142,7 +1147,27 @@ export default function TourCard({
     );
     ringSides = { left: fitted.left, right: fitted.right, top: ringPad, bottom: ringBottomPad };
   }
-  if (sheet && (step?.id === "moods" || step?.id === "calendar")) {
+  if (sheet && step?.id === "calendar") {
+    ringSides = { left: 0, right: 0, top: 0, bottom: 0 };
+  }
+  if (sheet && step?.id === "moods" && phoneMoodRing) {
+    const grid = visibleQuery("[data-tour='mood-grid']");
+    const next = grid
+      ? moodRows(grid).find((row) => row.top > phoneMoodRing.y + phoneMoodRing.height - 1)
+      : undefined;
+    const header = grid?.parentElement?.querySelector("[data-tour-keep]");
+    const headerBottomEdge = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
+    const stroke = 2;
+    const roomTop = phoneMoodRing.y - headerBottomEdge - stroke;
+    const limit = next ? next.top : spot ? spot.top : phoneMoodRing.y + phoneMoodRing.height;
+    const roomBottom = limit - (phoneMoodRing.y + phoneMoodRing.height) - stroke;
+    ringSides = {
+      left: RING_PAD,
+      right: RING_PAD,
+      top: Math.max(0, Math.min(RING_PAD, roomTop)),
+      bottom: Math.max(0, Math.min(RING_PAD, roomBottom)),
+    };
+  } else if (sheet && step?.id === "moods") {
     ringSides = { left: 0, right: 0, top: 0, bottom: 0 };
   }
   const streakLimit = (() => {
