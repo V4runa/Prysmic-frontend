@@ -335,6 +335,14 @@ function sealPhoneCard(
       if (rect.bottom + 6 <= bottomLimit) {
         bottom = Math.max(bottom, rect.bottom + 6);
         changed = true;
+        continue;
+      }
+      const span = bottom - top;
+      const clearBottom = rect.top - 12;
+      if (clearBottom - span >= topInset) {
+        bottom = clearBottom;
+        top = clearBottom - span;
+        changed = true;
       }
     }
     if (!changed) break;
@@ -900,6 +908,33 @@ export default function TourCard({
   if (spot && phone && viewport.width > 0) {
     phoneSeal = sealPhoneCard(spot, cardSize.height, chrome.top, viewport.height - chrome.bottom);
     spot = { ...spot, top: phoneSeal.top };
+    if (step?.id === "calendar") {
+      const days = [...document.querySelectorAll("[data-tour-day]")]
+        .map((node) => node.getBoundingClientRect())
+        .filter((rect) => rect.width > 2 && rect.height > 2);
+      const placed = spot;
+      const span = phoneSeal.minHeight;
+      const cardBottom = placed.top + span;
+      const cut = days.filter(
+        (rect) =>
+          rect.bottom > placed.top + 2 &&
+          rect.top < cardBottom - 2 &&
+          !(placed.top <= rect.top + 2 && cardBottom >= rect.bottom - 2)
+      );
+      if (cut.length > 0) {
+        const limit = viewport.height - chrome.bottom;
+        const below = Math.max(...cut.map((rect) => rect.bottom)) + 12;
+        if (below + cardSize.height <= limit) {
+          phoneSeal = { top: below, minHeight: cardSize.height };
+          spot = { ...spot, top: below };
+        } else {
+          const nextTop = Math.max(chrome.top, Math.min(...cut.map((rect) => rect.top)) - 6);
+          const nextBottom = Math.min(limit, Math.max(cardBottom, ...cut.map((rect) => rect.bottom + 6)));
+          phoneSeal = { top: nextTop, minHeight: Math.max(cardSize.height, nextBottom - nextTop) };
+          spot = { ...spot, top: nextTop };
+        }
+      }
+    }
     if (step?.id === "moods" && !loggedMood) {
       const grid = visibleQuery("[data-tour='mood-grid']");
       if (grid) {
