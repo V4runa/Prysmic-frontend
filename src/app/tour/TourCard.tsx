@@ -849,13 +849,21 @@ export default function TourCard({
             Number.parseFloat(getComputedStyle(cardRef.current).paddingBottom)
           : 28;
         const cardH = cardBox > 40 ? Math.ceil(cardBox + (Number.isFinite(cardPad) ? cardPad : 28)) : CARD_ESTIMATE;
-        const sheetTop = window.innerHeight - bar.bottom - cardH;
+        const liveCard = cardRef.current?.getBoundingClientRect();
+        const liveMatches = cardRef.current?.getAttribute("data-tour-card") === step.id && liveCard != null && liveCard.height > 40;
+        const sheetTop = liveMatches && liveCard ? liveCard.top : window.innerHeight - bar.bottom - cardH;
         const rect = measured.getBoundingClientRect();
+        const pad =
+          step.id === "calendar" ? 0 : step.id === "notes" ? NOTES_RING_PAD : step.id === "contracts" ? CONTRACTS_RING_PAD : RING_PAD;
+        const headerBottom = Math.max(0, bar.top - 12);
+        const limitBottom = sheetTop - 8 - pad;
+        const limitTop = headerBottom + pad;
+        const fitsWhole = rect.height <= limitBottom - limitTop;
         let delta = 0;
-        if (rect.bottom > sheetTop - 8) delta = rect.bottom - (sheetTop - 8);
-        if (rect.top + delta < bar.top) delta = bar.top - rect.top;
+        if (fitsWhole && rect.bottom > limitBottom) delta = rect.bottom - limitBottom;
+        else if (fitsWhole && rect.top < limitTop) delta = rect.top - limitTop;
         const scroller = measured.closest(".app-scroll");
-        if (Math.abs(delta) > 2 && scroller instanceof HTMLElement && stableCount < 8) {
+        if (Math.abs(delta) > 0.5 && scroller instanceof HTMLElement && stableCount < 8) {
           const room = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
           if (delta > 0 && room < delta) {
             const extra = Number.parseFloat(scroller.style.paddingBottom) || 0;
@@ -901,8 +909,6 @@ export default function TourCard({
         published = box;
         publish(box);
       }
-      locked = true;
-      window.clearInterval(timer);
     };
 
     const onResize = () => {
@@ -1232,7 +1238,16 @@ export default function TourCard({
       }
     } else if (target) {
       phoneMoodRing = null;
-      const above = target.y >= headerBottom - 1 && target.y + target.height <= top + 0.5;
+      const pad =
+        step?.id === "calendar"
+          ? 0
+          : step?.id === "notes"
+            ? NOTES_RING_PAD
+            : step?.id === "contracts"
+              ? CONTRACTS_RING_PAD
+              : RING_PAD;
+      const sheetEdge = liveMatches && liveBox ? liveBox.top : top;
+      const above = target.y - pad >= headerBottom - 1 && target.y + target.height + pad + 8 <= sheetEdge + 0.5;
       if (!above) sheetHidesRing = true;
     } else {
       phoneMoodRing = null;
@@ -1322,7 +1337,9 @@ export default function TourCard({
       neighbors,
       ringPad
     );
-    ringSides = { left: fitted.left, right: fitted.right, top: fitted.top, bottom: Math.min(ringBottomPad, fitted.bottom) };
+    const side = Math.min(fitted.left, fitted.right);
+    const vert = Math.min(fitted.top, Math.min(ringBottomPad, fitted.bottom));
+    ringSides = { left: side, right: side, top: vert, bottom: vert };
   }
   if (sheet && step?.id === "calendar") {
     ringSides = { left: 0, right: 0, top: 0, bottom: 0 };
@@ -1338,12 +1355,8 @@ export default function TourCard({
     const roomTop = phoneMoodRing.y - headerBottomEdge - stroke;
     const limit = next ? next.top : spot ? spot.top : phoneMoodRing.y + phoneMoodRing.height;
     const roomBottom = limit - (phoneMoodRing.y + phoneMoodRing.height) - stroke;
-    ringSides = {
-      left: RING_PAD,
-      right: RING_PAD,
-      top: Math.max(0, Math.min(RING_PAD, roomTop)),
-      bottom: Math.max(0, Math.min(RING_PAD, roomBottom)),
-    };
+    const moodPad = Math.max(0, Math.min(RING_PAD, roomTop, roomBottom));
+    ringSides = { left: moodPad, right: moodPad, top: moodPad, bottom: moodPad };
   } else if (sheet && step?.id === "moods") {
     ringSides = { left: 0, right: 0, top: 0, bottom: 0 };
   }
@@ -1358,29 +1371,35 @@ export default function TourCard({
   })();
   const headerBottom = Math.max(0, chrome.top - 12);
   const ringFloor = phone && step?.id === "moods" ? (moodBandTop > 0 ? moodBandTop + MOOD_RING_CLEAR : headerBottom) : 0;
-  const ringTop = ringSource ? Math.max(ringSource.y - ringSides.top, streakLimit, ringFloor) : 0;
-  const ringBottomRaw = ringSource ? ringSource.y + ringSource.height + ringSides.bottom : 0;
-  const ringBottom = sheet && spot ? Math.min(ringBottomRaw, spot.top) : ringBottomRaw;
+  const liveAnchor = (() => {
+    if (!ringSource || phoneMoodRing || !targetNode) return ringSource;
+    const node = step?.id === "calendar" ? targetNode.closest("[data-tour-day]") ?? targetNode : targetNode;
+    const rect = node.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return ringSource;
+    return { ...ringSource, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  })();
+  const ringTop = liveAnchor ? liveAnchor.y - ringSides.top : 0;
+  const ringBottom = liveAnchor ? liveAnchor.y + liveAnchor.height + ringSides.bottom : 0;
   const nearFlame = streakLimit > 0 && ringSource != null && ringSource.y - streakLimit < 36;
   const tasksTight = step?.id === "tasks" && (ringSides.left < ringPad || ringSides.right < ringPad);
   const tightRing = step?.id === "calendar" || step?.id === "notes" || step?.id === "contracts" || tasksTight;
-  const ring = ringSource
+  const ring = liveAnchor
     ? {
-        left: ringSource.x - ringSides.left,
+        left: liveAnchor.x - ringSides.left,
         top: ringTop,
-        width: ringSource.width + ringSides.left + ringSides.right,
-        height: Math.max(24, ringBottom - ringTop),
-        radius: radiusWithPad(ringSource.radius, Math.max(ringSides.top, ringSides.left)),
+        width: liveAnchor.width + ringSides.left + ringSides.right,
+        height: Math.max(0, ringBottom - ringTop),
+        radius: radiusWithPad(liveAnchor.radius, Math.max(ringSides.top, ringSides.left)),
       }
     : null;
 
   const holes: Box[] = [];
-  if (ringSource) {
+  if (liveAnchor) {
     holes.push({
-      x: ringSource.x - 6,
-      y: ringSource.y - 6,
-      width: ringSource.width + 12,
-      height: ringSource.height + 12,
+      x: liveAnchor.x - 6,
+      y: liveAnchor.y - 6,
+      width: liveAnchor.width + 12,
+      height: liveAnchor.height + 12,
     });
   }
   if (chrome.nav) holes.push(chrome.nav);
@@ -1415,6 +1434,65 @@ export default function TourCard({
     spot = nextSpot;
   }
   if (holdPrevious && frozen.current) spot = frozen.current.spot;
+  let drawRing = ring;
+  if (drawRing && spot && viewport.height > 0 && liveAnchor) {
+    const cap = sheet
+      ? Math.max(1, viewport.height - chrome.bottom - 8)
+      : Math.max(1, viewport.height - spot.top - 8);
+    const height = Math.min(Math.max(cardHeight, 80), cap);
+    const liveCard = cardRef.current;
+    const liveCardBox = liveCard?.getBoundingClientRect();
+    const liveName = liveCard?.getAttribute("data-tour-card");
+    const cardMatches = liveName === (step?.id ?? phase) && liveCardBox != null && liveCardBox.height > 40;
+    const cardBox = cardMatches
+      ? { left: liveCardBox.left, top: liveCardBox.top, right: liveCardBox.right, bottom: liveCardBox.bottom }
+      : sheet
+        ? {
+            left: spot.left,
+            top: viewport.height - chrome.bottom - height,
+            right: spot.left + spot.width,
+            bottom: viewport.height - chrome.bottom,
+          }
+        : {
+            left: spot.left,
+            top: spot.top,
+            right: spot.left + spot.width,
+            bottom: Math.min(spot.top + height, viewport.height - 8),
+          };
+    const ringBox = {
+      left: drawRing.left,
+      top: drawRing.top,
+      right: drawRing.left + drawRing.width,
+      bottom: drawRing.top + drawRing.height,
+    };
+    const anchorBox = {
+      left: liveAnchor.x,
+      top: liveAnchor.y,
+      right: liveAnchor.x + liveAnchor.width,
+      bottom: liveAnchor.y + liveAnchor.height,
+    };
+    const headerEl = document.querySelector(".app-header");
+    const headerEdge = headerEl instanceof HTMLElement ? headerEl.getBoundingClientRect().bottom : headerBottom;
+    const clear = (a: typeof cardBox, b: typeof cardBox) =>
+      a.right + 8 <= b.left || b.right + 8 <= a.left || a.bottom + 8 <= b.top || b.bottom + 8 <= a.top;
+    const onScreen =
+      anchorBox.top >= headerEdge - 1 &&
+      anchorBox.bottom <= viewport.height + 1 &&
+      anchorBox.left >= -1 &&
+      anchorBox.right <= viewport.width + 1 &&
+      ringBox.top >= Math.max(headerEdge, ringFloor) - 1 &&
+      ringBox.bottom <= viewport.height + 1;
+    const numeral =
+      step?.id === "calendar" && targetNode ? targetNode.getBoundingClientRect() : null;
+    const numeralFits =
+      !numeral ||
+      (numeral.height > 8 &&
+        numeral.top >= anchorBox.top - 1 &&
+        numeral.bottom <= anchorBox.bottom + 1 &&
+        numeral.left >= anchorBox.left - 1 &&
+        numeral.right <= anchorBox.right + 1);
+    if (!onScreen || !numeralFits || !clear(anchorBox, cardBox) || !clear(ringBox, cardBox)) drawRing = null;
+  }
   const sheetCap = sheet && viewport.height > 0 ? Math.max(1, viewport.height - chrome.bottom - 8) : undefined;
   const wideCap = !sheet && viewport.height > 0 && spot ? Math.max(1, viewport.height - spot.top - 8) : undefined;
   const wideMin = Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0);
@@ -1452,7 +1530,7 @@ export default function TourCard({
   return (
     <div className="fixed inset-0 z-[80] pointer-events-none">
       <div className="fixed left-0 right-0 top-0 z-[80]" style={{ bottom: shieldBottom, pointerEvents: "auto" }} />
-      {phase === "step" && showLive && (ring || holdFlame) ? (
+      {phase === "step" && showLive && (drawRing || holdFlame) ? (
         <svg className="pointer-events-none fixed inset-0 h-full w-full" aria-hidden="true">
           <defs>
             <mask id="prysmic-tour-dim">
@@ -1475,17 +1553,21 @@ export default function TourCard({
       ) : showWelcome || phase === "close" || phase === "step" || showFrozenCard ? (
         <div className="fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom }} />
       ) : null}
-      {showLive && stepReady && ring ? (
+      {showLive && stepReady && drawRing ? (
         <div
           aria-hidden="true"
           data-tour-ring=""
+          data-anchor-x={liveAnchor ? liveAnchor.x : undefined}
+          data-anchor-y={liveAnchor ? liveAnchor.y : undefined}
+          data-anchor-w={liveAnchor ? liveAnchor.width : undefined}
+          data-anchor-h={liveAnchor ? liveAnchor.height : undefined}
           className="pointer-events-none fixed"
           style={{
-            left: ring.left,
-            top: ring.top,
-            width: ring.width,
-            height: ring.height,
-            borderRadius: ring.radius,
+            left: drawRing.left,
+            top: drawRing.top,
+            width: drawRing.width,
+            height: drawRing.height,
+            borderRadius: drawRing.radius,
             boxShadow: tightRing
               ? "inset 0 0 0 2px rgba(103,232,249,0.95)"
               : nearFlame

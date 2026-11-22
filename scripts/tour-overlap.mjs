@@ -444,5 +444,110 @@ export function collectOverlaps() {
       });
     }
   }
+  if (ring instanceof HTMLElement && card instanceof HTMLElement) {
+    const ringRect = ring.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    function gapClear(a, b) {
+      return a.right + 8 <= b.left + 0.5 || b.right + 8 <= a.left + 0.5 || a.bottom + 8 <= b.top + 0.5 || b.bottom + 8 <= a.top + 0.5;
+    }
+    const overlapW = Math.min(ringRect.right, cardRect.right) - Math.max(ringRect.left, cardRect.left);
+    const overlapH = Math.min(ringRect.bottom, cardRect.bottom) - Math.max(ringRect.top, cardRect.top);
+    if (overlapW > 0 && overlapH > 0) {
+      hits.push({
+        cover: "ring",
+        item: "card",
+        label: "ring intersects the card",
+        coverBox: roundBox(boxOf(ringRect)),
+        itemBox: roundBox(boxOf(cardRect)),
+      });
+    } else if (!gapClear(ringRect, cardRect)) {
+      hits.push({
+        cover: "ring",
+        item: "card",
+        label: "ring is under 8px from the card",
+        coverBox: roundBox(boxOf(ringRect)),
+        itemBox: roundBox(boxOf(cardRect)),
+      });
+    }
+    const stepId = card.getAttribute("data-tour-card");
+    let anchorNode = null;
+    if (stepId === "tasks") anchorNode = document.querySelector("[data-tour='tasks-field']");
+    else if (stepId === "notes") anchorNode = document.querySelector("[data-tour='notes-create']");
+    else if (stepId === "contracts") anchorNode = document.querySelector("[data-tour='contracts-create'], [data-tour='contracts-list']");
+    else if (stepId === "calendar") {
+      const todays = [...document.querySelectorAll("[data-tour='calendar-today']")].filter((node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const rect = node.getBoundingClientRect();
+        return rect.width > 2 && rect.height > 2 && rect.bottom > 0 && rect.top < window.innerHeight;
+      });
+      anchorNode = todays[0]?.closest("[data-tour-day]") ?? null;
+    }
+    else if (stepId === "moods") {
+      const tiles = [...document.querySelectorAll("[data-tour='mood-grid'] button")].filter((button) => {
+        if (!(button instanceof HTMLElement) || getComputedStyle(button).visibility === "hidden") return false;
+        const rect = button.getBoundingClientRect();
+        return rect.height > 40 && rect.top >= ringRect.top - 2 && rect.bottom <= ringRect.bottom + 2;
+      });
+      if (tiles.length > 0) {
+        const first = tiles[0].getBoundingClientRect();
+        const union = { left: first.left, top: first.top, right: first.right, bottom: first.bottom };
+        for (const tile of tiles) {
+          const rect = tile.getBoundingClientRect();
+          union.left = Math.min(union.left, rect.left);
+          union.top = Math.min(union.top, rect.top);
+          union.right = Math.max(union.right, rect.right);
+          union.bottom = Math.max(union.bottom, rect.bottom);
+        }
+        anchorNode = { getBoundingClientRect: () => union };
+      }
+    }
+    if (anchorNode) {
+      const raw = anchorNode.getBoundingClientRect();
+      const anchor = { left: raw.left, top: raw.top, right: raw.right, bottom: raw.bottom, width: raw.width, height: raw.height };
+      const insetL = anchor.left - ringRect.left;
+      const insetR = ringRect.right - anchor.right;
+      const insetT = anchor.top - ringRect.top;
+      const insetB = ringRect.bottom - anchor.bottom;
+      if (Math.abs(insetL - insetR) > 2 || Math.abs(insetT - insetB) > 2) {
+        hits.push({
+          cover: "ring",
+          item: "align",
+          label: `ring misaligned by L${Math.round(insetL)} R${Math.round(insetR)} T${Math.round(insetT)} B${Math.round(insetB)}`,
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: { x: Math.round(anchor.left), y: Math.round(anchor.top), w: Math.round(anchor.width), h: Math.round(anchor.height) },
+        });
+      }
+      const header = document.querySelector(".app-header");
+      const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
+      const overlapsCard =
+        Math.min(anchor.right, cardRect.right) - Math.max(anchor.left, cardRect.left) > 0 &&
+        Math.min(anchor.bottom, cardRect.bottom) - Math.max(anchor.top, cardRect.top) > 0;
+      let clipped = false;
+      if (anchorNode instanceof HTMLElement) {
+        let parent = anchorNode.parentElement;
+        while (parent && parent !== document.body) {
+          const style = getComputedStyle(parent);
+          const oy = style.overflowY;
+          if (oy === "hidden" || oy === "auto" || oy === "scroll") {
+            const bounds = parent.getBoundingClientRect();
+            if (anchor.top < bounds.top - 1 || anchor.bottom > bounds.bottom + 1) {
+              clipped = true;
+              break;
+            }
+          }
+          parent = parent.parentElement;
+        }
+      }
+      if (overlapsCard || clipped || anchor.top < headerBottom - 1 || anchor.bottom > window.innerHeight + 1 || anchor.left < -1 || anchor.right > window.innerWidth + 1) {
+        hits.push({
+          cover: "ring",
+          item: "target",
+          label: "target is partly covered",
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: { x: Math.round(anchor.left), y: Math.round(anchor.top), w: Math.round(anchor.width), h: Math.round(anchor.height) },
+        });
+      }
+    }
+  }
   return hits;
 }

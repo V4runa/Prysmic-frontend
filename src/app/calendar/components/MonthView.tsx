@@ -281,10 +281,11 @@ function MobileMonth({
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
-        className="flex-1 overflow-y-auto app-scroll min-h-0 grid grid-rows-6 gap-1"
+        className="flex-1 overflow-y-auto app-scroll min-h-0"
       >
+        <div className="grid h-full min-h-[22.25rem] grid-rows-[repeat(6,minmax(3.5rem,1fr))] gap-1">
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 gap-1">
+          <div key={wi} className="grid h-full min-h-0 grid-cols-7 gap-1">
             {week.map((cell) => {
               const b = visibleDayBuckets(index, cell.key, sources);
               const stats = dayStats(b);
@@ -362,6 +363,7 @@ function MobileMonth({
             })}
           </div>
         ))}
+        </div>
       </motion.div>
     </div>
   );
