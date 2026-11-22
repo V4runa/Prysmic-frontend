@@ -576,13 +576,19 @@ export default function TourCard({
         Number.parseFloat(style.paddingBottom) +
         Number.parseFloat(style.borderTopWidth) +
         Number.parseFloat(style.borderBottomWidth);
+      const head = node.querySelector("[data-tour-head]");
       const body = node.querySelector("[data-tour-body]");
       const actions = node.querySelector("[data-tour-actions]");
+      const more = node.querySelector("[data-tour-more]");
       const actionsMargin =
         actions instanceof HTMLElement ? Number.parseFloat(getComputedStyle(actions).marginTop) : 0;
       const content =
         body instanceof HTMLElement && actions instanceof HTMLElement
-          ? body.scrollHeight + actions.offsetHeight + (Number.isFinite(actionsMargin) ? actionsMargin : 0)
+          ? (head instanceof HTMLElement ? head.offsetHeight : 0) +
+            body.scrollHeight +
+            (more instanceof HTMLElement ? more.offsetHeight : 0) +
+            actions.offsetHeight +
+            (Number.isFinite(actionsMargin) ? actionsMargin : 0)
           : measured instanceof HTMLElement
             ? measured.scrollHeight
             : node.getBoundingClientRect().height;
@@ -1267,6 +1273,18 @@ export default function TourCard({
   const bodyId = "tour-card-body";
   const progressId = "tour-card-progress";
 
+  // The copy wins over the ring. If the card cannot show its text where it
+  // sits, drop the ring and move the card up into the open space.
+  if (!sheet && spot && viewport.height > 0 && cardHeight > 40 && (phoneMoodRing || (phase === "step" && target))) {
+    const roomAtSpot = viewport.height - spot.top - 8;
+    if (roomAtSpot < cardHeight - 4) {
+      const floor = Math.max(8, chrome.top);
+      const room = viewport.height - floor - 8;
+      phoneMoodRing = null;
+      sheetHidesRing = true;
+      spot = { ...spot, top: room >= cardHeight ? Math.max(floor, viewport.height - 8 - cardHeight) : floor };
+    }
+  }
   const ringSource = sheetHidesRing ? null : phoneMoodRing ?? target;
   const targetNode = step ? visibleQuery(step.target) : null;
   let ringPad =
@@ -1377,23 +1395,31 @@ export default function TourCard({
     (phase === "step" && routeReady && stepReady);
   const holdPrevious = (phase === "step" || phase === "close") && !showLive && frozen.current != null;
   if (showLive && !sheet && spot && (phase !== "step" || target || holdFlame)) {
-    if (!reveal.current || reveal.current.key !== measureKey) {
-      const fixed = Math.min(TOUR_CARD_WIDTH, Math.max(240, viewport.width - 32));
-      reveal.current = {
-        key: measureKey,
-        spot: {
+    const saved = reveal.current;
+    const savedFits =
+      saved != null &&
+      saved.key === measureKey &&
+      saved.spot.top >= 0 &&
+      saved.spot.left >= -4 &&
+      saved.spot.top + Math.min(Math.max(cardHeight, 160), Math.max(1, viewport.height - 16)) <= viewport.height - 8 &&
+      saved.spot.left + saved.spot.width <= viewport.width + 8;
+    const fixed = Math.min(TOUR_CARD_WIDTH, Math.max(240, viewport.width - 32));
+    const nextSpot = savedFits && saved
+      ? saved.spot
+      : {
           top: spot.top,
-          left: spot.left,
+          left: Math.max(8, Math.min(spot.left, viewport.width - 8 - Math.min(spot.width, fixed))),
           width: step?.id === "calendar" ? spot.width : fixed,
-        },
-      };
-    }
-    spot = reveal.current.spot;
+        };
+    reveal.current = { key: measureKey, spot: nextSpot };
+    spot = nextSpot;
   }
   if (holdPrevious && frozen.current) spot = frozen.current.spot;
   const sheetCap = sheet && viewport.height > 0 ? Math.max(1, viewport.height - chrome.bottom - 8) : undefined;
   const wideCap = !sheet && viewport.height > 0 && spot ? Math.max(1, viewport.height - spot.top - 8) : undefined;
   const wideMin = Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0);
+  const cardCap = sheet ? sheetCap : wideCap;
+  const copyCapped = cardCap != null && cardHeight > cardCap + 16;
   const cardStyle: CSSProperties | undefined = spot
     ? sheet
       ? {
@@ -1465,8 +1491,8 @@ export default function TourCard({
               : nearFlame
                 ? "0 0 0 2px rgba(103,232,249,0.95)"
                 : "0 0 0 2px rgba(103,232,249,0.95), 0 0 18px 2px rgba(103,232,249,0.4)",
-            opacity: reduceMotion ? 1 : undefined,
-            animation: reduceMotion ? undefined : "prysmic-tour-in 150ms ease",
+            opacity: 1,
+            animation: reduceMotion ? undefined : "prysmic-tour-in 150ms ease forwards",
           }}
         />
       ) : null}
@@ -1484,12 +1510,13 @@ export default function TourCard({
           }`}
           style={{
             ...cardStyle,
+            opacity: 1,
             animation: reduceMotion ? undefined : "prysmic-tour-in 150ms ease forwards",
           }}
           data-tour-card={phase === "step" ? (TOUR_STEPS[index]?.id ?? phase) : phase}
         >
           <div data-tour-measure="" className="flex min-h-0 flex-col overflow-hidden">
-          <div data-tour-body="" className="min-h-0 overflow-y-auto">
+          <div data-tour-head="" className="shrink-0">
             {shownProgress ? (
             <p id={progressId} className="text-sm text-slate-400">
               {shownProgress}
@@ -1498,10 +1525,21 @@ export default function TourCard({
           <h2 id={titleId} className={`text-lg font-semibold tracking-wide text-slate-50 ${shownProgress ? "mt-1" : ""}`}>
             {shownTitle}
           </h2>
+          </div>
+          <div
+            data-tour-body=""
+            className="min-h-0 overflow-y-auto"
+            style={copyCapped ? { minHeight: "4.5rem" } : undefined}
+          >
           <p id={bodyId} className={`text-sm text-slate-300 ${moodNested ? "mt-1.5 leading-snug" : "mt-2 leading-relaxed"}`}>
             {shownBody}
           </p>
           </div>
+          {copyCapped ? (
+            <p data-tour-more="" className="shrink-0 pt-1 text-xs text-slate-400">
+              Scroll for the rest
+            </p>
+          ) : null}
           <div data-tour-actions="" className={`flex shrink-0 flex-nowrap items-center gap-2 ${moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
             {shownKind !== "close" ? (
               <button type="button" className={btnSecondary} disabled={holdPrevious} onPointerDown={press(onSkip)}>

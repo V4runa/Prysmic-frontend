@@ -371,6 +371,34 @@ export function collectOverlaps() {
     }
   }
   if (card instanceof HTMLElement) {
+    const copy = card.querySelector("#tour-card-body");
+    const copyBox = card.querySelector("[data-tour-body]");
+    if (copy instanceof HTMLElement && copyBox instanceof HTMLElement) {
+      const line = Number.parseFloat(getComputedStyle(copy).lineHeight) || 22;
+      const full = copy.scrollHeight;
+      const text = copy.getBoundingClientRect();
+      const frame = copyBox.getBoundingClientRect();
+      const visible = Math.max(0, Math.min(text.bottom, frame.bottom) - Math.max(text.top, frame.top));
+      const required = Math.min(full, line * 3);
+      if (full > 8 && visible < required - 4) {
+        hits.push({
+          cover: "card",
+          item: "copy",
+          label: `copy visible ${Math.round(visible)}px, needs ${Math.round(required)}px`,
+          coverBox: roundBox(boxOf(frame)),
+          itemBox: roundBox(boxOf(text)),
+        });
+      }
+      if (copyBox.scrollHeight > copyBox.clientHeight + 4 && !card.querySelector("[data-tour-more]")) {
+        hits.push({
+          cover: "card",
+          item: "copy",
+          label: "copy scrolls with no hint",
+          coverBox: roundBox(boxOf(frame)),
+          itemBox: { x: 0, y: 0, w: copyBox.scrollHeight, h: copyBox.clientHeight },
+        });
+      }
+    }
     const box = card.getBoundingClientRect();
     if (box.top < -1 || box.bottom > window.innerHeight + 1 || box.left < -1 || box.right > window.innerWidth + 1) {
       hits.push({
