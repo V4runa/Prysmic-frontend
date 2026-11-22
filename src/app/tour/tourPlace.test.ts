@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cardSpotInside, containTourCard, intersects, overlapArea, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
+import { cardSpotInside, containTourCard, intersects, moodScrollDelta, overlapArea, placeMoodCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
 
 const desktop = { width: 1440, height: 900 };
 const phone = { width: 390, height: 844 };
@@ -177,6 +177,36 @@ test("the card avoids a keep-clear row under the target", () => {
   const placed = asBox(spot, card.height);
   assert.equal(overlapArea(placed, field), 0);
   assert.equal(overlapArea(placed, search), 0);
+});
+
+test("a phone mood card stays full height and sits on whole rows", () => {
+  const rows: { top: number; bottom: number }[] = [
+    { top: 180, bottom: 320 },
+    { top: 336, bottom: 476 },
+    { top: 492, bottom: 632 },
+    { top: 648, bottom: 788 },
+  ];
+  const placed = placeMoodCard(rows, 220, 72, 820, 12);
+  assert.ok(placed);
+  assert.ok(placed.minHeight >= 220);
+  assert.ok(placed.top + placed.minHeight <= 820);
+  const cardBottom = placed.top + placed.minHeight;
+  for (const row of rows) {
+    const wholly: boolean =
+      row.bottom <= placed.top + 2 ||
+      row.top >= cardBottom - 2 ||
+      (placed.top <= row.top + 2 && cardBottom >= row.bottom - 2);
+    assert.equal(wholly, true);
+  }
+  assert.ok(placed.ringRows >= 1);
+});
+
+test("scrolling the mood grid is skipped when another row will not fit", () => {
+  const rows = [
+    { top: 180, bottom: 320 },
+    { top: 336, bottom: 476 },
+  ];
+  assert.equal(moodScrollDelta(rows, 200, 72, 900, 400, 12), 0);
 });
 
 test("the tasks ring keeps 8px between its stroke and the More button", () => {

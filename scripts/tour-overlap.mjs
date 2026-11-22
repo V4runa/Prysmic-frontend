@@ -70,6 +70,16 @@ export function collectOverlaps() {
     const label = (button.getAttribute("aria-label") || button.textContent || button.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
     items.push({ kind: "control", label, box: boxOf(rect) });
   }
+  for (const tile of document.querySelectorAll("[data-tour='mood-grid'] > *, [data-tour-day]")) {
+    if (!(tile instanceof HTMLElement)) continue;
+    if (tile.closest("[data-tour-card]")) continue;
+    if (!visible(tile)) continue;
+    const rect = tile.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) continue;
+    if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) continue;
+    const label = (tile.getAttribute("aria-label") || tile.textContent || "tile").replace(/\s+/g, " ").trim().slice(0, 80);
+    items.push({ kind: "tile", label, box: boxOf(rect) });
+  }
   const hits = [];
   for (const cover of covers) {
     for (const item of items) {
@@ -91,6 +101,53 @@ export function collectOverlaps() {
           h: Math.round(item.box.height),
         },
       });
+    }
+  }
+  if (card instanceof HTMLElement) {
+    if (card.scrollHeight > card.clientHeight + 1) {
+      const rect = card.getBoundingClientRect();
+      hits.push({
+        cover: "card",
+        item: "clip",
+        label: `card content clipped scroll ${card.scrollHeight} client ${card.clientHeight}`,
+        coverBox: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
+        itemBox: { x: 0, y: 0, w: card.scrollHeight, h: card.clientHeight },
+      });
+    }
+    for (const node of card.querySelectorAll("*")) {
+      if (!(node instanceof HTMLElement)) continue;
+      const box = node.getBoundingClientRect();
+      if (box.width < 2 || box.height < 2) continue;
+      let parent = node.parentElement;
+      while (parent) {
+        const style = getComputedStyle(parent);
+        if (style.overflowX !== "visible" || style.overflowY !== "visible") {
+          const bounds = parent.getBoundingClientRect();
+          const clipped =
+            box.top < bounds.top - 1 ||
+            box.bottom > bounds.bottom + 1 ||
+            box.left < bounds.left - 1 ||
+            box.right > bounds.right + 1;
+          if (clipped) {
+            const label = (node.textContent ?? node.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
+            hits.push({
+              cover: "card",
+              item: "clip",
+              label: `clipped ${label || node.tagName}`,
+              coverBox: {
+                x: Math.round(bounds.x),
+                y: Math.round(bounds.y),
+                w: Math.round(bounds.width),
+                h: Math.round(bounds.height),
+              },
+              itemBox: { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) },
+            });
+            break;
+          }
+        }
+        if (parent === card) break;
+        parent = parent.parentElement;
+      }
     }
   }
   return hits;

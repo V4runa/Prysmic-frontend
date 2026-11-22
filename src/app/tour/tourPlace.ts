@@ -309,6 +309,77 @@ export function containTourCard(
   return { top, left, width };
 }
 
+export type MoodRow = { top: number; bottom: number };
+
+/**
+ * Where a full-height phone mood card can sit. The card is never shorter
+ * than its content. A row is wholly above it, wholly inside it, or wholly
+ * below it. The lowest legal top that keeps the most rows above the card wins.
+ */
+export function placeMoodCard(
+  rows: MoodRow[],
+  contentHeight: number,
+  topInset: number,
+  bottomLimit: number,
+  gap = 12
+): { top: number; minHeight: number; ringRows: number } | null {
+  const height = Math.max(1, contentHeight);
+  const seams = new Set<number>([topInset]);
+  for (const row of rows) {
+    seams.add(row.top);
+    seams.add(row.bottom + gap);
+  }
+  let best: { top: number; minHeight: number; ringRows: number } | null = null;
+  for (const seam of seams) {
+    const top = Math.max(topInset, seam);
+    let bottom = top + height;
+    let ok = true;
+    for (const row of rows) {
+      const overlaps = row.bottom > top + 2 && row.top < bottom - 2;
+      if (!overlaps) continue;
+      if (row.top < top - 2 || row.bottom + 4 > bottomLimit) {
+        ok = false;
+        break;
+      }
+      bottom = Math.max(bottom, row.bottom + 4);
+    }
+    if (!ok || bottom > bottomLimit || bottom - top + 0.5 < height) continue;
+    const ringRows = rows.filter((row) => row.bottom <= top + 1).length;
+    if (!best || ringRows > best.ringRows || (ringRows === best.ringRows && top > best.top)) {
+      best = { top, minHeight: bottom - top, ringRows };
+    }
+  }
+  return best;
+}
+
+/**
+ * How far to scroll the mood grid so more whole rows fit above a full-height card.
+ * Returns 0 when scrolling would not reveal another row.
+ */
+export function moodScrollDelta(
+  rows: MoodRow[],
+  contentHeight: number,
+  topInset: number,
+  bottomLimit: number,
+  room: number,
+  gap = 12
+): number {
+  if (room < 4) return 0;
+  const current = placeMoodCard(rows, contentHeight, topInset, bottomLimit, gap);
+  const currentRows = current?.ringRows ?? -1;
+  for (let delta = 4; delta <= room; delta += 4) {
+    const shifted = rows.map((row) => ({ top: row.top - delta, bottom: row.bottom - delta }));
+    const placed = placeMoodCard(shifted, contentHeight, topInset, bottomLimit, gap);
+    if (placed && placed.ringRows > currentRows) return delta;
+  }
+  if (current) return 0;
+  for (let delta = 4; delta <= room; delta += 4) {
+    const shifted = rows.map((row) => ({ top: row.top - delta, bottom: row.bottom - delta }));
+    if (placeMoodCard(shifted, contentHeight, topInset, bottomLimit, gap)) return delta;
+  }
+  return 0;
+}
+
 export type SidePad = { left: number; right: number; top: number; bottom: number };
 
 /**

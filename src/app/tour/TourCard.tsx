@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { btnPrimary, btnSecondary } from "../components/forms/styles";
-import { containTourCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
+import { containTourCard, moodScrollDelta, placeMoodCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
 import {
   TOUR_CLOSE,
   TOUR_CONTROLS,
@@ -117,87 +117,6 @@ function moodRows(grid: HTMLElement): { top: number; bottom: number }[] {
   return rows;
 }
 
-/** Scroll the last mood tile up until it can sit fully above the tab bar. */
-function liftMoodTail(bottomLimit: number): boolean {
-  const grid = visibleQuery("[data-tour='mood-grid']");
-  if (!grid) return false;
-  const tiles = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
-  const last = tiles[tiles.length - 1];
-  if (!last) return false;
-  const rect = last.getBoundingClientRect();
-  if (rect.bottom <= bottomLimit - 4) return false;
-  const scroller = grid.closest(".app-scroll");
-  if (!(scroller instanceof HTMLElement)) return false;
-  const delta = Math.ceil(rect.bottom - (bottomLimit - 8));
-  const room = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
-  if (room < 4 || delta < 2) return false;
-  scroller.scrollBy({ top: Math.min(delta, room), behavior: "auto" });
-  return true;
-}
-
-/**
- * A phone mood row is fully under the card or fully clear of it.
- * `lock` means the card must stop at `height` even when the copy is taller.
- */
-function sealMoodRows(
-  spot: CardSpot,
-  contentHeight: number,
-  topInset: number,
-  bottomLimit: number
-): { top: number; height: number; lock: boolean } {
-  const grid = visibleQuery("[data-tour='mood-grid']");
-  const rows = grid ? moodRows(grid) : [];
-  let top = Math.max(topInset, spot.top);
-  let bottom = top + contentHeight;
-  let lock = false;
-  for (let pass = 0; pass < 8; pass += 1) {
-    let changed = false;
-    for (const row of rows) {
-      const overlaps = row.bottom > top + 2 && row.top < bottom - 2;
-      const contains = top <= row.top + 2 && bottom >= row.bottom - 2;
-      if (!overlaps || contains) continue;
-      if (row.bottom + 4 <= bottomLimit) {
-        if (bottom < row.bottom + 4) {
-          bottom = row.bottom + 4;
-          changed = true;
-        }
-        continue;
-      }
-      const clear = row.top - RING_GAP;
-      if (bottom > clear) {
-        bottom = clear;
-        lock = true;
-        changed = true;
-      }
-      if (top > row.top - 2 && top < row.bottom - 2) {
-        const above = rows.filter((item) => item.bottom <= row.top - 2);
-        const nextTop = above.length > 0 ? above[above.length - 1].bottom + RING_GAP : topInset;
-        const raised = Math.max(topInset, nextTop);
-        if (Math.abs(top - raised) > 1) {
-          top = raised;
-          changed = true;
-        }
-      }
-    }
-    for (const row of rows) {
-      if (top > row.top + 2 && top < row.bottom - 2 && row.bottom + 4 <= bottomLimit) {
-        top = row.top;
-        bottom = Math.max(bottom, Math.min(bottomLimit, row.bottom + 4));
-        changed = true;
-      }
-    }
-    if (bottom > bottomLimit) {
-      bottom = bottomLimit;
-      lock = true;
-      changed = true;
-    }
-    if (!changed) break;
-  }
-  if (bottom < top + 140) top = Math.max(topInset, bottom - 140);
-  const height = Math.max(140, bottom - top);
-  return { top, height, lock: lock || height > contentHeight + 1 };
-}
-
 function layoutPhoneMoods(
   cardHeight: number,
   topInset: number,
@@ -209,21 +128,13 @@ function layoutPhoneMoods(
   const rect = grid.getBoundingClientRect();
   const rows = moodRows(grid);
   if (rows.length === 0) return null;
+  const placed = placeMoodCard(rows, cardHeight, topInset, viewport.height - bottomInset, RING_GAP);
+  if (!placed) return null;
   const width = Math.max(200, viewport.width - 32);
-  const maxTop = viewport.height - bottomInset - cardHeight;
-  let chosen = -1;
-  for (let i = 0; i < rows.length; i += 1) {
-    if (rows[i].bottom + RING_GAP <= maxTop) chosen = i;
-    else break;
-  }
-  let top = chosen >= 0 ? rows[chosen].bottom + RING_GAP : rows[0].top;
-  const next = chosen >= 0 ? rows[chosen + 1] : rows[0];
-  if (next && next.top < top && next.top <= maxTop) top = next.top;
-  top = Math.min(Math.max(topInset, top), Math.max(topInset, maxTop));
-  const above = rows.filter((row) => row.bottom <= top + 1);
-  const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, top);
+  const above = rows.filter((row) => row.bottom <= placed.top + 1);
+  const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, placed.top);
   return {
-    spot: { top, left: 16, width },
+    spot: { top: placed.top, left: 16, width },
     ring: {
       x: rect.x,
       y: rect.y,
@@ -719,7 +630,7 @@ export default function TourCard({
     if (phase !== "step" || !step) return;
     let scrolled = false;
     let locked = false;
-    let moodLifted = false;
+    let moodScrolls = 0;
     let previous: TargetBox | null = null;
     let published: TargetBox | null = null;
     let stableCount = 0;
@@ -741,12 +652,23 @@ export default function TourCard({
         previous = null;
         return;
       }
-      if (step.id === "moods" && window.innerWidth < 700 && !moodLifted) {
-        moodLifted = true;
-        if (liftMoodTail(window.innerHeight - readChrome().bottom)) {
-          previous = null;
-          stableCount = 0;
-          return;
+      if (step.id === "moods" && window.innerWidth < 700 && moodScrolls < 4) {
+        const grid = visibleQuery("[data-tour='mood-grid']");
+        const scroller = grid?.closest(".app-scroll");
+        if (grid && scroller instanceof HTMLElement) {
+          const chromeNow = readChrome();
+          const measured = cardRef.current?.querySelector("[data-tour-measure]");
+          const contentHeight =
+            measured instanceof HTMLElement && measured.scrollHeight > 80 ? measured.scrollHeight + 28 : CARD_ESTIMATE;
+          const room = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+          const delta = moodScrollDelta(moodRows(grid), contentHeight, chromeNow.top, window.innerHeight - chromeNow.bottom, room, RING_GAP);
+          if (delta > 2) {
+            scroller.scrollBy({ top: Math.min(delta, room), behavior: "auto" });
+            moodScrolls += 1;
+            previous = null;
+            stableCount = 0;
+            return;
+          }
         }
       }
       const node = visibleQuery(step.target);
@@ -1028,28 +950,31 @@ export default function TourCard({
       week: step?.id === "calendar" && phone ? todayWeek() : null,
     });
   }
+  let moodGrow: number | undefined;
   if (spot && viewport.width > 0) {
     spot = containTourCard(spot, cardSize.height, viewport, { top: chrome.top, bottom: chrome.bottom }, { phone });
     if (phone && step?.id === "moods" && !loggedMood) {
       const grid = visibleQuery("[data-tour='mood-grid']");
       const rows = grid ? moodRows(grid) : [];
-      const maxTop = viewport.height - chrome.bottom - cardSize.height;
-      const cut = rows.find((row) => spot && spot.top > row.top + 2 && spot.top < row.bottom - 2);
-      if (cut && spot && cut.top >= chrome.top && cut.top <= maxTop) spot = { ...spot, top: cut.top };
-      if (grid && spot) {
-        const rect = grid.getBoundingClientRect();
-        const above = rows.filter((row) => row.bottom <= spot!.top + 1);
-        const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, spot.top);
-        const height = ringBottom - rect.top;
-        phoneMoodRing = height >= 24
-          ? {
+      const placed = placeMoodCard(rows, cardSize.height, chrome.top, viewport.height - chrome.bottom, RING_GAP);
+      if (placed && spot) {
+        spot = { ...spot, top: placed.top };
+        if (placed.minHeight > cardSize.height + 1) moodGrow = placed.minHeight;
+        if (grid) {
+          const rect = grid.getBoundingClientRect();
+          const above = rows.filter((row) => row.bottom <= placed.top + 1);
+          const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, placed.top);
+          const height = ringBottom - rect.top;
+          if (height >= 24) {
+            phoneMoodRing = {
               x: rect.x,
               y: rect.y,
               width: rect.width,
               height,
               radius: getComputedStyle(grid).borderRadius || "24px",
-            }
-          : phoneMoodRing;
+            };
+          }
+        }
       }
     }
   }
@@ -1062,28 +987,6 @@ export default function TourCard({
       if (snapped) {
         phoneSeal = snapped;
         spot = { ...spot, top: snapped.top };
-      }
-    }
-  }
-  let moodFrame: { height: number; lock: boolean } | null = null;
-  if (spot && phone && step?.id === "moods" && !loggedMood && viewport.width > 0) {
-    const sealed = sealMoodRows(spot, cardSize.height, chrome.top, viewport.height - chrome.bottom);
-    spot = { ...spot, top: sealed.top };
-    moodFrame = { height: sealed.height, lock: sealed.lock };
-    const grid = visibleQuery("[data-tour='mood-grid']");
-    if (grid) {
-      const rect = grid.getBoundingClientRect();
-      const above = moodRows(grid).filter((row) => row.bottom <= sealed.top + 1);
-      const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, sealed.top);
-      const height = ringBottom - rect.top;
-      if (height >= 24) {
-        phoneMoodRing = {
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height,
-          radius: getComputedStyle(grid).borderRadius || "24px",
-        };
       }
     }
   }
@@ -1181,22 +1084,12 @@ export default function TourCard({
   if (chrome.nav) holes.push(chrome.nav);
   if (chrome.flame) holes.push(chrome.flame);
 
-  const room = spot ? Math.max(0, viewport.height - chrome.bottom - spot.top) : 0;
-  const moodShort = moodFrame != null && moodFrame.lock && moodFrame.height + 1 < cardSize.height;
-  const moodTall = moodFrame != null && moodFrame.height > cardSize.height + 1;
   const cardStyle: CSSProperties | undefined = spot
     ? {
         top: spot.top,
         left: spot.left,
         width: spot.width,
-        height: moodShort && moodFrame ? moodFrame.height : undefined,
-        maxHeight: moodShort && moodFrame ? Math.min(room, moodFrame.height) : room,
-        minHeight:
-          moodShort && moodFrame
-            ? Math.min(room, moodFrame.height)
-            : moodTall && moodFrame
-              ? moodFrame.height
-              : Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0) || undefined,
+        minHeight: Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0) || undefined,
         backgroundColor: "#14161c",
       }
     : undefined;
@@ -1260,7 +1153,7 @@ export default function TourCard({
           aria-describedby={bodyId}
           tabIndex={-1}
           className={`pointer-events-auto fixed z-[81] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
-            moodNested ? "px-4 py-3" : phone && step?.id === "moods" ? "px-3.5 pt-3.5 pb-0" : viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
+            moodNested ? "px-4 py-3" : viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
           }`}
           style={{
             ...cardStyle,
@@ -1268,8 +1161,8 @@ export default function TourCard({
           }}
           data-tour-card={phase === "step" ? (TOUR_STEPS[index]?.id ?? phase) : phase}
         >
-          <div data-tour-measure="" className={`flex min-h-0 flex-col ${moodShort ? "h-full" : ""}`}>
-          <div data-tour-body="" className={`min-h-0 overflow-y-auto ${moodShort ? "flex-1" : ""}`}>
+          <div data-tour-measure="" className="flex min-h-0 flex-col">
+          <div data-tour-body="">
           {progress ? (
             <p id={progressId} className="text-sm text-slate-400">
               {progress}
