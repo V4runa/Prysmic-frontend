@@ -759,9 +759,9 @@ export default function TourCard({
   const [closeReady, setCloseReady] = useState(false);
   const [holdFlame, setHoldFlame] = useState(false);
   const [stage, setStage] = useState<"out" | "measure" | "show">("measure");
+  const [leaving, setLeaving] = useState(false);
   const stageKey = useRef("");
   const shownSig = useRef("");
-  const settledKey = useRef("");
   const navLock = useRef(false);
   const liveSpot = useRef<CardSpot | null>(null);
   const liveReady = useRef(false);
@@ -1411,7 +1411,10 @@ export default function TourCard({
   }, [stage, measureKey]);
 
   useEffect(() => {
-    if (stage === "show") navLock.current = false;
+    if (stage === "show") {
+      navLock.current = false;
+      setLeaving(false);
+    }
   }, [stage, measureKey]);
 
   useEffect(() => {
@@ -2033,24 +2036,15 @@ export default function TourCard({
       };
     } else if (shownSig.current.startsWith(`${measureKey}|`) && frozen.current) {
       const parts = shownSig.current.split("|");
-      const moved =
-        Math.abs(spot.top - Number(parts[1])) > 8 ||
-        Math.abs(spot.left - Number(parts[2])) > 8 ||
-        Math.abs(spot.width - Number(parts[3])) > 8;
-      if (moved && settledKey.current !== measureKey) {
-        settledKey.current = measureKey;
-        setStage("out");
-      } else {
-        shownSig.current = sig;
-        frozen.current = {
-          spot: { ...spot },
-          title: shownTitle,
-          body: shownBody,
-          progress: shownProgress,
-          kind: shownKind,
-          nested: moodNested,
-        };
-      }
+      shownSig.current = sig;
+      frozen.current = {
+        spot: { ...spot },
+        title: shownTitle,
+        body: shownBody,
+        progress: shownProgress,
+        kind: shownKind,
+        nested: moodNested,
+      };
     } else {
       shownSig.current = sig;
       frozen.current = {
@@ -2071,16 +2065,21 @@ export default function TourCard({
     event.stopPropagation();
     if (navLock.current || stage !== "show") return;
     navLock.current = true;
+    setLeaving(true);
+    setStage("out");
     action();
   };
+  const pending = leaving || stage !== "show";
+  const veilOpacity = stage === "show" ? 1 : 0;
+  const veilTransition = stage === "measure" || reduceMotion ? "none" : "opacity 160ms ease";
 
   const shieldBottom = chrome.nav ? chrome.nav.height : 0;
 
   return (
     <div className="fixed inset-0 z-[80] pointer-events-none">
       <div className="fixed left-0 right-0 top-0 z-[80]" style={{ bottom: shieldBottom, pointerEvents: tourOpen ? "auto" : "none" }} />
-      {tourOpen && phase === "step" && showLive && (drawRing || holdFlame) ? (
-        <svg className="pointer-events-none fixed inset-0 h-full w-full" aria-hidden="true">
+      {showFrozenCard && phase === "step" && showLive && (drawRing || holdFlame) ? (
+        <svg className="pointer-events-none fixed inset-0 h-full w-full" aria-hidden="true" style={{ opacity: veilOpacity, transition: veilTransition }}>
           <defs>
             <mask id="prysmic-tour-dim">
               <rect width="100%" height="100%" fill="white" />
@@ -2099,8 +2098,8 @@ export default function TourCard({
           </defs>
           <rect width="100%" height="100%" fill="rgba(6,7,10,0.55)" mask="url(#prysmic-tour-dim)" />
         </svg>
-      ) : stage !== "measure" && (showWelcome || phase === "close" || phase === "step" || showFrozenCard) ? (
-        <div className="pointer-events-none fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom }} />
+      ) : showFrozenCard ? (
+        <div className="pointer-events-none fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom, opacity: veilOpacity, transition: veilTransition }} />
       ) : null}
       {tourOpen && showLive && stepReady && drawRing ? (
         <div
@@ -2183,19 +2182,19 @@ export default function TourCard({
               </button>
             ) : null}
             <div className="ml-auto flex flex-nowrap items-center justify-end gap-2">
-              {shownKind === "step" ? (
-                <button type="button" className={btnSecondary} disabled={!tourOpen} onPointerDown={guarded(onBack)}>
-                  {TOUR_CONTROLS.back}
+              {shownKind === "step" || shownKind === "close" ? (
+                <button type="button" className={btnSecondary} disabled={!tourOpen} onPointerDown={guarded(onBack)} aria-busy={pending || undefined}>
+                  {pending ? "…" : TOUR_CONTROLS.back}
                 </button>
               ) : null}
               {shownKind === "welcome" ? (
                 <button type="button" className={btnPrimary} disabled={!tourOpen} onPointerDown={guarded(onStart)}>
-                  {TOUR_WELCOME.start}
+                  {pending ? "…" : TOUR_WELCOME.start}
                 </button>
               ) : null}
               {shownKind === "step" ? (
-                <button type="button" className={btnPrimary} disabled={!tourOpen} onPointerDown={guarded(onNext)} aria-busy={!tourOpen || undefined}>
-                  {tourOpen ? TOUR_CONTROLS.next : "…"}
+                <button type="button" className={btnPrimary} disabled={!tourOpen} onPointerDown={guarded(onNext)} aria-busy={pending || undefined}>
+                  {pending ? "…" : TOUR_CONTROLS.next}
                 </button>
               ) : null}
               {shownKind === "close" ? (

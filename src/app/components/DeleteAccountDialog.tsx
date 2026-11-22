@@ -139,6 +139,11 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
           It can&apos;t be undone.
         </p>
         <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4" noValidate>
+          {loading ? (
+            <p role="status" className="text-sm text-slate-100">
+              Deleting…
+            </p>
+          ) : null}
           <Field
             label="Type DELETE to confirm"
             htmlFor="delete-account-confirm"
@@ -161,6 +166,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
                   ? "delete-account-confirm-hint"
                   : undefined
               }
+              disabled={loading}
               onChange={(event) => {
                 setConfirmation(event.target.value);
                 if (error) setError(null);
@@ -173,6 +179,7 @@ export default function DeleteAccountDialog({ onClose }: { onClose: () => void }
               type="password"
               autoComplete="current-password"
               value={password}
+              disabled={loading}
               onChange={(event) => {
                 setPassword(event.target.value);
                 if (error) setError(null);

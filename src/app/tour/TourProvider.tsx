@@ -101,6 +101,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   const ended = useRef(false);
   const appliedRoute = useRef("");
   const closePath = useRef("");
+  const pendingPush = useRef(0);
   const [landing, setLanding] = useState<ChromeQuietMemory>(QUIET_CHROME_MEMORY);
 
   const onTourQuery = useCallback((event: { rising: boolean }) => {
@@ -191,6 +192,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       const leftStep = route != null && pathname !== route;
       const leftClose = route == null && closePath.current !== "" && pathname !== closePath.current;
       if (leftStep || leftClose) {
+        window.clearTimeout(pendingPush.current);
         ended.current = true;
         dispatch({ type: "skip" });
       }
@@ -198,8 +200,14 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     }
     appliedRoute.current = key;
     if (route == null) closePath.current = pathname;
-    if (route && pathname !== route) router.push(route);
-    else stripTourParam(router, pathname);
+    if (route && pathname !== route) {
+      // Let the old card start fading before the address changes, so the
+      // previous step's text is not sitting at full opacity on the new page.
+      window.clearTimeout(pendingPush.current);
+      pendingPush.current = window.setTimeout(() => router.push(route), 120);
+      return;
+    }
+    stripTourParam(router, pathname);
   }, [state.phase, state.index, state.returnNotes, pathname, router]);
 
   const finishTour = useCallback(() => {
@@ -251,6 +259,9 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     landing: nextLanding,
   });
   const open = tourIsOpen(state);
+  // The welcome card waits until Notes is the current page. Opening it from
+  // Settings used to paint the card for a frame before the route changed.
+  const welcomeParked = state.phase === "welcome" && pathname !== "/notes";
 
   const api = useMemo<TourApi>(
     () => ({
@@ -265,7 +276,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     <QueryContext.Provider value={onTourQuery}>
       <TourContext.Provider value={api}>
         {children}
-        {open ? (
+        {open && !welcomeParked ? (
           <TourCard
             phase={state.phase === "welcome" || state.phase === "step" || state.phase === "close" ? state.phase : "welcome"}
             index={state.index}

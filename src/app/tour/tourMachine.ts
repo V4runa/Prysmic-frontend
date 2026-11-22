@@ -52,6 +52,7 @@ export function tourReducer(state: TourState, event: TourEvent): TourState {
     }
 
     case "back": {
+      if (state.phase === "close") return { phase: "step", index: LAST, persistSeen: false, returnNotes: false };
       if (state.phase !== "step") return state;
       if (state.index <= 0) return { phase: "welcome", index: -1, persistSeen: false, returnNotes: false };
       return { phase: "step", index: state.index - 1, persistSeen: false, returnNotes: false };

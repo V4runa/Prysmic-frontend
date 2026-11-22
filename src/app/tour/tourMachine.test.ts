@@ -120,6 +120,11 @@ test("the last next opens the close card, and skip ends the tour as seen", () =>
   const fromClose = tourReducer(finished, { type: "skip" });
   assert.equal(fromClose.phase, "done");
   assert.equal(fromClose.persistSeen, true);
+
+  const backToMoods = tourReducer(finished, { type: "back" });
+  assert.equal(backToMoods.phase, "step");
+  assert.equal(backToMoods.index, 4);
+  assert.equal(backToMoods.persistSeen, false);
 });
 
 test("done marks the tour seen and a later open can replay", () => {
