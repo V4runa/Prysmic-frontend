@@ -866,7 +866,7 @@ export default function TourCard({
       const bottom = spot.top + cardSize.height;
       const peeking = rows.filter((row) => row.top < bottom - 8 && row.bottom > bottom + 2);
       if (peeking.length > 0) {
-        const need = Math.max(...peeking.map((row) => row.bottom)) + 8;
+        const need = Math.max(...peeking.map((row) => row.bottom)) + 28;
         const limit = viewport.height - chrome.bottom;
         moodCover = Math.max(cardSize.height, Math.min(need, limit) - spot.top);
       }
