@@ -886,6 +886,9 @@ export default function TourCard({
       document.querySelectorAll<HTMLElement>(".wide-mood-head [data-tour-keep]").forEach((node) => {
         node.style.marginBottom = "";
       });
+      document.querySelectorAll<HTMLElement>("[data-tour='mood-grid']").forEach((node) => {
+        node.style.clipPath = "";
+      });
     };
   }, [phase, index, pathname, step, chrome.top, chrome.bottom]);
 
@@ -1104,6 +1107,8 @@ export default function TourCard({
       const last = rows[rows.length - 1];
       if (grid && first && last) {
         const rect = grid.getBoundingClientRect();
+        const clip = Math.max(0, rect.bottom - last.bottom);
+        grid.style.clipPath = clip > 1 ? `inset(0px 0px ${Math.ceil(clip)}px 0px)` : "";
         const tile = [...grid.querySelectorAll("button")].find((button) => {
           const box = button.getBoundingClientRect();
           return box.height > 48 && Math.abs(box.top - first.top) < 18;
@@ -1119,6 +1124,7 @@ export default function TourCard({
       } else {
         phoneMoodRing = null;
         sheetHidesRing = true;
+        if (grid instanceof HTMLElement) grid.style.clipPath = "";
       }
     } else if (target) {
       phoneMoodRing = null;
