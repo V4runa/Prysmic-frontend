@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { btnPrimary, btnSecondary } from "../components/forms/styles";
-import { containTourCard, placeMoodCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
+import { containTourCard, placeMoodCard, placeTourCard, planPhoneMoodRows, ringSidePad, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
 import {
   TOUR_CLOSE,
   TOUR_CONTROLS,
@@ -668,6 +668,7 @@ export default function TourCard({
     let published: TargetBox | null = null;
     let lastSig = "";
     let stableCount = 0;
+    let moodScrolls = 0;
     let timer = 0;
 
     const publish = (box: TargetBox) => {
@@ -692,40 +693,50 @@ export default function TourCard({
         stableCount = 0;
         return;
       }
-      if (step.id === "moods" && window.innerWidth < 700) {
-        const grid = visibleQuery("[data-tour='mood-grid']");
-        const scroller = grid?.closest(".app-scroll");
-        const navNow = document.querySelector(".app-bottom-nav");
-        const sheet =
-          navNow instanceof HTMLElement &&
-          getComputedStyle(navNow).display !== "none" &&
-          navNow.getBoundingClientRect().height > 1;
-        if (grid && scroller instanceof HTMLElement && sheet) {
-          const bar = readChrome();
-          const cardNode = cardRef.current?.querySelector("[data-tour-measure]");
-          const cardBox = cardNode instanceof HTMLElement ? cardNode.getBoundingClientRect().height : 0;
-          const cardH = cardBox > 40 ? Math.ceil(cardBox + 28) : CARD_ESTIMATE;
-          const sheetTop = window.innerHeight - bar.bottom - cardH;
-          const rows = moodRows(grid);
-          const headerBottom = Math.max(0, bar.top - 12);
-          const cut = rows.find((row) => row.top < sheetTop - 1 && row.bottom > sheetTop + 1);
-          const first = rows[0];
-          if (cut && first && cut.top - first.top > 8) {
-            const delta = cut.top - sheetTop;
-            if (delta > 2 && first.top - delta >= headerBottom - 1) {
-              scroller.scrollBy({ top: delta, behavior: "auto" });
-              previous = null;
-              stableCount = 0;
-              return;
-            }
-          }
-        }
-      }
       const navNow = document.querySelector(".app-bottom-nav");
       const sheetNow =
         navNow instanceof HTMLElement &&
         getComputedStyle(navNow).display !== "none" &&
         navNow.getBoundingClientRect().height > 1;
+      if (step.id === "moods" && sheetNow && moodScrolls < 8) {
+        const grid = visibleQuery("[data-tour='mood-grid']");
+        const scroller = grid?.closest(".app-scroll");
+        if (grid && scroller instanceof HTMLElement) {
+          const bar = readChrome();
+          const header = document.querySelector(".app-header");
+          const headerBottom =
+            header instanceof HTMLElement ? header.getBoundingClientRect().bottom : Math.max(0, bar.top - 12);
+          const live = cardRef.current;
+          const liveBox = live?.getBoundingClientRect();
+          const sheetTop =
+            live?.getAttribute("data-tour-card") === "moods" && liveBox && liveBox.height > 40
+              ? liveBox.top
+              : window.innerHeight - bar.bottom - CARD_ESTIMATE;
+          const head = grid.parentElement?.querySelector("[data-tour-keep]");
+          const headBox = head instanceof HTMLElement ? head.getBoundingClientRect() : null;
+          const plan = planPhoneMoodRows({
+            rows: moodRows(grid),
+            headerBottom,
+            sheetTop,
+            heading: headBox && headBox.height > 8 ? { top: headBox.top, bottom: headBox.bottom } : null,
+            pad: RING_PAD,
+            sheetGap: RING_GAP,
+          });
+          if (plan && plan.delta > 2) {
+            const room = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+            if (room < plan.delta - 1) {
+              const extra = Number.parseFloat(scroller.style.paddingBottom) || 0;
+              scroller.style.paddingBottom = `${extra + (plan.delta - Math.max(0, room)) + 8}px`;
+            }
+            scroller.scrollBy({ top: plan.delta, behavior: "auto" });
+            previous = null;
+            stableCount = 0;
+            moodScrolls += 1;
+            lastSig = "";
+            return;
+          }
+        }
+      }
       const node = visibleQuery(step.target);
       if (step.id === "moods" && !node) {
         const today = visibleQuery("[data-tour='mood-today']");
@@ -872,7 +883,11 @@ export default function TourCard({
       previous = null;
       published = null;
       stableCount = 0;
+      moodScrolls = 0;
       locked = false;
+      window.clearInterval(timer);
+      timer = window.setInterval(tick, 40);
+      tick();
     };
     timer = window.setInterval(tick, 40);
     window.addEventListener("resize", onResize);
@@ -887,7 +902,11 @@ export default function TourCard({
         node.style.marginBottom = "";
       });
       document.documentElement.style.removeProperty("--tour-mood-clip");
+      document.documentElement.style.removeProperty("--tour-mood-clip-top");
       document.documentElement.style.removeProperty("--tour-cal-clip");
+      document.querySelectorAll<HTMLElement>("[data-tour='mood-grid'] button").forEach((button) => {
+        button.style.visibility = "";
+      });
     };
   }, [phase, index, pathname, step, chrome.top, chrome.bottom]);
 
@@ -1096,18 +1115,36 @@ export default function TourCard({
     spot = { top, left: 16, width: Math.max(200, viewport.width - 32) };
     moodGrow = undefined;
     phoneSeal = null;
-    const headerBottom = Math.max(0, chrome.top - 12);
+    const headerEl = document.querySelector(".app-header");
+    const headerBottom =
+      headerEl instanceof HTMLElement ? headerEl.getBoundingClientRect().bottom : Math.max(0, chrome.top - 12);
     if (step?.id === "moods" && !loggedMood) {
       const grid = visibleQuery("[data-tour='mood-grid']");
+      const sheetTop = liveMatches && liveBox ? liveBox.top : top;
+      const bandBottom = sheetTop - RING_GAP - RING_PAD;
       const rows = grid
-        ? moodRows(grid).filter((row) => row.top >= headerBottom - 1 && row.bottom <= top + 0.5)
+        ? moodRows(grid).filter((row) => row.top >= headerBottom - 1 && row.bottom <= bandBottom + 2)
         : [];
       const first = rows[0];
       const last = rows[rows.length - 1];
+      if (grid) {
+        for (const button of grid.querySelectorAll("button")) {
+          if (!(button instanceof HTMLElement)) continue;
+          const box = button.getBoundingClientRect();
+          if (box.height < 48) {
+            button.style.visibility = "";
+            continue;
+          }
+          const kept = rows.some((row) => Math.abs(box.top - row.top) < 18);
+          button.style.visibility = kept ? "" : "hidden";
+        }
+      }
       if (grid && first && last) {
         const rect = grid.getBoundingClientRect();
-        const clip = Math.max(0, rect.bottom - last.bottom);
-        document.documentElement.style.setProperty("--tour-mood-clip", `${Math.ceil(clip)}px`);
+        const clipTop = Math.max(0, first.top - rect.top);
+        const clipBottom = Math.max(0, rect.bottom - last.bottom);
+        document.documentElement.style.setProperty("--tour-mood-clip-top", `${Math.floor(clipTop)}px`);
+        document.documentElement.style.setProperty("--tour-mood-clip", `${Math.ceil(clipBottom)}px`);
         const tile = [...grid.querySelectorAll("button")].find((button) => {
           const box = button.getBoundingClientRect();
           return box.height > 48 && Math.abs(box.top - first.top) < 18;
@@ -1123,6 +1160,7 @@ export default function TourCard({
       } else {
         phoneMoodRing = null;
         sheetHidesRing = true;
+        document.documentElement.style.setProperty("--tour-mood-clip-top", "0px");
         document.documentElement.style.setProperty("--tour-mood-clip", "0px");
       }
     } else if (target) {
@@ -1144,6 +1182,13 @@ export default function TourCard({
     } else {
       document.documentElement.style.setProperty("--tour-cal-clip", "0px");
     }
+  }
+  if (!(sheet && step?.id === "moods" && !loggedMood)) {
+    document.documentElement.style.setProperty("--tour-mood-clip", "0px");
+    document.documentElement.style.setProperty("--tour-mood-clip-top", "0px");
+    document.querySelectorAll<HTMLElement>("[data-tour='mood-grid'] button").forEach((button) => {
+      if (button.style.visibility === "hidden") button.style.visibility = "";
+    });
   }
   if (spot && (phase !== "step" || target || holdFlame)) heldSpot.current = spot;
   if (!spot && phase === "step" && heldSpot.current && viewport.width > 0) {
@@ -1439,7 +1484,7 @@ export default function TourCard({
         html:has([data-tour-card="close"]) [data-tour-quiet],
         html:has([data-tour-card="contracts"]) [data-tour-quiet] { visibility: hidden; }
         html:has([data-tour-card="moods"]) [data-tour="mood-grid"] {
-          clip-path: inset(0 0 var(--tour-mood-clip, 0px) 0) !important;
+          clip-path: inset(var(--tour-mood-clip-top, 0px) 0 var(--tour-mood-clip, 0px) 0) !important;
         }
         html:has([data-tour-card="calendar"]) .app-scroll {
           clip-path: inset(0 0 var(--tour-cal-clip, 0px) 0) !important;

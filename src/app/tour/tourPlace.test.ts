@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cardSpotInside, containTourCard, intersects, overlapArea, placeMoodCard, placeTourCard, ringSidePad, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
+import { cardSpotInside, containTourCard, intersects, overlapArea, placeMoodCard, placeTourCard, planPhoneMoodRows, ringSidePad, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
 
 const desktop = { width: 1440, height: 900 };
 const phone = { width: 390, height: 844 };
@@ -191,6 +191,63 @@ test("a phone mood card sits directly under the rows that fit", () => {
   assert.equal(placed.ringRows, 4);
   assert.equal(placed.top, 528 + 12);
   assert.equal(placed.minHeight, 180);
+});
+
+test("phone moods scrolls so the last row, Your own, sits wholly above the sheet", () => {
+  const rows: { top: number; bottom: number }[] = [];
+  let top = 150;
+  for (let i = 0; i < 5; i += 1) {
+    rows.push({ top, bottom: top + 120 });
+    top += 132;
+  }
+  const plan = planPhoneMoodRows({
+    rows,
+    headerBottom: 64,
+    sheetTop: 735,
+    heading: { top: 90, bottom: 126 },
+  });
+  assert.ok(plan);
+  assert.equal(plan.to, 4);
+  assert.ok(plan.from > 0);
+  const lastAfter = rows[plan.to].bottom - plan.delta;
+  assert.ok(lastAfter <= 735 - 12 - 8 + 0.5);
+  assert.ok(rows[plan.from].top - plan.delta >= 64 + 8 - 0.5);
+});
+
+test("phone moods does not scroll when Your own is already wholly above the sheet", () => {
+  const rows = [
+    { top: 120, bottom: 220 },
+    { top: 232, bottom: 332 },
+  ];
+  const plan = planPhoneMoodRows({
+    rows,
+    headerBottom: 64,
+    sheetTop: 700,
+    heading: { top: 70, bottom: 100 },
+  });
+  assert.ok(plan);
+  assert.equal(plan.delta, 0);
+  assert.equal(plan.from, 0);
+  assert.equal(plan.to, 1);
+});
+
+test("phone moods hides a heading that would be sliced, without losing Your own", () => {
+  const rows = [{ top: 250, bottom: 800 }];
+  const plan = planPhoneMoodRows({
+    rows,
+    headerBottom: 100,
+    sheetTop: 700,
+    heading: { top: 180, bottom: 230 },
+  });
+  assert.ok(plan);
+  assert.equal(plan.from, 0);
+  assert.equal(plan.to, 0);
+  const headTop = 180 - plan.delta;
+  const headBottom = 230 - plan.delta;
+  const sliced = headTop < 100 - 1 && headBottom > 100 + 1;
+  assert.equal(sliced, false);
+  assert.ok(rows[0].top - plan.delta >= 100 + 8 - 0.5);
+  assert.ok(rows[0].bottom - plan.delta <= 700 - 12 - 8 + 0.5);
 });
 
 test("a phone mood card leaves out a row hidden under the header", () => {

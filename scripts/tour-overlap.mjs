@@ -303,5 +303,35 @@ export function collectOverlaps() {
       });
     }
   }
+  if (ring instanceof HTMLElement && card instanceof HTMLElement) {
+    const ringBox = ring.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+    const bandTop = ringBox.bottom + 1;
+    const bandBottom = cardBox.top - 1;
+    if (bandBottom > bandTop + 2) {
+      for (const el of document.querySelectorAll("button, a, [data-tour='mood-grid'] button")) {
+        if (!(el instanceof HTMLElement)) continue;
+        if (el.closest("[data-tour-card]")) continue;
+        if (!visible(el)) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 2 || rect.height < 2) continue;
+        const inBand = rect.bottom > bandTop && rect.top < bandBottom;
+        if (!inBand) continue;
+        const label = (el.getAttribute("aria-label") || el.textContent || el.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
+        hits.push({
+          cover: "gap",
+          item: "peek",
+          label: `between ring and sheet: ${label || el.tagName}`,
+          coverBox: {
+            x: Math.round(ringBox.x),
+            y: Math.round(bandTop),
+            w: Math.round(ringBox.width),
+            h: Math.round(bandBottom - bandTop),
+          },
+          itemBox: roundBox(boxOf(rect)),
+        });
+      }
+    }
+  }
   return hits;
 }

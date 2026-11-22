@@ -352,6 +352,51 @@ export function placeMoodCard(
   return { top: best.top, minHeight: best.minHeight, ringRows: best.ringRows };
 }
 
+/**
+ * Phone moods, with the sheet already at the bottom. Scroll so the ring can
+ * wrap whole rows that include the last one ("Your own…"), with `pad` inside
+ * the ring and `sheetGap` between the ring and the sheet. Leading rows that
+ * do not fit stay above the header. Returns null when even the last row
+ * cannot sit wholly in that band.
+ */
+export function planPhoneMoodRows(input: {
+  rows: MoodRow[];
+  headerBottom: number;
+  sheetTop: number;
+  heading?: MoodRow | null;
+  pad?: number;
+  sheetGap?: number;
+}): { delta: number; from: number; to: number } | null {
+  const pad = input.pad ?? 8;
+  const sheetGap = input.sheetGap ?? 12;
+  const rows = input.rows;
+  if (rows.length === 0) return null;
+  const lastIndex = rows.length - 1;
+  const last = rows[lastIndex];
+  const targetLastBottom = input.sheetTop - sheetGap - pad;
+  const minTileTop = input.headerBottom + pad;
+  const available = targetLastBottom - minTileTop;
+  if (!(available > 24) || !(last.bottom - last.top > 8)) return null;
+
+  let from = 0;
+  while (from < lastIndex && last.bottom - rows[from].top > available + 0.5) from += 1;
+  if (last.bottom - rows[from].top > available + 0.5) return null;
+
+  let delta = Math.max(0, last.bottom - targetLastBottom);
+  const heading = input.heading;
+  if (heading && heading.bottom - heading.top > 8) {
+    const headTop = heading.top - delta;
+    const headBottom = heading.bottom - delta;
+    const straddles = headTop < input.headerBottom - 1 && headBottom > input.headerBottom + 1;
+    if (straddles) {
+      const extra = headBottom - input.headerBottom;
+      const nextFirstTop = rows[from].top - delta - extra;
+      if (nextFirstTop >= minTileTop - 0.5) delta += extra;
+    }
+  }
+  return { delta, from, to: lastIndex };
+}
+
 export type SidePad = { left: number; right: number; top: number; bottom: number };
 
 /**
