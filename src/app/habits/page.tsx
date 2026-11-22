@@ -170,7 +170,7 @@ export default function HabitsPage() {
                 className="wide-grid-contracts grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3"
               >
                 {habits.length === 0 ? (
-                  <p data-tour-keep="" className="col-span-full px-2 py-8 text-center text-slate-400">
+                  <p data-tour-keep="" data-tour-quiet="" className="col-span-full px-2 py-8 text-center text-slate-400">
                     No contracts yet. A small promise is enough to begin.
                   </p>
                 ) : null}

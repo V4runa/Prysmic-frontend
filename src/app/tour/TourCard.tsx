@@ -934,7 +934,8 @@ export default function TourCard({
           box-shadow: 0 16px 40px rgba(0,0,0,0.45);
         }
         html:has([data-tour-card="welcome"]) [data-tour-quiet],
-        html:has([data-tour-card="close"]) [data-tour-quiet] { visibility: hidden; }`}</style>
+        html:has([data-tour-card="close"]) [data-tour-quiet],
+        html:has([data-tour-card="contracts"]) [data-tour-quiet] { visibility: hidden; }`}</style>
     </div>
   );
 }
