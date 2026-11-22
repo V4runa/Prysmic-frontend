@@ -171,13 +171,30 @@ function layoutWideMoods(
       else break;
     }
   }
-  const cardTop = Math.min(ringBottom + gap, Math.max(ringBottom + gap, maxBottom - cardHeight));
-  const left = Math.min(
-    Math.max(16, rect.x + rect.width / 2 - width / 2),
-    Math.max(16, viewport.width - 16 - width)
+  let cardTop = ringBottom + gap;
+  let cardWidth = width;
+  let left = Math.min(
+    Math.max(16, rect.x + rect.width / 2 - cardWidth / 2),
+    Math.max(16, viewport.width - 16 - cardWidth)
   );
+  const tiles = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
+  const hits = tiles.filter((tile) => {
+    const box = tile.getBoundingClientRect();
+    return box.bottom > cardTop + 2 && box.top < cardTop + cardHeight && box.right > left && box.left < left + cardWidth;
+  });
+  if (hits.length > 0) {
+    const lowest = Math.max(...hits.map((tile) => tile.getBoundingClientRect().bottom));
+    const below = lowest + RING_GAP;
+    if (below + cardHeight <= maxBottom + 1) {
+      cardTop = below;
+    } else {
+      cardWidth = Math.min(rect.width, viewport.width - 32);
+      left = Math.min(Math.max(16, rect.x), Math.max(16, viewport.width - 16 - cardWidth));
+      cardTop = ringBottom + gap;
+    }
+  }
   return {
-    spot: { top: Math.max(topInset, cardTop), left, width },
+    spot: { top: Math.max(topInset, cardTop), left, width: cardWidth },
     ring: {
       x: rect.x,
       y: rect.y,
@@ -463,8 +480,8 @@ export default function TourCard({
           const grid = node.getBoundingClientRect();
           const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
           const headBottom = head instanceof HTMLElement ? head.getBoundingClientRect().bottom : grid.top;
-          const need = grid.bottom + 24 + CARD_ESTIMATE + chrome.bottom - window.innerHeight;
-          const room = Math.max(0, headBottom - chrome.top - 12);
+          const need = grid.bottom + RING_PAD + RING_GAP + 240 + chrome.bottom - window.innerHeight;
+          const room = Math.max(0, headBottom - chrome.top - 4);
           const delta = Math.min(Math.max(0, need), room);
           if (delta > 2) scroller.scrollBy({ top: delta, behavior: "auto" });
         }
@@ -649,12 +666,23 @@ export default function TourCard({
 
   const ringSource = phoneMoodRing ?? target;
   const ringBottomPad = phone && phoneMoodRing ? 0 : RING_PAD;
+  const streakLimit = (() => {
+    const flame = [...document.querySelectorAll("span")].find(
+      (node) => node.textContent === "🔥" && /text-6xl|text-8xl/.test(node.parentElement?.className ?? "")
+    );
+    const header = flame?.parentElement?.parentElement;
+    if (!(header instanceof HTMLElement)) return 0;
+    return header.getBoundingClientRect().bottom + 8;
+  })();
+  const ringTop = ringSource ? Math.max(ringSource.y - RING_PAD, streakLimit) : 0;
+  const ringBottom = ringSource ? ringSource.y + ringSource.height + ringBottomPad : 0;
+  const nearFlame = streakLimit > 0 && ringSource != null && ringSource.y - streakLimit < 36;
   const ring = ringSource
     ? {
         left: ringSource.x - RING_PAD,
-        top: ringSource.y - RING_PAD,
+        top: ringTop,
         width: ringSource.width + RING_PAD * 2,
-        height: ringSource.height + RING_PAD + ringBottomPad,
+        height: Math.max(24, ringBottom - ringTop),
         radius: radiusWithPad(ringSource.radius, RING_PAD),
       }
     : null;
@@ -718,8 +746,9 @@ export default function TourCard({
             width: ring.width,
             height: ring.height,
             borderRadius: ring.radius,
-            boxShadow:
-              "0 0 0 2px rgba(103,232,249,0.95), 0 0 18px 2px rgba(103,232,249,0.4)",
+            boxShadow: nearFlame
+              ? "0 0 0 2px rgba(103,232,249,0.95)"
+              : "0 0 0 2px rgba(103,232,249,0.95), 0 0 18px 2px rgba(103,232,249,0.4)",
             opacity: reduceMotion ? 1 : undefined,
             animation: reduceMotion ? undefined : "prysmic-tour-in 150ms ease",
           }}
