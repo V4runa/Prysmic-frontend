@@ -284,6 +284,31 @@ function nudgeOffTarget(
   return spot;
 }
 
+/**
+ * Keep the card on screen. On a phone it uses the full content width.
+ * A card that cannot fit below its target moves up over that target
+ * rather than sliding under the tab bar.
+ */
+export function containTourCard(
+  spot: CardSpot,
+  cardHeight: number,
+  viewport: { width: number; height: number },
+  insets: SafeInsets,
+  options?: { phone?: boolean }
+): CardSpot {
+  const phone = options?.phone ?? false;
+  const width = phone
+    ? Math.max(200, viewport.width - TOUR_MARGIN * 2)
+    : Math.min(spot.width, Math.max(200, viewport.width - TOUR_MARGIN * 2));
+  const left = phone
+    ? TOUR_MARGIN
+    : clamp(spot.left, TOUR_MARGIN, Math.max(TOUR_MARGIN, viewport.width - TOUR_MARGIN - width));
+  const height = Math.max(1, cardHeight);
+  const maxTop = viewport.height - insets.bottom - height;
+  const top = maxTop >= insets.top ? clamp(spot.top, insets.top, maxTop) : insets.top;
+  return { top, left, width };
+}
+
 export function cardSpotInside(
   spot: CardSpot,
   cardHeight: number,

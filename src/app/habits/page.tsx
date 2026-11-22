@@ -133,8 +133,8 @@ export default function HabitsPage() {
     <PageTransition>
       <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
       <GlassPanel className="app-workspace flex h-full min-h-0 flex-col gap-4 sm:gap-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
             <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Your Contracts</h2>
             <p className="text-slate-400 text-sm sm:text-base">Personal commitments you can check in on.</p>
           </div>
@@ -142,7 +142,7 @@ export default function HabitsPage() {
             {...tactile}
             data-tour={habits.length === 0 && !isLoading ? "contracts-create" : undefined}
             onClick={() => router.push("/habits/new")}
-            className="px-3 sm:px-4 py-2 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-400/10 hover:shadow-[0_0_18px_rgba(103,232,249,0.25)] rounded-md text-sm sm:text-base transition-shadow"
+            className="shrink-0 px-3 sm:px-4 py-2 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-400/10 hover:shadow-[0_0_18px_rgba(103,232,249,0.25)] rounded-md text-sm sm:text-base transition-shadow"
           >
             + New Contract
           </motion.button>

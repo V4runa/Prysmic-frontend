@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cardSpotInside, intersects, overlapArea, placeTourCard, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
+import { cardSpotInside, containTourCard, intersects, overlapArea, placeTourCard, TOUR_CARD_WIDTH, type Box } from "./tourPlace";
 
 const desktop = { width: 1440, height: 900 };
 const phone = { width: 390, height: 844 };
@@ -134,6 +134,32 @@ test("the phone calendar card sits against today's week and off that row", () =>
   const below = placed.y >= week.y + week.height + 12;
   const above = placed.y + placed.height <= week.y - 12;
   assert.ok(below || above);
+});
+
+test("a phone card that would pass the tab bar is pulled back on screen at full width", () => {
+  const spot = containTourCard(
+    { top: 700, left: 40, width: 300 },
+    220,
+    { width: 390, height: 844 },
+    phoneInsets,
+    { phone: true }
+  );
+  assert.equal(spot.left, 16);
+  assert.equal(spot.width, 358);
+  assert.ok(spot.top + 220 <= 844 - phoneInsets.bottom);
+  assert.ok(spot.top >= phoneInsets.top);
+});
+
+test("a card taller than the safe area starts at the top instead of below the screen", () => {
+  const spot = containTourCard(
+    { top: 500, left: 16, width: 328 },
+    600,
+    { width: 375, height: 667 },
+    { top: 72, bottom: 80 },
+    { phone: true }
+  );
+  assert.equal(spot.top, 72);
+  assert.equal(spot.width, 343);
 });
 
 test("the card avoids a keep-clear row under the target", () => {
