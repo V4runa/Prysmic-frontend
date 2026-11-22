@@ -975,7 +975,7 @@ export default function TourCard({
     }
   }
   let phoneSeal: { top: number; minHeight: number } | null = null;
-  if (spot && phone && viewport.width > 0 && step?.id !== "moods") {
+  if (spot && phone && viewport.width > 0 && step && step.id !== "moods") {
     phoneSeal = sealPhoneCard(spot, cardSize.height, chrome.top, viewport.height - chrome.bottom);
     spot = { ...spot, top: phoneSeal.top };
     if (step?.id === "calendar") {
