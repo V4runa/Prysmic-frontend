@@ -127,20 +127,26 @@ function layoutPhoneMoods(
   const rect = grid.getBoundingClientRect();
   const rows = moodRows(grid);
   if (rows.length === 0) return null;
-  const maxTop = viewHeight - bottomInset - cardHeight;
+  const limit = viewHeight - bottomInset;
+  const width = Math.min(rect.width, window.innerWidth - 32);
+  const left = Math.max(16, rect.x + (rect.width - width) / 2);
   let chosen = 0;
   for (let i = 0; i < rows.length; i += 1) {
-    const nextTop = rows[i + 1]?.top ?? rows[i].bottom + RING_GAP;
-    if (nextTop >= topInset && nextTop <= maxTop) chosen = i;
+    const start = rows[i].bottom + RING_GAP;
+    if (start >= topInset && start + Math.min(cardHeight, 160) <= limit) chosen = i;
     else break;
   }
-  const cardTop = rows[chosen + 1]?.top ?? rows[chosen].bottom + RING_GAP;
+  let cardTop = rows[chosen].bottom + RING_GAP;
+  const next = rows[chosen + 1];
+  if (next && cardTop < next.bottom && cardTop + cardHeight < next.bottom) {
+    const after = next.bottom + RING_GAP;
+    if (after + Math.min(cardHeight, 160) <= limit) {
+      chosen += 1;
+      cardTop = after;
+    }
+  }
   return {
-    spot: {
-      top: cardTop,
-      left: 16,
-      width: Math.min(TOUR_CARD_WIDTH, window.innerWidth - 32),
-    },
+    spot: { top: cardTop, left, width },
     ring: {
       x: rect.x,
       y: rect.y,
