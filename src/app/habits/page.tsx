@@ -51,7 +51,7 @@ export default function HabitsPage() {
   const lastCheckDate = useRef<string>(today);
 
   useEffect(() => {
-    if (isError) setError("Failed to load contracts");
+    setError(isError ? "Failed to load contracts" : "");
   }, [isError]);
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export default function HabitsPage() {
           </div>
           <motion.button
             {...tactile}
-            data-tour={habits.length === 0 && !isLoading ? "contracts-create" : undefined}
+            data-tour="contracts-create"
             onClick={() => router.push("/habits/new")}
             className="shrink-0 self-start sm:self-center px-3 sm:px-4 py-2 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-400/10 hover:shadow-[0_0_18px_rgba(103,232,249,0.25)] rounded-md text-sm sm:text-base transition-shadow"
           >

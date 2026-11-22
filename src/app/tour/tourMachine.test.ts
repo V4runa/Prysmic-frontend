@@ -105,7 +105,7 @@ test("the last next opens the close card, and skip ends the tour as seen", () =>
   assert.equal(finished.phase, "close");
   assert.equal(finished.persistSeen, false);
   assert.equal(finished.returnNotes, false);
-  assert.equal(tourRouteFor("close", -1), "/notes");
+  assert.equal(tourRouteFor("close", -1), null);
 
   const skipped = tourReducer(walkTo(1), { type: "skip" });
   assert.equal(skipped.phase, "done");

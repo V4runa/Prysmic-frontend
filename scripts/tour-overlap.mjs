@@ -466,7 +466,7 @@ export function collectOverlaps() {
     }
     const overlapW = Math.min(ringRect.right, cardRect.right) - Math.max(ringRect.left, cardRect.left);
     const overlapH = Math.min(ringRect.bottom, cardRect.bottom) - Math.max(ringRect.top, cardRect.top);
-    const moodNest = card.getAttribute("data-tour-card") === "moods" && document.documentElement.dataset.moodFit === "c";
+    const moodNest = card.getAttribute("data-tour-card") === "moods" && document.documentElement.dataset.moodNest === "1";
     if (moodNest) {
       const insetL = cardRect.left - ringRect.left;
       const insetR = ringRect.right - cardRect.right;
@@ -564,7 +564,7 @@ export function collectOverlaps() {
       const insetR = ringRect.right - anchor.right;
       const insetT = anchor.top - ringRect.top;
       const insetB = ringRect.bottom - anchor.bottom;
-      const moodNestAlign = stepId === "moods" && document.documentElement.dataset.moodFit === "c";
+      const moodNestAlign = stepId === "moods" && document.documentElement.dataset.moodNest === "1";
       if (!moodNestAlign && (Math.abs(insetL - insetR) > 2 || Math.abs(insetT - insetB) > 2)) {
         hits.push({
           cover: "ring",

@@ -52,6 +52,8 @@ export default function LoginPage() {
     try {
       const res = await apiFetch<{ access_token: string; emailVerified?: boolean }>("/auth/login", {
         method: "POST",
+        auth: false,
+        keepSessionOn401: true,
         body: JSON.stringify({
           identifier,
           password,
@@ -64,7 +66,7 @@ export default function LoginPage() {
     } catch (err: Error | unknown) {
       console.error("Login failed", err);
       clearTimeout(slowTimer);
-      setError("Invalid login credentials.");
+      setError("That username or password didn't match.");
       setLoading(false);
       setSlow(false);
     }

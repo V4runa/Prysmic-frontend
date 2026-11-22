@@ -82,8 +82,9 @@ export function tourStepByIndex(index: number): TourStep | null {
   return TOUR_STEPS[index] ?? null;
 }
 
-/** Route the card should be standing on. Welcome and close stay on Notes. */
-export function tourRouteFor(phase: "welcome" | "step" | "close" | "done", index: number): string {
+/** Route the card should be standing on. Welcome stays on Notes. Close stays where it is. */
+export function tourRouteFor(phase: "welcome" | "step" | "close" | "done", index: number): string | null {
+  if (phase === "close") return null;
   if (phase === "step") return tourStepByIndex(index)?.route ?? "/notes";
   return "/notes";
 }

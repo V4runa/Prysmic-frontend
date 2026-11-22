@@ -99,6 +99,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   const autoOpened = useRef(false);
   const handledRequest = useRef(0);
   const ended = useRef(false);
+  const appliedRoute = useRef("");
   const [landing, setLanding] = useState<ChromeQuietMemory>(QUIET_CHROME_MEMORY);
 
   const onTourQuery = useCallback((event: { rising: boolean }) => {
@@ -184,7 +185,10 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       return;
     }
     const route = tourRouteFor(state.phase, state.index);
-    if (pathname !== route) router.push(route);
+    const key = `${state.phase}:${state.index}:${route ?? "stay"}`;
+    if (appliedRoute.current === key) return;
+    appliedRoute.current = key;
+    if (route && pathname !== route) router.push(route);
     else stripTourParam(router, pathname);
   }, [state.phase, state.index, state.returnNotes, pathname, router]);
 

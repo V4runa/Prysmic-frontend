@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import PageTransition from "../components/PageTransition";
 import GlassPanel from "../components/GlassPanel";
-import Spinner from "../components/Spinner";
 import { useCalendarFeed, useInvalidateCalendar } from "../hooks/useCalendar";
 import {
   ALL_SOURCES_ON,
@@ -273,11 +272,7 @@ export default function CalendarPage() {
               onTouchStart={swipe.onTouchStart}
               onTouchEnd={swipe.onTouchEnd}
             >
-              {isLoading ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <Spinner label="Gathering your days..." />
-                </div>
-              ) : isError ? (
+              {isError ? (
                 <div className="flex-1 flex items-center justify-center">
                   <p className="text-rose-400 text-center">Could not load your calendar.</p>
                 </div>

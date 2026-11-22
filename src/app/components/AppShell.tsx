@@ -167,7 +167,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Top Navigation Bar */}
-      <div className="app-header no-print fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-4 shadow-sm backdrop-blur-lg select-none">
+      <div className={`app-header no-print fixed top-0 left-0 right-0 flex items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-4 shadow-sm backdrop-blur-lg select-none ${tour.overlay ? "z-[90]" : "z-50"}`}>
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 sm:flex-none sm:flex-row sm:items-center sm:gap-4 lg:gap-6">
           <h1 className="shrink-0 cursor-default text-lg font-bold leading-none tracking-wide sm:text-xl">
             Prysmic
