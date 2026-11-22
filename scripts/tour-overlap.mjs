@@ -265,6 +265,7 @@ export function collectOverlaps() {
       if (!(el instanceof HTMLElement)) continue;
       if (tourRoot && tourRoot.contains(el)) continue;
       if (el.contains(ring)) continue;
+      if (el.querySelector("[data-tour], [data-tour-day]")) continue;
       const style = getComputedStyle(el);
       if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
       const rect = el.getBoundingClientRect();

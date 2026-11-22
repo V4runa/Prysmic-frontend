@@ -782,7 +782,12 @@ export default function TourCard({
         if (rect.bottom > sheetTop - 8) delta = rect.bottom - (sheetTop - 8);
         if (rect.top + delta < bar.top) delta = bar.top - rect.top;
         const scroller = measured.closest(".app-scroll");
-        if (Math.abs(delta) > 2 && scroller instanceof HTMLElement && stableCount < 6) {
+        if (Math.abs(delta) > 2 && scroller instanceof HTMLElement && stableCount < 8) {
+          const room = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+          if (delta > 0 && room < delta) {
+            const extra = Number.parseFloat(scroller.style.paddingBottom) || 0;
+            scroller.style.paddingBottom = `${extra + (delta - room) + 8}px`;
+          }
           scroller.scrollBy({ top: delta, behavior: "auto" });
           previous = null;
           stableCount += 1;
