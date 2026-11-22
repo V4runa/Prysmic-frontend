@@ -886,9 +886,8 @@ export default function TourCard({
       document.querySelectorAll<HTMLElement>(".wide-mood-head [data-tour-keep]").forEach((node) => {
         node.style.marginBottom = "";
       });
-      document.querySelectorAll<HTMLElement>("[data-tour='mood-grid']").forEach((node) => {
-        node.style.clipPath = "";
-      });
+      document.documentElement.style.removeProperty("--tour-mood-clip");
+      document.documentElement.style.removeProperty("--tour-cal-clip");
     };
   }, [phase, index, pathname, step, chrome.top, chrome.bottom]);
 
@@ -1108,7 +1107,7 @@ export default function TourCard({
       if (grid && first && last) {
         const rect = grid.getBoundingClientRect();
         const clip = Math.max(0, rect.bottom - last.bottom);
-        grid.style.clipPath = clip > 1 ? `inset(0px 0px ${Math.ceil(clip)}px 0px)` : "";
+        document.documentElement.style.setProperty("--tour-mood-clip", `${Math.ceil(clip)}px`);
         const tile = [...grid.querySelectorAll("button")].find((button) => {
           const box = button.getBoundingClientRect();
           return box.height > 48 && Math.abs(box.top - first.top) < 18;
@@ -1124,7 +1123,7 @@ export default function TourCard({
       } else {
         phoneMoodRing = null;
         sheetHidesRing = true;
-        if (grid instanceof HTMLElement) grid.style.clipPath = "";
+        document.documentElement.style.setProperty("--tour-mood-clip", "0px");
       }
     } else if (target) {
       phoneMoodRing = null;
@@ -1132,6 +1131,18 @@ export default function TourCard({
       if (!above) sheetHidesRing = true;
     } else {
       phoneMoodRing = null;
+    }
+    if (step?.id === "calendar") {
+      const cell = document.querySelector("[data-tour='calendar-today']")?.closest("[data-tour-day]");
+      const row = cell?.parentElement;
+      const scroller = cell?.closest(".app-scroll");
+      const clip =
+        row instanceof HTMLElement && scroller instanceof HTMLElement
+          ? Math.max(0, scroller.getBoundingClientRect().bottom - row.getBoundingClientRect().bottom)
+          : 0;
+      document.documentElement.style.setProperty("--tour-cal-clip", `${Math.ceil(clip)}px`);
+    } else {
+      document.documentElement.style.setProperty("--tour-cal-clip", "0px");
     }
   }
   if (spot && (phase !== "step" || target || holdFlame)) heldSpot.current = spot;
@@ -1426,7 +1437,13 @@ export default function TourCard({
         }
         html:has([data-tour-card="welcome"]) [data-tour-quiet],
         html:has([data-tour-card="close"]) [data-tour-quiet],
-        html:has([data-tour-card="contracts"]) [data-tour-quiet] { visibility: hidden; }`}</style>
+        html:has([data-tour-card="contracts"]) [data-tour-quiet] { visibility: hidden; }
+        html:has([data-tour-card="moods"]) [data-tour="mood-grid"] {
+          clip-path: inset(0 0 var(--tour-mood-clip, 0px) 0) !important;
+        }
+        html:has([data-tour-card="calendar"]) .app-scroll {
+          clip-path: inset(0 0 var(--tour-cal-clip, 0px) 0) !important;
+        }`}</style>
     </div>
   );
 }
