@@ -664,6 +664,11 @@ export default function TourCard({
           return;
         }
       }
+      const navNow = document.querySelector(".app-bottom-nav");
+      const sheetNow =
+        navNow instanceof HTMLElement &&
+        getComputedStyle(navNow).display !== "none" &&
+        navNow.getBoundingClientRect().height > 1;
       const node = visibleQuery(step.target);
       if (step.id === "moods" && !node) {
         const today = visibleQuery("[data-tour='mood-today']");
@@ -744,6 +749,26 @@ export default function TourCard({
       const phone = window.innerWidth < 700;
       const cell = step.id === "calendar" ? node.closest("[data-tour-day]") : null;
       const measured = cell instanceof HTMLElement ? cell : node;
+      if (sheetNow && step.id !== "moods" && !scrolled) {
+        const bar = readChrome();
+        const cardNode = cardRef.current?.querySelector("[data-tour-measure]");
+        const cardBox = cardNode instanceof HTMLElement ? cardNode.getBoundingClientRect().height : 0;
+        const cardPad = cardRef.current ? Number.parseFloat(getComputedStyle(cardRef.current).paddingTop) + Number.parseFloat(getComputedStyle(cardRef.current).paddingBottom) : 28;
+        const cardH = cardBox > 40 ? Math.ceil(cardBox + (Number.isFinite(cardPad) ? cardPad : 28)) : CARD_ESTIMATE;
+        const sheetTop = window.innerHeight - bar.bottom - cardH;
+        const rect = measured.getBoundingClientRect();
+        let delta = 0;
+        if (rect.bottom > sheetTop - 8) delta = rect.bottom - (sheetTop - 8);
+        if (rect.top + delta < bar.top) delta = bar.top - rect.top;
+        const scroller = measured.closest(".app-scroll");
+        if (Math.abs(delta) > 2 && scroller instanceof HTMLElement) {
+          scroller.scrollBy({ top: delta, behavior: "auto" });
+          scrolled = true;
+          previous = null;
+          stableCount = 0;
+          return;
+        }
+      }
       if (step.id === "calendar" && !motionSettled(measured)) {
         previous = null;
         stableCount = 0;
@@ -756,7 +781,7 @@ export default function TourCard({
       if (!previous || !sameTarget(previous, box)) {
         previous = box;
         stableCount = 1;
-        if (!scrolled && step.id !== "moods") {
+        if (!scrolled && step.id !== "moods" && !sheetNow) {
           scrolled = true;
           scrollTargetClear(
             node,
@@ -975,7 +1000,7 @@ export default function TourCard({
     }
   }
   let phoneSeal: { top: number; minHeight: number } | null = null;
-  if (spot && phone && viewport.width > 0 && phase !== "welcome" && step?.id !== "moods") {
+  if (spot && phone && viewport.width > 0 && phase !== "welcome" && step?.id !== "moods" && !chrome.nav) {
     phoneSeal = sealPhoneCard(spot, cardSize.height, chrome.top, viewport.height - chrome.bottom);
     spot = { ...spot, top: phoneSeal.top };
     if (step?.id === "calendar") {
@@ -984,6 +1009,41 @@ export default function TourCard({
         phoneSeal = snapped;
         spot = { ...spot, top: snapped.top };
       }
+    }
+  }
+  const sheet = Boolean(chrome.nav);
+  let sheetHidesRing = false;
+  if (sheet && viewport.width > 0) {
+    const height = Math.max(1, cardSize.height);
+    const top = Math.max(chrome.top, viewport.height - chrome.bottom - height);
+    spot = { top, left: 16, width: Math.max(200, viewport.width - 32) };
+    moodGrow = undefined;
+    phoneSeal = null;
+    const headerBottom = Math.max(0, chrome.top - 12);
+    if (step?.id === "moods" && !loggedMood) {
+      const grid = visibleQuery("[data-tour='mood-grid']");
+      const rows = grid ? moodRows(grid).filter((row) => row.top >= headerBottom - 1 && row.bottom <= top - 2) : [];
+      const first = rows[0];
+      const last = rows[rows.length - 1];
+      if (grid && first && last) {
+        const rect = grid.getBoundingClientRect();
+        phoneMoodRing = {
+          x: rect.x,
+          y: first.top,
+          width: rect.width,
+          height: Math.max(24, last.bottom - first.top),
+          radius: getComputedStyle(grid).borderRadius || "24px",
+        };
+      } else {
+        phoneMoodRing = null;
+        sheetHidesRing = true;
+      }
+    } else if (target) {
+      phoneMoodRing = null;
+      const above = target.y >= headerBottom - 1 && target.y + target.height <= top - 2;
+      if (!above) sheetHidesRing = true;
+    } else {
+      phoneMoodRing = null;
     }
   }
   if (spot && (phase !== "step" || target || holdFlame)) heldSpot.current = spot;
@@ -1005,7 +1065,7 @@ export default function TourCard({
   const bodyId = "tour-card-body";
   const progressId = "tour-card-progress";
 
-  const ringSource = phoneMoodRing ?? target;
+  const ringSource = sheetHidesRing ? null : phoneMoodRing ?? target;
   const targetNode = step ? visibleQuery(step.target) : null;
   let ringPad =
     step?.id === "calendar"
@@ -1044,6 +1104,9 @@ export default function TourCard({
     );
     ringSides = { left: fitted.left, right: fitted.right, top: ringPad, bottom: ringBottomPad };
   }
+  if (sheet && (step?.id === "moods" || step?.id === "calendar")) {
+    ringSides = { left: 0, right: 0, top: 0, bottom: 0 };
+  }
   const streakLimit = (() => {
     if (step?.id === "calendar" || step?.id === "notes") return 0;
     const flame = [...document.querySelectorAll("span")].find(
@@ -1056,7 +1119,8 @@ export default function TourCard({
   const headerBottom = Math.max(0, chrome.top - 12);
   const ringFloor = phone && step?.id === "moods" ? headerBottom : 0;
   const ringTop = ringSource ? Math.max(ringSource.y - ringSides.top, streakLimit, ringFloor) : 0;
-  const ringBottom = ringSource ? ringSource.y + ringSource.height + ringSides.bottom : 0;
+  const ringBottomRaw = ringSource ? ringSource.y + ringSource.height + ringSides.bottom : 0;
+  const ringBottom = sheet && spot ? Math.min(ringBottomRaw, spot.top - 2) : ringBottomRaw;
   const nearFlame = streakLimit > 0 && ringSource != null && ringSource.y - streakLimit < 36;
   const tasksTight = step?.id === "tasks" && (ringSides.left < ringPad || ringSides.right < ringPad);
   const tightRing = step?.id === "calendar" || step?.id === "notes" || step?.id === "contracts" || tasksTight;
@@ -1087,7 +1151,7 @@ export default function TourCard({
         top: spot.top,
         left: spot.left,
         width: spot.width,
-        minHeight: Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0) || undefined,
+        minHeight: sheet ? undefined : Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0) || undefined,
         backgroundColor: "#14161c",
       }
     : undefined;

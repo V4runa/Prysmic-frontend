@@ -232,22 +232,59 @@ export function collectOverlaps() {
   }
   if (card instanceof HTMLElement) {
     const style = getComputedStyle(card);
-    const measure = card.querySelector("[data-tour-measure]");
     const box = card.getBoundingClientRect();
-    const contentBottom = measure instanceof HTMLElement ? measure.getBoundingClientRect().bottom : box.y;
-    const padBottom = (Number.parseFloat(style.paddingBottom) || 0) + (Number.parseFloat(style.borderBottomWidth) || 0);
-    let lowest = contentBottom + padBottom;
-    for (const item of items) {
-      if (misses(boxOf(box), item.box)) continue;
-      lowest = Math.max(lowest, item.box.y + item.box.height);
+    const pad =
+      (Number.parseFloat(style.paddingTop) || 0) +
+      (Number.parseFloat(style.paddingBottom) || 0) +
+      (Number.parseFloat(style.borderTopWidth) || 0) +
+      (Number.parseFloat(style.borderBottomWidth) || 0);
+    const measure = card.querySelector("[data-tour-measure]");
+    const root = measure instanceof HTMLElement ? measure : card;
+    let children = 0;
+    for (const child of root.children) {
+      if (!(child instanceof HTMLElement)) continue;
+      const rect = child.getBoundingClientRect();
+      const childStyle = getComputedStyle(child);
+      children += rect.height + (Number.parseFloat(childStyle.marginTop) || 0) + (Number.parseFloat(childStyle.marginBottom) || 0);
     }
-    if (box.y + box.height > lowest + 4) {
+    const expected = children + pad;
+    if (children > 0 && box.height > expected + 4) {
       hits.push({
         cover: "card",
         item: "stretch",
-        label: `card is ${Math.round(box.y + box.height - lowest)}px taller than its content`,
+        label: `card is ${Math.round(box.height - expected)}px taller than its content`,
         coverBox: roundBox(boxOf(box)),
-        itemBox: { x: Math.round(box.x), y: Math.round(lowest), w: Math.round(box.width), h: Math.round(box.y + box.height - lowest) },
+        itemBox: { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(expected) },
+      });
+    }
+  }
+  if (ring instanceof HTMLElement) {
+    const ringBox = boxOf(ring.getBoundingClientRect());
+    const tourRoot = ring.parentElement;
+    for (const el of document.querySelectorAll("body *")) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (tourRoot && tourRoot.contains(el)) continue;
+      if (el.contains(ring)) continue;
+      const style = getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) continue;
+      if (rect.width > window.innerWidth * 0.9 && rect.height > window.innerHeight * 0.7) continue;
+      const item = boxOf(rect);
+      if (misses(ringBox, item)) continue;
+      const contains =
+        ringBox.x <= item.x + 2 &&
+        ringBox.y <= item.y + 2 &&
+        ringBox.x + ringBox.width >= item.x + item.width - 2 &&
+        ringBox.y + ringBox.height >= item.y + item.height - 2;
+      if (contains) continue;
+      const label = (el.getAttribute("aria-label") || el.textContent || el.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
+      hits.push({
+        cover: "ring",
+        item: "cut",
+        label: `ring cuts ${label || el.tagName}`,
+        coverBox: roundBox(ringBox),
+        itemBox: roundBox(item),
       });
     }
   }
