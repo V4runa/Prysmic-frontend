@@ -129,3 +129,19 @@ test("signup and reset show the rules and no longer mention 6 characters", () =>
   assert.match(policy, /Not your username or email/);
   assert.match(policy, /email\.slice\(0, at\)/);
 });
+
+test("signup, login, and change-password share the backend byte cap without cutting the field", () => {
+  const signup = readFileSync(new URL("../signup/page.tsx", import.meta.url), "utf8");
+  const login = readFileSync(new URL("../login/page.tsx", import.meta.url), "utf8");
+  const settings = readFileSync(new URL("../settings/page.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../globals.css", import.meta.url), "utf8");
+  assert.match(signup, /PASSWORD_MAX_BYTES/);
+  assert.match(signup, /signup-password-limit/);
+  assert.match(login, /PASSWORD_MAX_BYTES/);
+  assert.match(login, /login-password-limit/);
+  assert.match(settings, /passwordPolicySentence/);
+  for (const source of [signup, login, settings]) {
+    assert.equal(/type="password"[\s\S]{0,240}maxLength/.test(source), false);
+  }
+  assert.match(css, /input\[type="password"\]\s*\{[^}]*overflow-x:\s*auto/);
+});

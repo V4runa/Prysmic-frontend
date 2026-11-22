@@ -467,6 +467,13 @@ select.focus-band:focus-visible {
   box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.25);
 }
 
+/* Password fields clip instead of scrolling, so a password longer than the
+   box looks cut off (often around the low 20s, depending on the font) even
+   though nothing stored a shorter maxlength. Let the caret move. */
+input[type="password"] {
+  overflow-x: auto;
+}
+
 /* Prevent iOS Safari from auto-zooming when focusing inputs:
    any control under 16px triggers it, so floor font-size on phones. */
 @media (max-width: 639px) {

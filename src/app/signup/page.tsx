@@ -12,7 +12,7 @@ import { markTourSignup } from "../tour/tourSeen";
 import { TextField, FormButton } from "../components/forms";
 import PasswordHints from "../components/PasswordHints";
 import { interpretSignupError } from "../lib/authMessages";
-import { passwordBlockMessage } from "../lib/passwordPolicy";
+import { PASSWORD_MAX_BYTES, PASSWORD_MIN_LENGTH, passwordBlockMessage } from "../lib/passwordPolicy";
 import { landingHref } from "../lib/preferences";
 import { applyAuthSession } from "../lib/storedSession";
 
@@ -99,13 +99,16 @@ export default function SignupPage() {
               type="password"
               placeholder="Password"
               autoComplete="new-password"
-              aria-describedby={error ? "signup-password-rules signup-error" : "signup-password-rules"}
+              aria-describedby={error ? "signup-password-limit signup-password-rules signup-error" : "signup-password-limit signup-password-rules"}
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (error) setError("");
               }}
             />
+            <p id="signup-password-limit" className="text-xs leading-relaxed text-slate-500">
+              At least {PASSWORD_MIN_LENGTH} characters, at most {PASSWORD_MAX_BYTES} bytes.
+            </p>
             <PasswordHints
               id="signup-password-rules"
               password={password}
