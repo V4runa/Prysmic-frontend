@@ -231,6 +231,26 @@ test("phone moods does not scroll when Your own is already wholly above the shee
   assert.equal(plan.to, 1);
 });
 
+test("phone moods leaves out a row that would sit under the header", () => {
+  const rows = [
+    { top: 55, bottom: 142 },
+    { top: 154, bottom: 241 },
+    { top: 253, bottom: 340 },
+  ];
+  const plan = planPhoneMoodRows({
+    rows,
+    headerBottom: 80,
+    sheetTop: 360,
+    clear: 12,
+    pad: 8,
+  });
+  assert.ok(plan);
+  assert.equal(plan.from, 1);
+  assert.equal(plan.to, 2);
+  assert.ok(rows[plan.from].top - plan.delta >= 80 + 12 + 8 - 0.5);
+  assert.ok(rows[plan.to].bottom - plan.delta <= 360 - 12 - 8 + 0.5);
+});
+
 test("phone moods hides a heading that would be sliced, without losing Your own", () => {
   const rows = [{ top: 250, bottom: 800 }];
   const plan = planPhoneMoodRows({

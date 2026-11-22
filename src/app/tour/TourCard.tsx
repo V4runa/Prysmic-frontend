@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { btnPrimary, btnSecondary } from "../components/forms/styles";
-import { containTourCard, placeMoodCard, placeTourCard, planPhoneMoodRows, ringSidePad, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
+import { containTourCard, MOOD_RING_CLEAR, placeMoodCard, placeTourCard, planPhoneMoodRows, ringSidePad, TOUR_CARD_WIDTH, type Box, type CardSpot, type SafeInsets } from "./tourPlace";
 import {
   TOUR_CLOSE,
   TOUR_CONTROLS,
@@ -102,6 +102,22 @@ function keepBoxes(target: HTMLElement | null): Box[] {
     );
   }
   return boxes;
+}
+
+/** The lowest edge that covers the grid: the sticky header, or a clipping scroller. */
+function moodOcclusionTop(grid: HTMLElement, headerBottom: number): number {
+  let edge = headerBottom;
+  let node: HTMLElement | null = grid.parentElement;
+  while (node && node !== document.body) {
+    const style = getComputedStyle(node);
+    const clipsY = style.overflowY === "auto" || style.overflowY === "scroll" || style.overflowY === "hidden";
+    if (clipsY) {
+      const top = node.getBoundingClientRect().top;
+      if (top > edge) edge = top;
+    }
+    node = node.parentElement;
+  }
+  return edge;
 }
 
 function moodRows(grid: HTMLElement): { top: number; bottom: number }[] {
@@ -704,8 +720,10 @@ export default function TourCard({
         if (grid && scroller instanceof HTMLElement) {
           const bar = readChrome();
           const header = document.querySelector(".app-header");
-          const headerBottom =
-            header instanceof HTMLElement ? header.getBoundingClientRect().bottom : Math.max(0, bar.top - 12);
+          const headerBottom = moodOcclusionTop(
+            grid,
+            header instanceof HTMLElement ? header.getBoundingClientRect().bottom : Math.max(0, bar.top - 12)
+          );
           const live = cardRef.current;
           const liveBox = live?.getBoundingClientRect();
           const sheetTop =
@@ -721,6 +739,7 @@ export default function TourCard({
             heading: headBox && headBox.height > 8 ? { top: headBox.top, bottom: headBox.bottom } : null,
             pad: RING_PAD,
             sheetGap: RING_GAP,
+            clear: MOOD_RING_CLEAR,
           });
           if (plan && plan.delta > 2) {
             const room = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
@@ -1098,6 +1117,7 @@ export default function TourCard({
   }
   const sheet = Boolean(chrome.nav);
   let sheetHidesRing = false;
+  let moodBandTop = 0;
   if (sheet && viewport.width > 0) {
     const live = cardRef.current;
     const liveName = live?.getAttribute("data-tour-card");
@@ -1122,8 +1142,11 @@ export default function TourCard({
       const grid = visibleQuery("[data-tour='mood-grid']");
       const sheetTop = liveMatches && liveBox ? liveBox.top : top;
       const bandBottom = sheetTop - RING_GAP - RING_PAD;
+      const occluded = grid ? moodOcclusionTop(grid, headerBottom) : headerBottom;
+      moodBandTop = occluded;
+      const minTileTop = occluded + MOOD_RING_CLEAR + RING_PAD;
       const rows = grid
-        ? moodRows(grid).filter((row) => row.top >= headerBottom - 1 && row.bottom <= bandBottom + 2)
+        ? moodRows(grid).filter((row) => row.top >= minTileTop - 1 && row.bottom <= bandBottom + 2)
         : [];
       const first = rows[0];
       const last = rows[rows.length - 1];
@@ -1281,7 +1304,7 @@ export default function TourCard({
     return header.getBoundingClientRect().bottom + 8;
   })();
   const headerBottom = Math.max(0, chrome.top - 12);
-  const ringFloor = phone && step?.id === "moods" ? headerBottom : 0;
+  const ringFloor = phone && step?.id === "moods" ? (moodBandTop > 0 ? moodBandTop + MOOD_RING_CLEAR : headerBottom) : 0;
   const ringTop = ringSource ? Math.max(ringSource.y - ringSides.top, streakLimit, ringFloor) : 0;
   const ringBottomRaw = ringSource ? ringSource.y + ringSource.height + ringSides.bottom : 0;
   const ringBottom = sheet && spot ? Math.min(ringBottomRaw, spot.top) : ringBottomRaw;

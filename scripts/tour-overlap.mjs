@@ -304,7 +304,44 @@ export function collectOverlaps() {
     }
   }
   if (ring instanceof HTMLElement && card instanceof HTMLElement) {
+    const header = document.querySelector(".app-header");
+    const headerBox = header instanceof HTMLElement ? header.getBoundingClientRect() : null;
     const ringBox = ring.getBoundingClientRect();
+    const margin = 8;
+    if (headerBox && headerBox.height > 1 && ringBox.top < headerBox.bottom + margin - 1) {
+      hits.push({
+        cover: "ring",
+        item: "header",
+        label: "ring overlaps the header",
+        coverBox: roundBox(boxOf(ringBox)),
+        itemBox: roundBox(boxOf(headerBox)),
+      });
+    }
+    const scroller = document.querySelector("[data-tour='mood-grid']")?.closest(".app-scroll");
+    const clipTop = scroller instanceof HTMLElement ? scroller.getBoundingClientRect().top : headerBox ? headerBox.bottom : 0;
+    if (card.getAttribute("data-tour-card") === "moods") {
+      for (const el of document.querySelectorAll("[data-tour='mood-grid'] button")) {
+        if (!(el instanceof HTMLElement) || !visible(el)) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 8 || rect.height < 8) continue;
+        const inside =
+          rect.top >= ringBox.top - 2 &&
+          rect.bottom <= ringBox.bottom + 2 &&
+          rect.left >= ringBox.left - 2 &&
+          rect.right <= ringBox.right + 2;
+        if (!inside) continue;
+        const covered = rect.top < (headerBox ? headerBox.bottom : 0) - 1 || rect.top < clipTop - 1;
+        if (!covered) continue;
+        const label = (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+        hits.push({
+          cover: "ring",
+          item: "covered",
+          label: `inside the ring but covered: ${label || el.tagName}`,
+          coverBox: roundBox(boxOf(ringBox)),
+          itemBox: roundBox(boxOf(rect)),
+        });
+      }
+    }
     const cardBox = card.getBoundingClientRect();
     const bandTop = ringBox.bottom + 1;
     const bandBottom = cardBox.top - 1;

@@ -309,6 +309,9 @@ export function containTourCard(
 
 export type MoodRow = { top: number; bottom: number };
 
+/** Room between the sticky header and the phone Moods ring, including its glow. */
+export const MOOD_RING_CLEAR = 12;
+
 /**
  * Phone moods, without scrolling. Ring as many whole rows as fit above the
  * card, at least one, and sit the card directly under that ring. The card
@@ -366,15 +369,18 @@ export function planPhoneMoodRows(input: {
   heading?: MoodRow | null;
   pad?: number;
   sheetGap?: number;
+  /** Space kept above the ring so the ring and its glow stay below the header. */
+  clear?: number;
 }): { delta: number; from: number; to: number } | null {
   const pad = input.pad ?? 8;
   const sheetGap = input.sheetGap ?? 12;
+  const clear = input.clear ?? MOOD_RING_CLEAR;
   const rows = input.rows;
   if (rows.length === 0) return null;
   const lastIndex = rows.length - 1;
   const last = rows[lastIndex];
   const targetLastBottom = input.sheetTop - sheetGap - pad;
-  const minTileTop = input.headerBottom + pad;
+  const minTileTop = input.headerBottom + clear + pad;
   const available = targetLastBottom - minTileTop;
   if (!(available > 24) || !(last.bottom - last.top > 8)) return null;
 
