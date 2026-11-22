@@ -10,6 +10,7 @@ import { TextField, FormButton } from "../components/forms";
 import { landingHref } from "../lib/preferences";
 import { restoreSessionIfNeeded } from "../lib/refreshSession";
 import { applyAuthSession, readLoginNotice } from "../lib/storedSession";
+import { PASSWORD_MAX_BYTES } from "../lib/passwordPolicy";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -118,9 +119,13 @@ export default function LoginPage() {
               type="password"
               placeholder="Password"
               autoComplete="current-password"
+              aria-describedby="login-password-limit"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <p id="login-password-limit" className="text-xs leading-relaxed text-slate-500 -mt-2">
+              Up to {PASSWORD_MAX_BYTES} bytes.
+            </p>
             <div className="flex justify-end -mt-2">
               <Link href="/forgot-password" className="tap-target inline-flex items-center text-sm text-cyan-300 hover:underline">
                 Forgot password?
