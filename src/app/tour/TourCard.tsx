@@ -183,15 +183,9 @@ function layoutWideMoods(
     return box.bottom > cardTop + 2 && box.top < cardTop + cardHeight && box.right > left && box.left < left + cardWidth;
   });
   if (hits.length > 0) {
-    const lowest = Math.max(...hits.map((tile) => tile.getBoundingClientRect().bottom));
-    const below = lowest + RING_GAP;
-    if (below + cardHeight <= maxBottom + 1) {
-      cardTop = below;
-    } else {
-      cardWidth = Math.min(rect.width, viewport.width - 32);
-      left = Math.min(Math.max(16, rect.x), Math.max(16, viewport.width - 16 - cardWidth));
-      cardTop = ringBottom + gap;
-    }
+    cardWidth = Math.min(rect.width, viewport.width - 32);
+    left = Math.min(Math.max(16, rect.x), Math.max(16, viewport.width - 16 - cardWidth));
+    cardTop = Math.min(ringBottom + gap, Math.max(ringBottom + RING_GAP, maxBottom - cardHeight));
   }
   return {
     spot: { top: Math.max(topInset, cardTop), left, width: cardWidth },
