@@ -157,14 +157,18 @@ function moodRowSlot(grid: HTMLElement, cardWidth: number, cardHeight: number, v
   if (!last || buttons.length === 0) return null;
   const lastTiles = buttons.filter((button) => Math.abs(button.getBoundingClientRect().top - last.top) < 18);
   if (lastTiles.length === 0) return null;
+  const gridRect = grid.getBoundingClientRect();
   const right = Math.max(...lastTiles.map((button) => button.getBoundingClientRect().right));
   const columnGap = Number.parseFloat(getComputedStyle(grid).columnGap);
   const slotLeft = right + (Number.isFinite(columnGap) ? columnGap : 16);
-  if (slotLeft + cardWidth > window.innerWidth - 16) return null;
+  const available = gridRect.right - 12 - slotLeft;
+  if (available < 280) return null;
+  const width = Math.min(cardWidth, available);
   const rowHeight = last.bottom - last.top;
-  const top = cardHeight < rowHeight ? last.top + (rowHeight - cardHeight) / 2 : last.top;
-  if (top + cardHeight > viewportHeight - 16) return null;
-  return { top, left: slotLeft, width: cardWidth };
+  let top = cardHeight < rowHeight ? last.top + (rowHeight - cardHeight) / 2 : last.top;
+  const limit = viewportHeight - 16;
+  if (top + cardHeight > limit) top = Math.max(last.top, limit - cardHeight);
+  return { top, left: slotLeft, width };
 }
 
 function layoutWideMoods(
