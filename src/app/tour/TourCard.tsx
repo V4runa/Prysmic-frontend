@@ -154,7 +154,7 @@ function layoutDayPanelCard(
   const quick = document.querySelector("[data-tour-keep='quick']");
   const quickTop = quick instanceof HTMLElement ? quick.getBoundingClientRect().top : viewport.height - bottomInset;
   const width = Math.min(320, Math.max(220, moodBox.width));
-  let top = moodBox.bottom + 16;
+  let top = moodBox.bottom + 28;
   const maxTop = Math.min(viewport.height - bottomInset - cardHeight, quickTop - cardHeight - 12);
   if (maxTop < moodBox.bottom + 8) return null;
   top = Math.min(Math.max(top, moodBox.bottom + 12), maxTop);
@@ -368,12 +368,13 @@ export default function TourCard({
           scroller.scrollTo({ top: 0, behavior: "auto" });
         }
         if (!phoneNow && scroller instanceof HTMLElement) {
+          scroller.style.paddingBottom = `${CARD_ESTIMATE + 40}px`;
           const grid = node.getBoundingClientRect();
           const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
           const headBottom = head instanceof HTMLElement ? head.getBoundingClientRect().bottom : grid.top;
-          const need = grid.bottom + 20 + CARD_ESTIMATE + chrome.bottom - window.innerHeight;
-          const room = headBottom - chrome.top - 8;
-          const delta = Math.min(Math.max(0, need), Math.max(0, room));
+          const need = grid.bottom + 24 + CARD_ESTIMATE + chrome.bottom - window.innerHeight;
+          const room = Math.max(0, headBottom - chrome.top - 12);
+          const delta = Math.min(Math.max(0, need), room);
           if (delta > 2) scroller.scrollBy({ top: delta, behavior: "auto" });
         }
         scrolled = true;
@@ -405,7 +406,12 @@ export default function TourCard({
 
     timer = window.setInterval(tick, 40);
     tick();
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      document.querySelectorAll<HTMLElement>(".app-scroll").forEach((node) => {
+        if (node.style.paddingBottom) node.style.paddingBottom = "";
+      });
+    };
   }, [phase, index, pathname, step, chrome.top, chrome.bottom]);
 
   useEffect(() => {
