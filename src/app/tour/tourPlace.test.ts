@@ -179,18 +179,18 @@ test("the card avoids a keep-clear row under the target", () => {
   assert.equal(overlapArea(placed, search), 0);
 });
 
-test("a phone mood card sits on its content height directly under the ring", () => {
+test("a phone mood card sits directly under the rows that fit", () => {
   const rows: { top: number; bottom: number }[] = [
     { top: 80, bottom: 180 },
     { top: 196, bottom: 296 },
     { top: 312, bottom: 412 },
     { top: 428, bottom: 528 },
   ];
-  const placed = placeMoodCard(rows, 180, 60, 700, 12);
+  const placed = placeMoodCard(rows, 180, 60, 900, 12);
   assert.ok(placed);
-  assert.equal(placed.ringRows, 3);
-  assert.equal(placed.top, 412 + 12);
-  assert.ok(placed.top + 180 <= 700);
+  assert.equal(placed.ringRows, 4);
+  assert.equal(placed.top, 528 + 12);
+  assert.equal(placed.minHeight, 180);
 });
 
 test("a phone mood card leaves out a row hidden under the header", () => {
@@ -199,10 +199,11 @@ test("a phone mood card leaves out a row hidden under the header", () => {
     { top: 156, bottom: 256 },
     { top: 272, bottom: 372 },
   ];
-  const placed = placeMoodCard(rows, 160, 72, 640, 12);
+  const placed = placeMoodCard(rows, 160, 72, 900, 12);
   assert.ok(placed);
   assert.equal(placed.ringRows, 2);
   assert.equal(placed.top, 372 + 12);
+  assert.equal(placed.minHeight, 160);
 });
 
 test("the tasks ring keeps 8px between its stroke and the More button", () => {

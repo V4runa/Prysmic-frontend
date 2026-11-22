@@ -318,14 +318,14 @@ function snapPhoneCalendar(
     for (const row of rows) {
       const overlaps = row.bottom > start + 2 && row.top < bottom - 2;
       if (!overlaps) continue;
-      const contains = start <= row.top + 2 && bottom >= row.bottom - 2;
-      if (!contains) {
+      if (row.top < start - 2) {
         ok = false;
         break;
       }
+      bottom = Math.max(bottom, row.bottom + 4);
     }
     if (!ok || bottom > bottomLimit) continue;
-    const spot = { top: start, minHeight: height };
+    const spot = { top: start, minHeight: bottom - start };
     const coversToday = !!today && start <= today.top + 2 && bottom >= today.bottom - 2;
     if (!coversToday) return spot;
     fallback = spot;
@@ -943,6 +943,7 @@ export default function TourCard({
       week: step?.id === "calendar" && phone ? todayWeek() : null,
     });
   }
+  let moodGrow: number | undefined;
   if (spot && viewport.width > 0) {
     spot = containTourCard(spot, cardSize.height, viewport, { top: chrome.top, bottom: chrome.bottom }, { phone });
     if (phone && step?.id === "moods" && !loggedMood) {
@@ -951,6 +952,7 @@ export default function TourCard({
       const placed = placeMoodCard(rows, cardSize.height, chrome.top, viewport.height - chrome.bottom, RING_GAP);
       if (placed && spot) {
         spot = { ...spot, top: placed.top };
+        if (placed.minHeight > cardSize.height + 1) moodGrow = placed.minHeight;
         if (grid) {
           const rect = grid.getBoundingClientRect();
           const included = rows.filter((row) => row.top >= chrome.top - 1 && row.bottom <= placed.top + 1);
@@ -1085,6 +1087,7 @@ export default function TourCard({
         top: spot.top,
         left: spot.left,
         width: spot.width,
+        minHeight: Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0) || undefined,
         backgroundColor: "#14161c",
       }
     : undefined;

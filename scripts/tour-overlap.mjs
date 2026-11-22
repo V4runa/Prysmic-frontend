@@ -8,6 +8,12 @@ export function collectOverlaps() {
   function boxOf(rect) {
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
   }
+  function misses(a, b) {
+    return a.x + a.width <= b.x + 1 || b.x + b.width <= a.x + 1 || a.y + a.height <= b.y + 1 || b.y + b.height <= a.y + 1;
+  }
+  function roundBox(box) {
+    return { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) };
+  }
   function cuts(cover, item) {
     const coverRight = cover.x + cover.width;
     const coverBottom = cover.y + cover.height;
@@ -162,7 +168,9 @@ export function collectOverlaps() {
       if (style.position !== "fixed" && style.position !== "sticky") continue;
       if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
       const rect = el.getBoundingClientRect();
-      if (rect.width < 8 || rect.height < 8) continue;
+      if (rect.width > window.innerWidth * 0.85 && rect.height > window.innerHeight * 0.6) continue;
+      const z = Number(style.zIndex);
+      if (Number.isFinite(z) && z < 0) continue;
       if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
       obstacles.push({ label: (el.getAttribute("aria-label") || el.className || el.tagName).toString().replace(/\s+/g, " ").trim().slice(0, 60), box: boxOf(rect) });
     }
@@ -189,7 +197,6 @@ export function collectOverlaps() {
       return false;
     }
     for (const obstacle of obstacles) {
-      if (!cuts(boxOf(ringBox), obstacle.box) && !inside(boxOf(ringBox), obstacle.box)) continue;
       if (misses(boxOf(ringBox), obstacle.box)) continue;
       hits.push({
         cover: "ring",
@@ -234,24 +241,21 @@ export function collectOverlaps() {
     const content = measure instanceof HTMLElement ? measure.scrollHeight : 0;
     const box = card.getBoundingClientRect();
     if (content > 0 && box.height > content + pad + 2) {
-      hits.push({
-        cover: "card",
-        item: "stretch",
-        label: `card is ${Math.round(box.height - content - pad)}px taller than its content`,
-        coverBox: roundBox(boxOf(box)),
-        itemBox: { x: 0, y: 0, w: Math.round(content), h: Math.round(pad) },
-      });
+      let lowest = box.y + content + pad;
+      for (const item of items) {
+        if (misses(boxOf(box), item.box)) continue;
+        lowest = Math.max(lowest, item.box.y + item.box.height);
+      }
+      if (box.y + box.height > lowest + 4) {
+        hits.push({
+          cover: "card",
+          item: "stretch",
+          label: `card is ${Math.round(box.y + box.height - lowest)}px taller than the content it covers`,
+          coverBox: roundBox(boxOf(box)),
+          itemBox: { x: Math.round(box.x), y: Math.round(lowest), w: Math.round(box.width), h: Math.round(box.y + box.height - lowest) },
+        });
+      }
     }
   }
   return hits;
-}
-
-function misses(a, b) {
-  return a.x + a.width <= b.x + 1 || b.x + b.width <= a.x + 1 || a.y + a.height <= b.y + 1 || b.y + b.height <= a.y + 1;
-}
-function inside(cover, item) {
-  return cover.x <= item.x + 1 && cover.y <= item.y + 1 && cover.x + cover.width >= item.x + item.width - 1 && cover.y + cover.height >= item.y + item.height - 1;
-}
-function roundBox(box) {
-  return { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) };
 }

@@ -312,10 +312,10 @@ export function containTourCard(
 export type MoodRow = { top: number; bottom: number };
 
 /**
- * Phone moods, with no scrolling. Ring as many whole rows as fit above a
- * content-sized card, at least one, and sit the card directly under that ring.
- * Rows tucked under the header are not part of the ring. The card is never
- * grown past its content: a row it meets is fully inside it or fully clear.
+ * Phone moods, without scrolling. Ring as many whole rows as fit above the
+ * card, at least one, and sit the card directly under that ring. The card
+ * stays at its content height when that already covers every row it meets.
+ * If it would stop in the middle of a row, it grows only to that row's bottom.
  */
 export function placeMoodCard(
   rows: MoodRow[],
@@ -323,29 +323,35 @@ export function placeMoodCard(
   topInset: number,
   bottomLimit: number,
   gap = 12
-): { top: number; ringRows: number } | null {
+): { top: number; minHeight: number; ringRows: number } | null {
   const height = Math.max(1, contentHeight);
   const visible = rows.filter((row) => row.top >= topInset - 1 && row.bottom - row.top > 8);
-  const legal = (count: number): { top: number; ringRows: number } | null => {
-    if (count < 1 || count > visible.length) return null;
+  const scored: { top: number; minHeight: number; ringRows: number; extra: number }[] = [];
+  for (let count = 1; count <= visible.length; count += 1) {
     const top = visible[count - 1].bottom + gap;
-    const bottom = top + height;
-    if (bottom > bottomLimit) return null;
+    if (top < topInset) continue;
+    let bottom = top + height;
+    let ok = true;
     for (const row of rows) {
-      const overlaps = row.bottom > top + 2 && row.top < bottom - 2;
-      if (!overlaps) continue;
-      const contains = top <= row.top + 2 && bottom >= row.bottom - 2;
-      if (!contains) return null;
+      if (row.bottom <= top + 2) continue;
+      if (row.top >= bottom - 2) continue;
+      if (row.top < top - 2) {
+        ok = false;
+        break;
+      }
+      bottom = Math.max(bottom, row.bottom + 2);
     }
-    return { top, ringRows: count };
-  };
-  for (let count = visible.length; count >= 1; count -= 1) {
-    const placed = legal(count);
-    if (placed) return placed;
+    if (!ok || bottom > bottomLimit) continue;
+    scored.push({ top, minHeight: bottom - top, ringRows: count, extra: bottom - (top + height) });
   }
-  const first = visible[0];
-  if (!first) return null;
-  return { top: first.bottom + gap, ringRows: 1 };
+  if (scored.length === 0) {
+    const first = visible[0];
+    if (!first) return null;
+    return { top: first.bottom + gap, minHeight: height, ringRows: 1 };
+  }
+  scored.sort((a, b) => a.extra - b.extra || b.ringRows - a.ringRows);
+  const best = scored[0];
+  return { top: best.top, minHeight: best.minHeight, ringRows: best.ringRows };
 }
 
 export type SidePad = { left: number; right: number; top: number; bottom: number };
