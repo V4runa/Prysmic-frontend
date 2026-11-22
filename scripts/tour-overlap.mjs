@@ -87,7 +87,15 @@ export function collectOverlaps() {
     items.push({ kind: "tile", label, box: boxOf(rect), node: tile });
   }
   const hits = [];
+  const nav = document.querySelector(".app-bottom-nav");
+  const navBox =
+    nav instanceof HTMLElement && getComputedStyle(nav).display !== "none" ? nav.getBoundingClientRect() : null;
+  const cardIsSheet =
+    card instanceof HTMLElement &&
+    navBox != null &&
+    Math.abs(card.getBoundingClientRect().bottom - navBox.top) < 24;
   for (const cover of covers) {
+    if (cover.kind === "card" && cardIsSheet) continue;
     for (const item of items) {
       if (!cuts(cover.box, item.box)) continue;
       hits.push({

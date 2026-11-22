@@ -563,7 +563,7 @@ export default function TourCard({
     const observer = new ResizeObserver(read);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [stepKey, cardReady]);
+  }, [stepKey, cardReady, welcomeReady]);
 
   useLayoutEffect(() => {
     const line = document.querySelector("main [data-tour-quiet]");
@@ -1039,7 +1039,18 @@ export default function TourCard({
   const sheet = Boolean(chrome.nav);
   let sheetHidesRing = false;
   if (sheet && viewport.width > 0) {
-    const height = Math.max(1, cardSize.height);
+    const live = cardRef.current;
+    const liveName = live?.getAttribute("data-tour-card");
+    const liveBox = live?.getBoundingClientRect();
+    const liveMatches =
+      liveBox != null &&
+      liveBox.height > 40 &&
+      (liveName === "welcome"
+        ? phase === "welcome"
+        : liveName === "close"
+          ? phase === "close"
+          : liveName === step?.id);
+    const height = liveMatches && liveBox ? liveBox.height : Math.max(1, cardSize.height);
     const top = Math.max(chrome.top, viewport.height - chrome.bottom - height);
     spot = { top, left: 16, width: Math.max(200, viewport.width - 32) };
     moodGrow = undefined;
@@ -1047,7 +1058,9 @@ export default function TourCard({
     const headerBottom = Math.max(0, chrome.top - 12);
     if (step?.id === "moods" && !loggedMood) {
       const grid = visibleQuery("[data-tour='mood-grid']");
-      const rows = grid ? moodRows(grid).filter((row) => row.top >= headerBottom - 1 && row.bottom <= top - 2) : [];
+      const rows = grid
+        ? moodRows(grid).filter((row) => row.top >= headerBottom - 1 && row.bottom <= top + 0.5)
+        : [];
       const first = rows[0];
       const last = rows[rows.length - 1];
       if (grid && first && last) {
@@ -1065,7 +1078,7 @@ export default function TourCard({
       }
     } else if (target) {
       phoneMoodRing = null;
-      const above = target.y >= headerBottom - 1 && target.y + target.height <= top - 2;
+      const above = target.y >= headerBottom - 1 && target.y + target.height <= top + 0.5;
       if (!above) sheetHidesRing = true;
     } else {
       phoneMoodRing = null;
@@ -1145,7 +1158,7 @@ export default function TourCard({
   const ringFloor = phone && step?.id === "moods" ? headerBottom : 0;
   const ringTop = ringSource ? Math.max(ringSource.y - ringSides.top, streakLimit, ringFloor) : 0;
   const ringBottomRaw = ringSource ? ringSource.y + ringSource.height + ringSides.bottom : 0;
-  const ringBottom = sheet && spot ? Math.min(ringBottomRaw, spot.top - 2) : ringBottomRaw;
+  const ringBottom = sheet && spot ? Math.min(ringBottomRaw, spot.top) : ringBottomRaw;
   const nearFlame = streakLimit > 0 && ringSource != null && ringSource.y - streakLimit < 36;
   const tasksTight = step?.id === "tasks" && (ringSides.left < ringPad || ringSides.right < ringPad);
   const tightRing = step?.id === "calendar" || step?.id === "notes" || step?.id === "contracts" || tasksTight;
@@ -1172,13 +1185,20 @@ export default function TourCard({
   if (chrome.flame) holes.push(chrome.flame);
 
   const cardStyle: CSSProperties | undefined = spot
-    ? {
-        top: spot.top,
-        left: spot.left,
-        width: spot.width,
-        minHeight: sheet ? undefined : Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0) || undefined,
-        backgroundColor: "#14161c",
-      }
+    ? sheet
+      ? {
+          bottom: chrome.bottom,
+          left: spot.left,
+          width: spot.width,
+          backgroundColor: "#14161c",
+        }
+      : {
+          top: spot.top,
+          left: spot.left,
+          width: spot.width,
+          minHeight: Math.max(notesCover ?? 0, phoneSeal?.minHeight ?? 0, moodGrow ?? 0) || undefined,
+          backgroundColor: "#14161c",
+        }
     : undefined;
   const holdingCard = phase === "step" && target == null && !holdFlame && spot != null;
 
