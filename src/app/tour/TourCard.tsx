@@ -120,6 +120,36 @@ function moodOcclusionTop(grid: HTMLElement, headerBottom: number): number {
   return edge;
 }
 
+/** Room for the ring's padding and the soft glow, so neither sits in the header. */
+const MOOD_GLOW = 18;
+
+/**
+ * The trailing mood rows that can sit fully inside the panel, below the
+ * header and any overflow clip, with the card beneath them. The last row
+ * is "Your own…", so a short window rings that end of the grid.
+ */
+function wideMoodRows(
+  grid: HTMLElement,
+  cardHeight: number,
+  viewportHeight: number
+): { rows: { top: number; bottom: number }[]; minTop: number; gap: number; clipTop: number } | null {
+  const rows = moodRows(grid);
+  if (rows.length === 0) return null;
+  const header = document.querySelector(".app-header");
+  const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
+  const clipTop = moodOcclusionTop(grid, headerBottom);
+  const minTop = Math.max(clipTop, headerBottom + MOOD_GLOW) + RING_PAD;
+  const gap = RING_PAD + RING_GAP;
+  const band = viewportHeight - 16 - cardHeight - gap - minTop;
+  if (band < 24) return null;
+  let start = rows.length - 1;
+  for (let i = rows.length - 1; i >= 0; i -= 1) {
+    if (rows[rows.length - 1].bottom - rows[i].top <= band + 0.5) start = i;
+    else break;
+  }
+  return { rows: rows.slice(start), minTop, gap, clipTop };
+}
+
 function moodRows(grid: HTMLElement): { top: number; bottom: number }[] {
   const tiles = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
   const rows: { top: number; bottom: number }[] = [];
@@ -166,7 +196,7 @@ function layoutPhoneMoods(
 
 function layoutWideMoods(
   cardHeight: number,
-  topInset: number,
+  _topInset: number,
   _bottomInset: number,
   viewport: { width: number; height: number }
 ): { spot: CardSpot; ring: TargetBox; nested: boolean } | null {
@@ -185,31 +215,26 @@ function layoutWideMoods(
     Math.max(16, rect.x + rect.width / 2 - width / 2),
     Math.max(16, viewport.width - 16 - width)
   );
-  // The ring pad sits outside the grid, and the card stays 8px past that.
-  const gap = RING_PAD + RING_GAP;
-  const headerEl = document.querySelector(".app-header");
-  const headerBottom =
-    headerEl instanceof HTMLElement ? headerEl.getBoundingClientRect().bottom : Math.max(0, topInset - 12);
-  const fitting = moodRows(grid).filter(
-    (row) => row.top >= headerBottom - 1 && row.bottom + gap + cardHeight <= viewport.height - 16
-  );
-  const first = fitting[0];
-  const last = fitting[fitting.length - 1];
-  if (first && last) {
+  const plan = wideMoodRows(grid, cardHeight, viewport.height);
+  if (plan && plan.rows.length > 0) {
+    // Only ring a row once it has scrolled fully below the clip.
+    const visible = plan.rows.filter((row) => row.top >= plan.minTop - 1);
+    const shown = visible.length > 0 ? visible : [plan.rows[plan.rows.length - 1]];
+    const topRow = shown[0];
+    const bottomRow = shown[shown.length - 1];
     return {
-      spot: { top: last.bottom + gap, left, width },
+      spot: { top: bottomRow.bottom + plan.gap, left, width },
       ring: {
         x: rect.x,
-        y: first.top,
+        y: topRow.top,
         width: rect.width,
-        height: Math.max(24, last.bottom - first.top),
+        height: Math.max(24, bottomRow.bottom - topRow.top),
         radius: ring.radius,
       },
       nested: false,
     };
   }
-  const belowTop = rect.bottom + gap;
-  return { spot: { top: belowTop, left, width }, ring, nested: false };
+  return { spot: { top: rect.bottom + RING_PAD + RING_GAP, left, width }, ring, nested: false };
 }
 
 function layoutLoggedMood(
@@ -236,7 +261,13 @@ function layoutDayPanelCard(
   bottomInset: number,
   viewport: { width: number; height: number }
 ): CardSpot | null {
-  const mood = document.querySelector("[data-tour-keep='mood']");
+  const mood = [...document.querySelectorAll("[data-tour-keep='mood']")].find((node) => {
+    if (!(node instanceof HTMLElement)) return false;
+    const style = getComputedStyle(node);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    const rect = node.getBoundingClientRect();
+    return rect.width > 2 && rect.height > 2 && rect.bottom > 0 && rect.top < viewport.height;
+  });
   if (!(mood instanceof HTMLElement)) return null;
   const moodBox = mood.getBoundingClientRect();
   if (moodBox.width < 2) return null;
@@ -806,22 +837,21 @@ export default function TourCard({
         const scroller = node.closest(".app-scroll");
         const phoneNow = window.innerWidth < 700;
         if (!phoneNow && scroller instanceof HTMLElement && moodsSettled.current !== String(index) && moodScrolls < 8) {
-          const grid = node.getBoundingClientRect();
           const cardH = Math.max(200, cardRef.current?.getBoundingClientRect().height ?? 0);
-          const header = document.querySelector(".app-header");
-          const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : Math.max(0, chrome.top - 12);
-          const belowTop = grid.bottom + RING_PAD + RING_GAP;
-          const need = belowTop + cardH + 16 - window.innerHeight;
-          const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
-          if (need > 2) {
-            if (head instanceof HTMLElement && head.style.marginBottom !== "12px") {
-              head.style.marginBottom = "12px";
-              moodScrolls += 1;
-              previous = null;
-              return;
+          const plan = wideMoodRows(node, cardH, window.innerHeight);
+          const first = plan?.rows[0];
+          const last = plan?.rows[plan.rows.length - 1];
+          if (plan && first && last) {
+            let delta = 0;
+            if (last.bottom > plan.minTop + (window.innerHeight - 16 - cardH - plan.gap - plan.minTop)) {
+              delta = last.bottom - (window.innerHeight - 16 - cardH - plan.gap);
             }
-            const room = Math.max(0, grid.top - headerBottom - 8);
-            const delta = Math.min(need, room);
+            if (first.top - delta < plan.minTop) delta = first.top - plan.minTop;
+            const head = node.closest(".wide-mood-head")?.querySelector("h2");
+            if (head instanceof HTMLElement && plan.rows.length === moodRows(node).length && delta > 0) {
+              const limit = head.getBoundingClientRect().top - plan.clipTop;
+              if (limit >= 0) delta = Math.min(delta, limit);
+            }
             if (delta > 2) {
               const scrollRoom = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
               if (scrollRoom < delta) {
@@ -832,6 +862,43 @@ export default function TourCard({
               moodScrolls += 1;
               previous = null;
               return;
+            }
+            if (first.top < plan.minTop - 1) {
+              const back = first.top - plan.minTop;
+              scroller.scrollBy({ top: back, behavior: "auto" });
+              moodScrolls += 1;
+              previous = null;
+              return;
+            }
+            const sliced = moodRows(node).filter((row) => row.bottom <= first.top + 2 && row.bottom > plan.clipTop + 1 && row.top < plan.clipTop);
+            const hanging = sliced[sliced.length - 1];
+            if (hanging) {
+              const extra = hanging.bottom - plan.clipTop;
+              const room = first.top - plan.minTop;
+              const shift = Math.min(extra, room);
+              if (shift > 2) {
+                const scrollRoom = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+                if (scrollRoom < shift) {
+                  const extraPad = Number.parseFloat(scroller.style.paddingBottom) || 0;
+                  scroller.style.paddingBottom = `${extraPad + (shift - Math.max(0, scrollRoom)) + 8}px`;
+                }
+                scroller.scrollBy({ top: shift, behavior: "auto" });
+                moodScrolls += 1;
+                previous = null;
+                return;
+              }
+            }
+            if (head instanceof HTMLElement && plan.rows.length === moodRows(node).length) {
+              const want = plan.clipTop - head.getBoundingClientRect().top;
+              const maxBottom = window.innerHeight - 16 - cardH - plan.gap;
+              const room = maxBottom - last.bottom;
+              const back = Math.min(want, Math.max(0, room));
+              if (back > 2) {
+                scroller.scrollBy({ top: -back, behavior: "auto" });
+                moodScrolls += 1;
+                previous = null;
+                return;
+              }
             }
           }
         }
@@ -1429,7 +1496,8 @@ export default function TourCard({
       saved.spot.top + Math.min(Math.max(cardHeight, 160), Math.max(1, viewport.height - 16)) <= viewport.height - 8 &&
       saved.spot.left + saved.spot.width <= viewport.width + 8;
     const fixed = Math.min(TOUR_CARD_WIDTH, Math.max(240, viewport.width - 32));
-    const nextSpot = savedFits && saved && step?.id !== "moods"
+    const calendarIntoPanel = step?.id === "calendar" && saved != null && spot.left > saved.spot.left + 48;
+    const nextSpot = savedFits && saved && step?.id !== "moods" && !calendarIntoPanel
       ? saved.spot
       : {
           top: spot.top,

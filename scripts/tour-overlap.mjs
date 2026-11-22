@@ -552,6 +552,94 @@ export function collectOverlaps() {
           parent = parent.parentElement;
         }
       }
+      const ringed = [...document.querySelectorAll("[data-tour='mood-grid'] button, [data-tour-day]")].filter((node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const rect = node.getBoundingClientRect();
+        if (rect.width < 8 || rect.height < 8) return false;
+        const midY = (rect.top + rect.bottom) / 2;
+        const midX = (rect.left + rect.right) / 2;
+        return midY >= ringRect.top - 1 && midY <= ringRect.bottom + 1 && midX >= ringRect.left - 1 && midX <= ringRect.right + 1;
+      });
+      for (const node of ringed) {
+        if (!(node instanceof HTMLElement)) continue;
+        const rect = node.getBoundingClientRect();
+        const edges = [
+          [rect.left + 1, rect.top + 1],
+          [rect.right - 1, rect.top + 1],
+          [rect.left + 1, rect.bottom - 1],
+          [rect.right - 1, rect.bottom - 1],
+        ];
+        let hidden = false;
+        for (const [x, y] of edges) {
+          let parent = node.parentElement;
+          while (parent && parent !== document.body) {
+            const style = getComputedStyle(parent);
+            const clips = [style.overflow, style.overflowX, style.overflowY].some((value) => value === "hidden" || value === "auto" || value === "scroll");
+            if (clips) {
+              const bounds = parent.getBoundingClientRect();
+              if (x < bounds.left + 1 || x > bounds.right - 1 || y < bounds.top + 1 || y > bounds.bottom - 1) {
+                hidden = true;
+                break;
+              }
+            }
+            parent = parent.parentElement;
+          }
+          if (hidden) break;
+        }
+        const inset = Math.min(28, rect.width / 3, rect.height / 3);
+        const points = [
+          [rect.left + inset, rect.top + inset],
+          [rect.right - inset, rect.top + inset],
+          [rect.left + inset, rect.bottom - inset],
+          [rect.right - inset, rect.bottom - inset],
+        ];
+        for (const [x, y] of points) {
+          if (y < headerBottom + 1 || y > window.innerHeight - 1 || x < 1 || x > window.innerWidth - 1) {
+            hidden = true;
+            break;
+          }
+          const tour = document.querySelector("[data-tour-ring]")?.parentElement;
+          const top = document.elementsFromPoint(x, y).find((hit) => !(tour && tour.contains(hit)));
+          const wrapsTile = top instanceof Element && top.contains(node) && top.getBoundingClientRect().height < rect.height + 48;
+          if (!(top === node || (top instanceof Element && node.contains(top)) || wrapsTile)) {
+            hidden = true;
+            break;
+          }
+          let parent = node.parentElement;
+          while (parent && parent !== document.body) {
+            const style = getComputedStyle(parent);
+            const clips = [style.overflow, style.overflowX, style.overflowY].some((value) => value === "hidden" || value === "auto" || value === "scroll");
+            if (clips) {
+              const bounds = parent.getBoundingClientRect();
+              if (y < bounds.top + 1 || y > bounds.bottom - 1 || x < bounds.left + 1 || x > bounds.right - 1) {
+                hidden = true;
+                break;
+              }
+            }
+            parent = parent.parentElement;
+          }
+          if (hidden) break;
+        }
+        if (!hidden) continue;
+        const label = (node.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 24);
+        hits.push({
+          cover: "ring",
+          item: "clipped",
+          label: `clipped inside the ring: ${label}`,
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: roundBox(boxOf(rect)),
+        });
+        break;
+      }
+      if (window.innerWidth >= 1024 && ringRect.top < headerBottom + 8) {
+        hits.push({
+          cover: "ring",
+          item: "header",
+          label: "ring meets the header",
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: { x: 0, y: 0, w: window.innerWidth, h: Math.round(headerBottom) },
+        });
+      }
       if (overlapsCard || clipped || anchor.top < headerBottom - 1 || anchor.bottom > window.innerHeight + 1 || anchor.left < -1 || anchor.right > window.innerWidth + 1) {
         hits.push({
           cover: "ring",
