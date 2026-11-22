@@ -430,7 +430,15 @@ export default function TourCard({
     const node = cardRef.current;
     if (!node) return;
     const read = () => {
-      const next = Math.ceil(Math.max(node.offsetHeight, node.scrollHeight));
+      const measured = node.querySelector("[data-tour-measure]");
+      const box = measured instanceof HTMLElement ? measured.getBoundingClientRect() : node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      const pad =
+        Number.parseFloat(style.paddingTop) +
+        Number.parseFloat(style.paddingBottom) +
+        Number.parseFloat(style.borderTopWidth) +
+        Number.parseFloat(style.borderBottomWidth);
+      const next = Math.ceil(box.height + (Number.isFinite(pad) ? pad : 0));
       setCardHeight((current) => (current === next ? current : next));
     };
     read();
@@ -850,12 +858,28 @@ export default function TourCard({
   if (chrome.nav) holes.push(chrome.nav);
   if (chrome.flame) holes.push(chrome.flame);
 
+  let moodCover: number | undefined;
+  if (spot && phone && step?.id === "moods" && !loggedMood) {
+    const grid = visibleQuery("[data-tour='mood-grid']");
+    if (grid) {
+      const rows = moodRows(grid);
+      const bottom = spot.top + cardSize.height;
+      const peeking = rows.filter((row) => row.top < bottom - 8 && row.bottom > bottom + 2);
+      if (peeking.length > 0) {
+        const need = Math.max(...peeking.map((row) => row.bottom)) + 8;
+        const limit = viewport.height - chrome.bottom;
+        moodCover = Math.max(cardSize.height, Math.min(need, limit) - spot.top);
+      }
+    }
+  }
+
   const cardStyle: CSSProperties | undefined = spot
     ? {
         top: spot.top,
         left: spot.left,
         width: spot.width,
         maxHeight: Math.max(0, viewport.height - chrome.bottom - spot.top),
+        minHeight: moodCover,
       }
     : undefined;
 
@@ -924,6 +948,7 @@ export default function TourCard({
           }}
           data-tour-card={phase === "step" ? (TOUR_STEPS[index]?.id ?? phase) : phase}
         >
+          <div data-tour-measure="" className="flex min-h-0 flex-col">
           <div className="min-h-0 overflow-y-auto">
           {progress ? (
             <p id={progressId} className="text-sm text-slate-400">
@@ -965,6 +990,7 @@ export default function TourCard({
                 </button>
               ) : null}
             </div>
+          </div>
           </div>
         </div>
       ) : null}
