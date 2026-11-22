@@ -849,6 +849,7 @@ export default function TourCard({
   const [stage, setStage] = useState<"out" | "measure" | "show">("measure");
   const [leaving, setLeaving] = useState(false);
   const stageKey = useRef("");
+  const stageIdentity = useRef("");
   const shownSig = useRef("");
   const navLock = useRef(false);
   const dimHeld = useRef(false);
@@ -1211,7 +1212,7 @@ export default function TourCard({
           liveMoodBox.height > 40
             ? Math.ceil(liveMoodBox.height)
             : 0;
-        if (measuredMood > moodPlannedH + 8 && moodPlannedH > 0) {
+        if (stageRef.current !== "show" && measuredMood > moodPlannedH + 8 && moodPlannedH > 0) {
           moodsSettled.current = "";
           moodLift = -1;
           moodWaits = 0;
@@ -1249,17 +1250,12 @@ export default function TourCard({
             previous = null;
             return;
           }
-          if (measuredMood === 0 && moodCardWaits < 12) {
-            moodCardWaits += 1;
-            previous = null;
-            return;
-          }
           const cardH = measuredMood
             ? document.documentElement.dataset.moodNest === "1"
               ? measuredMood
               : Math.max(160, measuredMood - 26)
             : 196;
-          moodPlannedH = cardH;
+          moodPlannedH = measuredMood || cardH;
           const plan = planWideMoods(node, cardH, window.innerHeight);
           if (plan) document.documentElement.dataset.moodFit = plan.fit;
           const firstRow = moodRows(node)[0];
@@ -1267,7 +1263,14 @@ export default function TourCard({
           const headerEl = document.querySelector(".app-header");
           const headerEdge = headerEl instanceof HTMLElement ? headerEl.getBoundingClientRect().bottom : 0;
           const rowLimit = Math.max(scrollerTop, headerEdge);
-          if (firstRow && firstRow.top < rowLimit - 1 && moodScrolls < 16) {
+          const already =
+            plan?.fit === "c" &&
+            Math.abs(plan.delta) <= 8 &&
+            firstRow != null &&
+            firstRow.top >= rowLimit - 1;
+          if (already) {
+            moodScrolls = 20;
+          } else if (firstRow && firstRow.top < rowLimit - 1 && moodScrolls < 16) {
             scroller.scrollTop = Math.max(0, Math.round(scroller.scrollTop - (rowLimit - firstRow.top + 2)));
             moodLift = -1;
             moodScrolls += 1;
@@ -1276,7 +1279,7 @@ export default function TourCard({
           }
           // Wait until the same lift comes back twice, so a tile that is still
           // animating in cannot spend the heading's padding.
-          if (plan && moodWaits < 8 && (moodLift < 0 || Math.abs(plan.delta - moodLift) > 1)) {
+          if (!already && plan && moodWaits < 2 && (moodLift < 0 || Math.abs(plan.delta - moodLift) > 1)) {
             moodLift = plan.delta;
             moodWaits += 1;
             previous = null;
@@ -1531,6 +1534,8 @@ export default function TourCard({
 
   const measureKeyRef = useRef(measureKey);
   measureKeyRef.current = measureKey;
+  const stageRef = useRef(stage);
+  stageRef.current = stage;
   useEffect(() => {
     if (stage !== "out") return;
     // The key changes while this fade is running. Restarting the timer
@@ -1625,9 +1630,14 @@ export default function TourCard({
     };
   }, []);
 
-  if (stageKey.current === "") stageKey.current = measureKey;
-  if (stage === "show" && stageKey.current !== measureKey && frozen.current) {
+  const stepIdentity = `${phase}:${index}`;
+  if (stageIdentity.current === "") stageIdentity.current = stepIdentity;
+  // The address catches up a moment after the step changes. That is the same
+  // card, not a new step, so it must not fade out and come back.
+  if (stage === "show" && stageIdentity.current !== stepIdentity && frozen.current) {
     setStage("out");
+  } else if (stage !== "out") {
+    stageIdentity.current = stepIdentity;
   }
 
   const showWelcome = phase === "welcome" && welcomeReady;
@@ -2202,18 +2212,8 @@ export default function TourCard({
         : "step";
   const lookNested = showFrozenLook && frozen.current ? frozen.current.nested : moodNested;
   if (stage === "show" && showLive && spot) {
-    const sig = `${measureKey}|${Math.round(spot.top)}|${Math.round(spot.left)}|${Math.round(spot.width)}`;
-    if (shownSig.current === sig) {
-      frozen.current = {
-        spot: { ...spot },
-        title: shownTitle,
-        body: shownBody,
-        progress: shownProgress,
-        kind: shownKind,
-        nested: moodNested,
-      };
-    } else if (shownSig.current.startsWith(`${measureKey}|`) && frozen.current) {
-      const parts = shownSig.current.split("|");
+    const sig = `${stepIdentity}|${Math.round(spot.top)}|${Math.round(spot.left)}|${Math.round(spot.width)}`;
+    if (!shownSig.current.startsWith(`${stepIdentity}|`)) {
       shownSig.current = sig;
       frozen.current = {
         spot: { ...spot },
@@ -2223,10 +2223,9 @@ export default function TourCard({
         kind: shownKind,
         nested: moodNested,
       };
-    } else {
-      shownSig.current = sig;
+    } else if (frozen.current) {
       frozen.current = {
-        spot: { ...spot },
+        ...frozen.current,
         title: shownTitle,
         body: shownBody,
         progress: shownProgress,
@@ -2235,6 +2234,7 @@ export default function TourCard({
       };
     }
   }
+  const placedSpot = (stage === "show" || showFrozenLook) && frozen.current ? frozen.current.spot : spot;
   const showFrozenCard = stage === "out" || stage === "measure" || (stage === "show" && showLive && spot != null);
   const tourOpen = stage === "show";
   const guarded = (action: () => void) => (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -2342,13 +2342,13 @@ export default function TourCard({
           aria-describedby={bodyId}
           tabIndex={-1}
           className={`fixed z-[81] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
-            lookNested ? "px-4 py-3" : viewport.width < 640 ? (moodCompact ? "px-3.5 py-2" : "p-3.5") : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
+            lookNested ? "px-4 py-3" : viewport.width < 640 ? (moodCompact ? "px-3.5 py-2" : "p-3.5") : placedSpot && placedSpot.width < 380 ? "px-3.5 py-4" : "p-5"
           }`}
           style={{
             ...cardStyle,
-            top: stage === "measure" ? -4000 : showFrozenLook && frozen.current ? frozen.current.spot.top : cardStyle?.top,
-            left: stage === "measure" ? 0 : showFrozenLook && frozen.current ? frozen.current.spot.left : cardStyle?.left,
-            width: showFrozenLook && frozen.current ? frozen.current.spot.width : cardStyle?.width,
+            top: stage === "measure" ? -4000 : placedSpot ? placedSpot.top : cardStyle?.top,
+            left: stage === "measure" ? 0 : placedSpot ? placedSpot.left : cardStyle?.left,
+            width: placedSpot ? placedSpot.width : cardStyle?.width,
             opacity: stage === "show" ? 1 : 0,
             visibility: stage === "measure" ? "hidden" : "visible",
             pointerEvents: stage === "show" ? "auto" : "none",

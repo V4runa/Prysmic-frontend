@@ -130,25 +130,45 @@ export default function EmailVerificationPrompt({ defer = false }: { defer?: boo
   const innerRef = useRef<HTMLDivElement>(null);
   const [fullHeight, setFullHeight] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  // Done already navigates to a new page. The banner belongs in its final
+  // place on that page's first paint, with no height animation afterwards.
+  const instant = defer;
   useLayoutEffect(() => {
     const el = innerRef.current;
-    if (!el) return;
+    if (!el || instant) return;
     setFullHeight(el.scrollHeight);
-  }, [show, notice, prompt.email]);
+  }, [show, notice, prompt.email, instant]);
   useEffect(() => {
+    if (instant) return;
     if (!show) {
       setRevealed(false);
       return;
     }
-    if (!defer) {
-      setRevealed(true);
+    setRevealed(true);
+  }, [show, instant]);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (!show || !instant) {
+      if (!show) root.style.setProperty("--verify-banner-h", "0px");
       return;
     }
-    const timer = window.setTimeout(() => setRevealed(true), 180);
-    return () => window.clearTimeout(timer);
-  }, [show, defer]);
+    const el = bannerRef.current;
+    if (!el) return;
+    const apply = () => {
+      root.style.setProperty("--verify-banner-h", `${el.offsetHeight}px`);
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.setProperty("--verify-banner-h", "0px");
+    };
+  }, [show, notice, prompt.email, instant]);
 
   useEffect(() => {
+    if (instant) return;
     const root = document.documentElement;
     if (!show) {
       root.style.setProperty("--verify-banner-h", "0px");
@@ -166,7 +186,7 @@ export default function EmailVerificationPrompt({ defer = false }: { defer?: boo
       observer.disconnect();
       root.style.setProperty("--verify-banner-h", "0px");
     };
-  }, [show, notice]);
+  }, [show, notice, instant]);
 
   const dismiss = () => {
     dismissVerifyPrompt();
@@ -212,12 +232,16 @@ export default function EmailVerificationPrompt({ defer = false }: { defer?: boo
       {show && (
         <div
           ref={bannerRef}
-          style={{
-            overflow: "hidden",
-            height: revealed && fullHeight > 0 ? fullHeight : 0,
-            opacity: revealed ? 1 : 0,
-            transition: "height 250ms ease, opacity 250ms ease",
-          }}
+          style={
+            instant
+              ? { overflow: "hidden" }
+              : {
+                  overflow: "hidden",
+                  height: revealed && fullHeight > 0 ? fullHeight : 0,
+                  opacity: revealed ? 1 : 0,
+                  transition: "height 250ms ease, opacity 250ms ease",
+                }
+          }
           className="no-print"
         >
           <div ref={innerRef} className="px-3 pt-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20">
