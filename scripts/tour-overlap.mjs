@@ -444,6 +444,20 @@ export function collectOverlaps() {
       });
     }
   }
+  if (
+    window.innerWidth >= 1024 &&
+    card instanceof HTMLElement &&
+    !(ring instanceof HTMLElement) &&
+    ["notes", "tasks", "contracts", "calendar", "moods"].includes(card.getAttribute("data-tour-card") ?? "")
+  ) {
+    hits.push({
+      cover: "ring",
+      item: "missing",
+      label: "desktop step has no ring",
+      coverBox: roundBox(boxOf(card.getBoundingClientRect())),
+      itemBox: { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight },
+    });
+  }
   if (ring instanceof HTMLElement && card instanceof HTMLElement) {
     const ringRect = ring.getBoundingClientRect();
     const cardRect = card.getBoundingClientRect();

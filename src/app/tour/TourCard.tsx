@@ -164,31 +164,9 @@ function layoutPhoneMoods(
   };
 }
 
-/** Empty cells to the right of the last mood row, when a 5-column grid is not full. */
-function moodRowSlot(grid: HTMLElement, cardWidth: number, cardHeight: number, viewportHeight: number): CardSpot | null {
-  const buttons = [...grid.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 48);
-  const rows = moodRows(grid);
-  const last = rows[rows.length - 1];
-  if (!last || buttons.length === 0) return null;
-  const lastTiles = buttons.filter((button) => Math.abs(button.getBoundingClientRect().top - last.top) < 18);
-  if (lastTiles.length === 0) return null;
-  const gridRect = grid.getBoundingClientRect();
-  const right = Math.max(...lastTiles.map((button) => button.getBoundingClientRect().right));
-  const columnGap = Number.parseFloat(getComputedStyle(grid).columnGap);
-  const slotLeft = right + (Number.isFinite(columnGap) ? columnGap : 16);
-  const available = gridRect.right - 12 - slotLeft;
-  if (available < 280) return null;
-  const width = Math.min(cardWidth, available);
-  const rowHeight = last.bottom - last.top;
-  let top = cardHeight < rowHeight ? last.top + (rowHeight - cardHeight) / 2 : last.top;
-  const limit = viewportHeight - 16;
-  if (top + cardHeight > limit) top = Math.max(last.top, limit - cardHeight);
-  return { top, left: slotLeft, width };
-}
-
 function layoutWideMoods(
   cardHeight: number,
-  _topInset: number,
+  topInset: number,
   _bottomInset: number,
   viewport: { width: number; height: number }
 ): { spot: CardSpot; ring: TargetBox; nested: boolean } | null {
@@ -203,24 +181,34 @@ function layoutWideMoods(
     height: rect.height,
     radius: getComputedStyle(grid).borderRadius || "24px",
   };
-  const belowTop = rect.bottom + RING_PAD + RING_GAP;
-  // A fixed height keeps this choice from flipping as the card measures itself.
-  if (belowTop + 210 <= viewport.height - 16) {
-    const left = Math.min(
-      Math.max(16, rect.x + rect.width / 2 - width / 2),
-      Math.max(16, viewport.width - 16 - width)
-    );
-    return { spot: { top: belowTop, left, width }, ring, nested: false };
-  }
-  const slot = moodRowSlot(grid, width, cardHeight, viewport.height);
-  if (slot) {
-    const covered = Math.max(rect.bottom, slot.top + cardHeight);
-    return { spot: slot, ring: { ...ring, height: covered - rect.y }, nested: true };
-  }
   const left = Math.min(
     Math.max(16, rect.x + rect.width / 2 - width / 2),
     Math.max(16, viewport.width - 16 - width)
   );
+  // The ring pad sits outside the grid, and the card stays 8px past that.
+  const gap = RING_PAD + RING_GAP;
+  const headerEl = document.querySelector(".app-header");
+  const headerBottom =
+    headerEl instanceof HTMLElement ? headerEl.getBoundingClientRect().bottom : Math.max(0, topInset - 12);
+  const fitting = moodRows(grid).filter(
+    (row) => row.top >= headerBottom - 1 && row.bottom + gap + cardHeight <= viewport.height - 16
+  );
+  const first = fitting[0];
+  const last = fitting[fitting.length - 1];
+  if (first && last) {
+    return {
+      spot: { top: last.bottom + gap, left, width },
+      ring: {
+        x: rect.x,
+        y: first.top,
+        width: rect.width,
+        height: Math.max(24, last.bottom - first.top),
+        radius: ring.radius,
+      },
+      nested: false,
+    };
+  }
+  const belowTop = rect.bottom + gap;
   return { spot: { top: belowTop, left, width }, ring, nested: false };
 }
 
@@ -507,6 +495,7 @@ export default function TourCard({
     kind: "welcome" | "close" | "step";
   } | null>(null);
   const reveal = useRef<{ key: string; spot: CardSpot } | null>(null);
+  const moodsSettled = useRef("");
   const revealKey = useRef("");
   const [viewport, setViewport] = useState(() =>
     typeof window === "undefined"
@@ -516,6 +505,7 @@ export default function TourCard({
   const [cardHeight, setCardHeight] = useState(CARD_ESTIMATE);
   const [notesCover, setNotesCover] = useState<number | undefined>(undefined);
   const [placeTick, setPlaceTick] = useState(0);
+  const [stepWaited, setStepWaited] = useState(false);
   const [chrome, setChrome] = useState<Chrome>({ top: 72, bottom: 16, nav: null, flame: null });
   const measureKey = `${phase}:${index}:${pathname}`;
   if (revealKey.current !== measureKey) {
@@ -563,6 +553,12 @@ export default function TourCard({
     const timer = window.setTimeout(() => setPlaceTick((tick) => tick + 1), 450);
     return () => window.clearTimeout(timer);
   }, [phase, index, pathname]);
+
+  useEffect(() => {
+    setStepWaited(false);
+    const timer = window.setTimeout(() => setStepWaited(true), 3000);
+    return () => window.clearTimeout(timer);
+  }, [measureKey]);
 
   const cardReady = target != null;
   useLayoutEffect(() => {
@@ -809,30 +805,37 @@ export default function TourCard({
       if (step.id === "moods" && !scrolled) {
         const scroller = node.closest(".app-scroll");
         const phoneNow = window.innerWidth < 700;
-        if (!phoneNow && scroller instanceof HTMLElement) {
-          if (scroller.scrollTop > 1) scroller.scrollTo({ top: 0, behavior: "auto" });
+        if (!phoneNow && scroller instanceof HTMLElement && moodsSettled.current !== String(index) && moodScrolls < 8) {
           const grid = node.getBoundingClientRect();
-          const width = Math.min(TOUR_CARD_WIDTH, window.innerWidth - 32);
+          const cardH = Math.max(200, cardRef.current?.getBoundingClientRect().height ?? 0);
+          const header = document.querySelector(".app-header");
+          const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : Math.max(0, chrome.top - 12);
           const belowTop = grid.bottom + RING_PAD + RING_GAP;
-          const fitsBelow = belowTop + 210 <= window.innerHeight - 16;
-          const slot = moodRowSlot(node, width, 200, window.innerHeight);
+          const need = belowTop + cardH + 16 - window.innerHeight;
           const head = node.closest(".wide-mood-head")?.querySelector("[data-tour-keep]");
-          if (head instanceof HTMLElement) {
-            head.style.marginBottom = !fitsBelow && slot && window.innerHeight < 800 ? "12px" : "";
-          }
-          if (!fitsBelow && !slot) {
-            scroller.style.paddingBottom = "280px";
-            const headTop = head instanceof HTMLElement ? head.getBoundingClientRect().top : grid.top;
-            const clipTop = Math.max(chrome.top, scroller.getBoundingClientRect().top);
-            const fresh = node.getBoundingClientRect();
-            const need = fresh.bottom + RING_PAD + RING_GAP + 200 + 16 - window.innerHeight;
-            const room = Math.max(0, headTop - clipTop);
-            const delta = Math.min(Math.max(0, need), room);
-            if (delta > 2) scroller.scrollBy({ top: delta, behavior: "auto" });
-          } else {
-            scroller.style.paddingBottom = "";
+          if (need > 2) {
+            if (head instanceof HTMLElement && head.style.marginBottom !== "12px") {
+              head.style.marginBottom = "12px";
+              moodScrolls += 1;
+              previous = null;
+              return;
+            }
+            const room = Math.max(0, grid.top - headerBottom - 8);
+            const delta = Math.min(need, room);
+            if (delta > 2) {
+              const scrollRoom = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+              if (scrollRoom < delta) {
+                const extra = Number.parseFloat(scroller.style.paddingBottom) || 0;
+                scroller.style.paddingBottom = `${extra + (delta - Math.max(0, scrollRoom)) + 8}px`;
+              }
+              scroller.scrollBy({ top: delta, behavior: "auto" });
+              moodScrolls += 1;
+              previous = null;
+              return;
+            }
           }
         }
+        if (!phoneNow) moodsSettled.current = String(index);
         scrolled = true;
         previous = null;
         return;
@@ -916,6 +919,8 @@ export default function TourCard({
       published = null;
       stableCount = 0;
       moodScrolls = 0;
+      scrolled = false;
+      moodsSettled.current = "";
       locked = false;
       window.clearInterval(timer);
       timer = window.setInterval(tick, 40);
@@ -1288,9 +1293,10 @@ export default function TourCard({
   const bodyId = "tour-card-body";
   const progressId = "tour-card-progress";
 
-  // The copy wins over the ring. If the card cannot show its text where it
-  // sits, drop the ring and move the card up into the open space.
-  if (!sheet && spot && viewport.height > 0 && cardHeight > 40 && (phoneMoodRing || (phase === "step" && target))) {
+  // The copy wins over the ring on a phone or a short window. A laptop or
+  // desktop keeps the ring and the card where the step placed them.
+  const wideScreen = viewport.width >= 1024;
+  if (!sheet && !wideScreen && spot && viewport.height > 0 && cardHeight > 40 && (phoneMoodRing || (phase === "step" && target))) {
     const roomAtSpot = viewport.height - spot.top - 8;
     if (roomAtSpot < cardHeight - 4) {
       const floor = Math.max(8, chrome.top);
@@ -1405,15 +1411,15 @@ export default function TourCard({
   if (chrome.nav) holes.push(chrome.nav);
   if (chrome.flame) holes.push(chrome.flame);
 
-  const stepReady = phase !== "step" || target != null || holdFlame;
+  const stepReady = phase !== "step" || target != null || holdFlame || stepWaited;
   const routeReady = phase !== "step" || pathname === (step?.route ?? pathname);
   const showLive =
     showWelcome ||
-    (phase === "close" && closeReady) ||
+    (phase === "close" && (closeReady || stepWaited)) ||
     holdFlame ||
     (phase === "step" && routeReady && stepReady);
   const holdPrevious = (phase === "step" || phase === "close") && !showLive && frozen.current != null;
-  if (showLive && !sheet && spot && (phase !== "step" || target || holdFlame)) {
+  if (showLive && !sheet && spot && (phase !== "step" || target || holdFlame || stepWaited)) {
     const saved = reveal.current;
     const savedFits =
       saved != null &&
@@ -1423,7 +1429,7 @@ export default function TourCard({
       saved.spot.top + Math.min(Math.max(cardHeight, 160), Math.max(1, viewport.height - 16)) <= viewport.height - 8 &&
       saved.spot.left + saved.spot.width <= viewport.width + 8;
     const fixed = Math.min(TOUR_CARD_WIDTH, Math.max(240, viewport.width - 32));
-    const nextSpot = savedFits && saved
+    const nextSpot = savedFits && saved && step?.id !== "moods"
       ? saved.spot
       : {
           top: spot.top,
@@ -1444,7 +1450,15 @@ export default function TourCard({
     const liveCardBox = liveCard?.getBoundingClientRect();
     const liveName = liveCard?.getAttribute("data-tour-card");
     const cardMatches = liveName === (step?.id ?? phase) && liveCardBox != null && liveCardBox.height > 40;
-    const cardBox = cardMatches
+    const intendedTop = sheet ? viewport.height - chrome.bottom - height : spot.top;
+    // A step change rewrites the card's name before the browser moves it.
+    // The box from that moment is the previous step, so ignore it.
+    const liveAgrees =
+      cardMatches &&
+      liveCardBox != null &&
+      Math.abs(liveCardBox.left - spot.left) < 16 &&
+      Math.abs(liveCardBox.top - intendedTop) < 16;
+    const cardBox = liveAgrees && liveCardBox
       ? { left: liveCardBox.left, top: liveCardBox.top, right: liveCardBox.right, bottom: liveCardBox.bottom }
       : sheet
         ? {
