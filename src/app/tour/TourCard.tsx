@@ -294,6 +294,59 @@ function ringCoversText(target: HTMLElement, scope: HTMLElement, pad: number): b
   return false;
 }
 
+/** Grow or shift a phone card so a control is fully under it or fully clear of it. */
+function sealPhoneCard(
+  spot: CardSpot,
+  height: number,
+  topInset: number,
+  bottomLimit: number
+): { top: number; minHeight: number } {
+  let top = spot.top;
+  let bottom = top + height;
+  const nodes = [...document.querySelectorAll("button, a, [role='tab']")];
+  for (let pass = 0; pass < 6; pass += 1) {
+    let changed = false;
+    for (const node of nodes) {
+      if (!(node instanceof HTMLElement) || node.closest("[data-tour-card]")) continue;
+      const style = getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden") continue;
+      const rect = node.getBoundingClientRect();
+      if (rect.width < 2 || rect.height < 2) continue;
+      const overlaps = rect.bottom > top + 2 && rect.top < bottom - 2;
+      const contains = top <= rect.top + 2 && bottom >= rect.bottom - 2;
+      if (!overlaps || contains) continue;
+      const day = node.hasAttribute("data-tour-day");
+      const tab = node.getAttribute("role") === "tab";
+      if (rect.top < top - 2) {
+        const drop = rect.bottom + 12;
+        const span = bottom - top;
+        if ((tab || !day) && drop + span <= bottomLimit) {
+          top = drop;
+          bottom = drop + span;
+          changed = true;
+          continue;
+        }
+        const raised = Math.max(topInset, rect.top - 4);
+        bottom += top - raised;
+        top = raised;
+        changed = true;
+        continue;
+      }
+      if (rect.bottom + 6 <= bottomLimit) {
+        bottom = Math.max(bottom, rect.bottom + 6);
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  if (bottom > bottomLimit) {
+    const span = bottom - top;
+    bottom = bottomLimit;
+    top = Math.max(topInset, bottom - span);
+  }
+  return { top, minHeight: Math.max(height, bottom - top) };
+}
+
 function todayWeek(): Box | null {
   const numeral = visibleQuery("[data-tour='calendar-today']");
   const cell = numeral?.closest("[data-tour-day]");
@@ -843,6 +896,29 @@ export default function TourCard({
       }
     }
   }
+  let phoneSeal: { top: number; minHeight: number } | null = null;
+  if (spot && phone && viewport.width > 0) {
+    phoneSeal = sealPhoneCard(spot, cardSize.height, chrome.top, viewport.height - chrome.bottom);
+    spot = { ...spot, top: phoneSeal.top };
+    if (step?.id === "moods" && !loggedMood) {
+      const grid = visibleQuery("[data-tour='mood-grid']");
+      if (grid) {
+        const rect = grid.getBoundingClientRect();
+        const above = moodRows(grid).filter((row) => row.bottom <= spot!.top + 1);
+        const ringBottom = above.length > 0 ? above[above.length - 1].bottom : Math.min(rect.bottom, spot.top);
+        const height = ringBottom - rect.top;
+        if (height >= 24) {
+          phoneMoodRing = {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height,
+            radius: getComputedStyle(grid).borderRadius || "24px",
+          };
+        }
+      }
+    }
+  }
 
   const title = phase === "welcome" ? TOUR_WELCOME.title : phase === "close" ? TOUR_CLOSE.title : step?.title ?? "";
   const body = phase === "welcome" ? TOUR_WELCOME.body : phase === "close" ? TOUR_CLOSE.body : step?.body ?? "";
@@ -922,7 +998,7 @@ export default function TourCard({
         left: spot.left,
         width: spot.width,
         maxHeight: Math.max(0, viewport.height - chrome.bottom - spot.top),
-        minHeight: moodCover ?? notesCover,
+        minHeight: Math.max(moodCover ?? 0, notesCover ?? 0, phoneSeal?.minHeight ?? 0) || undefined,
       }
     : undefined;
 
