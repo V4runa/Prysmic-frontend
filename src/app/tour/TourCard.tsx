@@ -483,6 +483,15 @@ export default function TourCard({
 }: TourCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const heldSpot = useRef<CardSpot | null>(null);
+  const frozen = useRef<{
+    spot: CardSpot;
+    title: string;
+    body: string;
+    progress: string | null;
+    kind: "welcome" | "close" | "step";
+  } | null>(null);
+  const reveal = useRef<{ key: string; spot: CardSpot } | null>(null);
+  const revealKey = useRef("");
   const [viewport, setViewport] = useState(() =>
     typeof window === "undefined"
       ? { width: 0, height: 0 }
@@ -493,6 +502,10 @@ export default function TourCard({
   const [placeTick, setPlaceTick] = useState(0);
   const [chrome, setChrome] = useState<Chrome>({ top: 72, bottom: 16, nav: null, flame: null });
   const measureKey = `${phase}:${index}:${pathname}`;
+  if (revealKey.current !== measureKey) {
+    revealKey.current = measureKey;
+    reveal.current = null;
+  }
   const [measured, setMeasured] = useState<{ key: string; box: TargetBox | null }>({
     key: measureKey,
     box: null,
@@ -653,6 +666,7 @@ export default function TourCard({
     let locked = false;
     let previous: TargetBox | null = null;
     let published: TargetBox | null = null;
+    let lastSig = "";
     let stableCount = 0;
     let timer = 0;
 
@@ -668,18 +682,43 @@ export default function TourCard({
 
     const tick = () => {
       if (locked) return;
-      if (pageBusy()) {
+      if (document.fonts && document.fonts.status !== "loaded") {
         previous = null;
+        stableCount = 0;
         return;
       }
-      if (step.id === "moods" && window.innerWidth < 700 && !scrolled) {
+      if (pageBusy()) {
+        previous = null;
+        stableCount = 0;
+        return;
+      }
+      if (step.id === "moods" && window.innerWidth < 700) {
         const grid = visibleQuery("[data-tour='mood-grid']");
         const scroller = grid?.closest(".app-scroll");
-        if (scroller instanceof HTMLElement && scroller.scrollTop > 1) {
-          scroller.scrollTo({ top: 0, behavior: "auto" });
-          previous = null;
-          stableCount = 0;
-          return;
+        const navNow = document.querySelector(".app-bottom-nav");
+        const sheet =
+          navNow instanceof HTMLElement &&
+          getComputedStyle(navNow).display !== "none" &&
+          navNow.getBoundingClientRect().height > 1;
+        if (grid && scroller instanceof HTMLElement && sheet) {
+          const bar = readChrome();
+          const cardNode = cardRef.current?.querySelector("[data-tour-measure]");
+          const cardBox = cardNode instanceof HTMLElement ? cardNode.getBoundingClientRect().height : 0;
+          const cardH = cardBox > 40 ? Math.ceil(cardBox + 28) : CARD_ESTIMATE;
+          const sheetTop = window.innerHeight - bar.bottom - cardH;
+          const rows = moodRows(grid);
+          const headerBottom = Math.max(0, bar.top - 12);
+          const cut = rows.find((row) => row.top < sheetTop - 1 && row.bottom > sheetTop + 1);
+          const first = rows[0];
+          if (cut && first && cut.top - first.top > 8) {
+            const delta = cut.top - sheetTop;
+            if (delta > 2 && first.top - delta >= headerBottom - 1) {
+              scroller.scrollBy({ top: delta, behavior: "auto" });
+              previous = null;
+              stableCount = 0;
+              return;
+            }
+          }
         }
       }
       const navNow = document.querySelector(".app-bottom-nav");
@@ -733,9 +772,6 @@ export default function TourCard({
       if (step.id === "moods" && !scrolled) {
         const scroller = node.closest(".app-scroll");
         const phoneNow = window.innerWidth < 700;
-        if (phoneNow && scroller instanceof HTMLElement && scroller.scrollTop > 1) {
-          scroller.scrollTo({ top: 0, behavior: "auto" });
-        }
         if (!phoneNow && scroller instanceof HTMLElement) {
           if (scroller.scrollTop > 1) scroller.scrollTo({ top: 0, behavior: "auto" });
           const grid = node.getBoundingClientRect();
@@ -803,8 +839,12 @@ export default function TourCard({
         step.id === "moods"
           ? clipMoodGrid(node, phone ? window.innerHeight - chrome.bottom - 260 - 16 : null)
           : measureTarget(measured);
-      if (!previous || !sameTarget(previous, box)) {
+      const mainH = Math.round(document.querySelector("main")?.getBoundingClientRect().height ?? 0);
+      const panelW = Math.round(document.querySelector("aside")?.getBoundingClientRect().width ?? 0);
+      const sig = `${Math.round(box.x)}:${Math.round(box.y)}:${Math.round(box.width)}:${Math.round(box.height)}:${mainH}:${panelW}`;
+      if (!previous || !sameTarget(previous, box) || sig !== lastSig) {
         previous = box;
+        lastSig = sig;
         stableCount = 1;
         if (!scrolled && step.id !== "moods" && !sheetNow) {
           scrolled = true;
@@ -824,7 +864,6 @@ export default function TourCard({
         published = box;
         publish(box);
       }
-      if (step.id === "calendar") return;
       locked = true;
       window.clearInterval(timer);
     };
@@ -1145,7 +1184,7 @@ export default function TourCard({
       neighbors,
       ringPad
     );
-    ringSides = { left: fitted.left, right: fitted.right, top: ringPad, bottom: ringBottomPad };
+    ringSides = { left: fitted.left, right: fitted.right, top: fitted.top, bottom: Math.min(ringBottomPad, fitted.bottom) };
   }
   if (sheet && step?.id === "calendar") {
     ringSides = { left: 0, right: 0, top: 0, bottom: 0 };
@@ -1209,6 +1248,24 @@ export default function TourCard({
   if (chrome.nav) holes.push(chrome.nav);
   if (chrome.flame) holes.push(chrome.flame);
 
+  const stepReady = phase !== "step" || target != null || holdFlame;
+  const showLive = showWelcome || phase === "close" || holdFlame || (phase === "step" && (sheet || stepReady));
+  const holdPrevious = phase === "step" && !showLive && frozen.current != null;
+  if (showLive && !sheet && target && spot) {
+    if (!reveal.current || reveal.current.key !== measureKey) {
+      const fixed = Math.min(TOUR_CARD_WIDTH, Math.max(240, viewport.width - 32));
+      reveal.current = {
+        key: measureKey,
+        spot: {
+          top: spot.top,
+          left: spot.left,
+          width: step?.id === "calendar" ? spot.width : fixed,
+        },
+      };
+    }
+    spot = reveal.current.spot;
+  }
+  if (holdPrevious && frozen.current) spot = frozen.current.spot;
   const cardStyle: CSSProperties | undefined = spot
     ? sheet
       ? {
@@ -1225,14 +1282,21 @@ export default function TourCard({
           backgroundColor: "#14161c",
         }
     : undefined;
-  const holdingCard = phase === "step" && target == null && !holdFlame && spot != null;
+  const shownTitle = holdPrevious && frozen.current ? frozen.current.title : title;
+  const shownBody = holdPrevious && frozen.current ? frozen.current.body : body;
+  const shownProgress = holdPrevious && frozen.current ? frozen.current.progress : progress;
+  const shownKind = holdPrevious && frozen.current ? frozen.current.kind : phase === "welcome" ? "welcome" : phase === "close" ? "close" : "step";
+  if (showLive && spot) {
+    frozen.current = { spot: { ...spot }, title: shownTitle, body: shownBody, progress: shownProgress, kind: shownKind };
+  }
+  const showFrozenCard = (showLive || holdPrevious) && spot != null;
 
   const shieldBottom = chrome.nav ? chrome.nav.height : 0;
 
   return (
     <div className="fixed inset-0 z-[80] pointer-events-none">
       <div className="fixed left-0 right-0 top-0 z-[80]" style={{ bottom: shieldBottom, pointerEvents: "auto" }} />
-      {phase === "step" && (ring || holdFlame) ? (
+      {phase === "step" && showLive && (ring || holdFlame) ? (
         <svg className="pointer-events-none fixed inset-0 h-full w-full" aria-hidden="true">
           <defs>
             <mask id="prysmic-tour-dim">
@@ -1252,10 +1316,10 @@ export default function TourCard({
           </defs>
           <rect width="100%" height="100%" fill="rgba(6,7,10,0.55)" mask="url(#prysmic-tour-dim)" />
         </svg>
-      ) : showWelcome || phase === "close" || holdingCard ? (
+      ) : showWelcome || phase === "close" || showFrozenCard ? (
         <div className="fixed inset-0" style={{ background: "rgba(6,7,10,0.45)", bottom: shieldBottom }} />
       ) : null}
-      {ring ? (
+      {showLive && stepReady && ring ? (
         <div
           aria-hidden="true"
           data-tour-ring=""
@@ -1276,8 +1340,9 @@ export default function TourCard({
           }}
         />
       ) : null}
-      {(showCard || holdingCard) && spot ? (
+      {showFrozenCard ? (
         <div
+          key={holdPrevious ? "tour-held" : measureKey}
           ref={cardRef}
           role="dialog"
           aria-modal="true"
@@ -1295,42 +1360,42 @@ export default function TourCard({
         >
           <div data-tour-measure="" className="flex min-h-0 flex-col">
           <div data-tour-body="">
-          {progress ? (
+            {shownProgress ? (
             <p id={progressId} className="text-sm text-slate-400">
-              {progress}
+              {shownProgress}
             </p>
           ) : null}
-          <h2 id={titleId} className={`text-lg font-semibold tracking-wide text-slate-50 ${progress ? "mt-1" : ""}`}>
-            {title}
+          <h2 id={titleId} className={`text-lg font-semibold tracking-wide text-slate-50 ${shownProgress ? "mt-1" : ""}`}>
+            {shownTitle}
           </h2>
           <p id={bodyId} className={`text-sm text-slate-300 ${moodNested ? "mt-1.5 leading-snug" : "mt-2 leading-relaxed"}`}>
-            {body}
+            {shownBody}
           </p>
           </div>
           <div data-tour-actions="" className={`flex shrink-0 flex-nowrap items-center gap-2 ${moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
-            {phase !== "close" ? (
-              <button type="button" className={btnSecondary} onPointerDown={press(onSkip)}>
+            {shownKind !== "close" ? (
+              <button type="button" className={btnSecondary} disabled={holdPrevious} onPointerDown={press(onSkip)}>
                 {TOUR_CONTROLS.skip}
               </button>
             ) : null}
             <div className="ml-auto flex flex-nowrap items-center justify-end gap-2">
-              {phase === "step" ? (
-                <button type="button" className={btnSecondary} onPointerDown={press(onBack)}>
+              {shownKind === "step" ? (
+                <button type="button" className={btnSecondary} disabled={holdPrevious} onPointerDown={press(onBack)}>
                   {TOUR_CONTROLS.back}
                 </button>
               ) : null}
-              {phase === "welcome" ? (
-                <button type="button" className={btnPrimary} onPointerDown={press(onStart)}>
+              {shownKind === "welcome" ? (
+                <button type="button" className={btnPrimary} disabled={holdPrevious} onPointerDown={press(onStart)}>
                   {TOUR_WELCOME.start}
                 </button>
               ) : null}
-              {phase === "step" ? (
-                <button type="button" className={btnPrimary} onPointerDown={press(onNext)}>
+              {shownKind === "step" ? (
+                <button type="button" className={btnPrimary} disabled={holdPrevious} onPointerDown={press(onNext)}>
                   {TOUR_CONTROLS.next}
                 </button>
               ) : null}
-              {phase === "close" ? (
-                <button type="button" className={btnPrimary} onPointerDown={press(onDone)}>
+              {shownKind === "close" ? (
+                <button type="button" className={btnPrimary} disabled={holdPrevious} onPointerDown={press(onDone)}>
                   {TOUR_CLOSE.done}
                 </button>
               ) : null}

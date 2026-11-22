@@ -215,3 +215,13 @@ test("the tasks ring keeps 8px between its stroke and the More button", () => {
   const strokeEdge = field.right + sides.right + 2;
   assert.ok(more.left - strokeEdge >= 8);
 });
+
+test("the tasks ring keeps 8px when More sits below the field", () => {
+  const field = { left: 16, top: 160, right: 344, bottom: 204 };
+  const more = { left: 16, top: 216, right: 96, bottom: 252 };
+  const sides = ringSidePad(field, [more], 8);
+  assert.equal(sides.bottom, 2);
+  assert.equal(sides.top, 8);
+  const strokeEdge = field.bottom + sides.bottom + 2;
+  assert.ok(more.top - strokeEdge >= 8);
+});

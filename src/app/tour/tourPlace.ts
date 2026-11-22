@@ -191,9 +191,7 @@ export function placeTourCard(input: {
 
   const anchored = { ...input, target: input.target };
   const preferred = placeAtWidth(anchored, full);
-  const narrow = Math.min(full, 300);
-  const retry = narrow < full - 8 ? placeAtWidth(anchored, narrow) : null;
-  const spot = preferred.clear ?? retry?.clear ?? preferred.fallback;
+  const spot = preferred.clear ?? preferred.fallback;
   if (!spot) return null;
   return nudgeOffTarget(spot, input.target, height, {
     minTop,
@@ -357,8 +355,8 @@ export function placeMoodCard(
 export type SidePad = { left: number; right: number; top: number; bottom: number };
 
 /**
- * Keep a ring's stroke at least `clear` px from a control beside the target.
- * A neighbor above or below does not change the pad.
+ * Keep a ring's stroke at least `clear` px from a neighboring control.
+ * A control far enough away leaves the pad alone.
  */
 export function ringSidePad(
   target: { left: number; top: number; right: number; bottom: number },
@@ -370,13 +368,20 @@ export function ringSidePad(
   const sides: SidePad = { left: pad, right: pad, top: pad, bottom: pad };
   for (const rect of neighbors) {
     const beside = rect.bottom > target.top + 4 && rect.top < target.bottom - 4;
-    if (!beside) continue;
-    if (rect.left >= target.right - 2) {
+    if (beside && rect.left >= target.right - 2) {
       const max = Math.floor(rect.left - target.right - clear - stroke);
       sides.right = Math.max(0, Math.min(sides.right, max));
-    } else if (rect.right <= target.left + 2) {
+    } else if (beside && rect.right <= target.left + 2) {
       const max = Math.floor(target.left - rect.right - clear - stroke);
       sides.left = Math.max(0, Math.min(sides.left, max));
+    }
+    const stacked = rect.right > target.left + 4 && rect.left < target.right - 4;
+    if (stacked && rect.top >= target.bottom - 2) {
+      const max = Math.floor(rect.top - target.bottom - clear - stroke);
+      sides.bottom = Math.max(0, Math.min(sides.bottom, max));
+    } else if (stacked && rect.bottom <= target.top + 2) {
+      const max = Math.floor(target.top - rect.bottom - clear - stroke);
+      sides.top = Math.max(0, Math.min(sides.top, max));
     }
   }
   return sides;
