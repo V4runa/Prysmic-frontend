@@ -744,6 +744,7 @@ export default function TourCard({
   } | null>(null);
   const reveal = useRef<{ key: string; spot: CardSpot } | null>(null);
   const moodsSettled = useRef("");
+  const moodCompactRef = useRef(false);
   const revealKey = useRef("");
   const [viewport, setViewport] = useState(() =>
     typeof window === "undefined"
@@ -772,6 +773,7 @@ export default function TourCard({
   const [welcomeReady, setWelcomeReady] = useState(phase !== "welcome");
   const [closeReady, setCloseReady] = useState(false);
   const [holdFlame, setHoldFlame] = useState(false);
+  const [moodCompact, setMoodCompact] = useState(false);
   const [stage, setStage] = useState<"out" | "measure" | "show">("measure");
   const [leaving, setLeaving] = useState(false);
   const stageKey = useRef("");
@@ -1051,13 +1053,29 @@ export default function TourCard({
             sheetGap: RING_GAP,
             clear: MOOD_RING_CLEAR,
           });
-          if (plan && plan.delta > 2) {
-            const room = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
-            if (room < plan.delta - 1) {
-              const extra = Number.parseFloat(scroller.style.paddingBottom) || 0;
-              scroller.style.paddingBottom = `${extra + (plan.delta - Math.max(0, room)) + 8}px`;
-            }
+          const extra = Number.parseFloat(scroller.style.paddingBottom) || 0;
+          if (extra > 0 || scroller.scrollTop > 1) {
+            scroller.style.paddingBottom = "";
+            scroller.scrollTop = 0;
+            previous = null;
+            stableCount = 0;
+            moodScrolls += 1;
+            lastSig = "";
+            return;
+          }
+          if (plan && plan.delta < -2) {
             scroller.scrollBy({ top: plan.delta, behavior: "auto" });
+            previous = null;
+            stableCount = 0;
+            moodScrolls += 1;
+            lastSig = "";
+            return;
+          }
+          const fitted = plan && plan.to >= plan.from ? plan.to - plan.from + 1 : 0;
+          const cardReady = live?.getAttribute("data-tour-card") === "moods" && liveBox != null && liveBox.height > 40;
+          if (cardReady && fitted < 2 && !moodCompactRef.current) {
+            moodCompactRef.current = true;
+            setMoodCompact(true);
             previous = null;
             stableCount = 0;
             moodScrolls += 1;
@@ -1339,6 +1357,10 @@ export default function TourCard({
       window.clearInterval(timer);
       window.removeEventListener("resize", onResize);
       moodsSettled.current = "";
+      if (step?.id === "moods") {
+        moodCompactRef.current = false;
+        setMoodCompact(false);
+      }
       document.documentElement.style.removeProperty("--tour-mood-clip");
       document.documentElement.style.removeProperty("--tour-mood-clip-top");
       document.documentElement.style.removeProperty("--tour-cal-clip");
@@ -1676,19 +1698,31 @@ export default function TourCard({
     if (step?.id === "moods" && !loggedMood) {
       const grid = visibleQuery("[data-tour='mood-grid']");
       const sheetTop = liveMatches && liveBox ? liveBox.top : top;
-      const bandBottom = sheetTop - RING_GAP - RING_PAD;
       const occluded = grid ? moodOcclusionTop(grid, headerBottom) : headerBottom;
       moodBandTop = occluded;
-      const minTileTop = occluded + MOOD_RING_CLEAR + RING_PAD;
-      const rows = grid
-        ? moodRows(grid).filter((row) => row.top >= minTileTop - 1 && row.bottom <= bandBottom + 2)
-        : [];
+      const head = grid?.parentElement?.querySelector("[data-tour-keep]");
+      const headBox = head instanceof HTMLElement ? head.getBoundingClientRect() : null;
+      const allRows = grid ? moodRows(grid) : [];
+      const phonePlan = grid
+        ? planPhoneMoodRows({
+            rows: allRows,
+            headerBottom: occluded,
+            sheetTop,
+            heading: headBox && headBox.height > 8 ? { top: headBox.top, bottom: headBox.bottom } : null,
+            pad: RING_PAD,
+            sheetGap: RING_GAP,
+            clear: MOOD_RING_CLEAR,
+          })
+        : null;
+      const rows = phonePlan && phonePlan.to >= phonePlan.from ? allRows.slice(phonePlan.from, phonePlan.to + 1) : [];
       const first = rows[0];
       const last = rows[rows.length - 1];
       if (grid && first && last) {
         const rect = grid.getBoundingClientRect();
-        document.documentElement.style.setProperty("--tour-mood-clip-top", "0px");
-        document.documentElement.style.setProperty("--tour-mood-clip", "0px");
+        const clipTop = Math.max(0, Math.round(first.top - rect.top));
+        const clipBottom = Math.max(0, Math.round(rect.bottom - last.bottom));
+        document.documentElement.style.setProperty("--tour-mood-clip-top", `${clipTop}px`);
+        document.documentElement.style.setProperty("--tour-mood-clip", `${clipBottom}px`);
         const tile = [...grid.querySelectorAll("button")].find((button) => {
           const box = button.getBoundingClientRect();
           return box.height > 48 && Math.abs(box.top - first.top) < 18;
@@ -1829,15 +1863,12 @@ export default function TourCard({
   }
   if (sheet && step?.id === "moods" && phoneMoodRing) {
     const grid = visibleQuery("[data-tour='mood-grid']");
-    const next = grid
-      ? moodRows(grid).find((row) => row.top > phoneMoodRing.y + phoneMoodRing.height - 1)
-      : undefined;
     const header = grid?.parentElement?.querySelector("[data-tour-keep]");
     const headerBottomEdge = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
     const stroke = 2;
     const roomTop = phoneMoodRing.y - headerBottomEdge - stroke;
-    const limit = next ? next.top : spot ? spot.top : phoneMoodRing.y + phoneMoodRing.height;
-    const roomBottom = limit - (phoneMoodRing.y + phoneMoodRing.height) - stroke;
+    const sheetEdge = spot ? spot.top : phoneMoodRing.y + phoneMoodRing.height + RING_GAP;
+    const roomBottom = sheetEdge - RING_GAP - (phoneMoodRing.y + phoneMoodRing.height) - stroke;
     const moodPad = Math.max(0, Math.min(RING_PAD, roomTop, roomBottom));
     ringSides = { left: moodPad, right: moodPad, top: moodPad, bottom: moodPad };
   } else if (sheet && step?.id === "moods") {
@@ -2188,7 +2219,7 @@ export default function TourCard({
           aria-describedby={bodyId}
           tabIndex={-1}
           className={`fixed z-[81] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
-            lookNested ? "px-4 py-3" : viewport.width < 640 ? "p-3.5" : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
+            lookNested ? "px-4 py-3" : viewport.width < 640 ? (moodCompact ? "px-3.5 py-2" : "p-3.5") : spot && spot.width < 380 ? "px-3.5 py-4" : "p-5"
           }`}
           style={{
             ...cardStyle,
@@ -2218,7 +2249,7 @@ export default function TourCard({
             className="min-h-0 overflow-y-auto"
             style={copyCapped ? { minHeight: "4.5rem" } : undefined}
           >
-          <p id={bodyId} className={`text-sm text-slate-300 ${moodNested ? "mt-1.5 leading-snug" : "mt-2 leading-relaxed"}`}>
+          <p id={bodyId} className={`text-sm text-slate-300 ${moodNested ? "mt-1.5 leading-snug" : moodCompact && viewport.width < 640 ? "mt-1 leading-snug" : "mt-2 leading-relaxed"}`}>
             {shownBody}
           </p>
           </div>
@@ -2227,7 +2258,7 @@ export default function TourCard({
               Scroll for the rest
             </p>
           ) : null}
-          <div data-tour-actions="" className={`flex shrink-0 flex-nowrap items-center gap-2 ${moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
+          <div data-tour-actions="" className={`flex shrink-0 flex-nowrap items-center gap-2 ${moodCompact && viewport.width < 640 && !moodNested ? "mt-2" : moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
             {shownKind !== "close" ? (
               <button type="button" className={btnSecondary} disabled={!tourOpen} onPointerDown={guarded(onSkip)}>
                 {TOUR_CONTROLS.skip}
@@ -2278,6 +2309,9 @@ export default function TourCard({
         }
         html:has([data-tour-card="welcome"]) [data-tour-quiet],
         html:has([data-tour-card="close"]) [data-tour-quiet] { visibility: hidden; }
+        html:has([data-tour-card="moods"]) [data-tour="mood-grid"] {
+          clip-path: inset(var(--tour-mood-clip-top, 0px) 0 var(--tour-mood-clip, 0px) 0);
+        }
         html:has([data-tour-card="moods"]) .app-workspace-moods .app-scroll {
           scrollbar-width: none;
         }

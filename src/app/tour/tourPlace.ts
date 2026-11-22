@@ -356,11 +356,12 @@ export function placeMoodCard(
 }
 
 /**
- * Phone moods, with the sheet already at the bottom. Scroll so the ring can
- * wrap whole rows that include the last one ("Your own…"), with `pad` inside
- * the ring and `sheetGap` between the ring and the sheet. Leading rows that
- * do not fit stay above the header. Returns null when even the last row
- * cannot sit wholly in that band.
+ * Phone moods. Keep the page top in view: scroll up until the heading sits
+ * fully under the header, and never scroll down to chase the last row.
+ * `delta` is added to scrollTop (negative scrolls back up). After that
+ * scroll, `[from, to]` is the prefix of whole rows that fit between the
+ * heading and the sheet, with `pad` inside the ring and `sheetGap` between
+ * the ring and the sheet. `to` is -1 when no whole row fits.
  */
 export function planPhoneMoodRows(input: {
   rows: MoodRow[];
@@ -377,30 +378,31 @@ export function planPhoneMoodRows(input: {
   const clear = input.clear ?? MOOD_RING_CLEAR;
   const rows = input.rows;
   if (rows.length === 0) return null;
-  const lastIndex = rows.length - 1;
-  const last = rows[lastIndex];
-  const targetLastBottom = input.sheetTop - sheetGap - pad;
   const minTileTop = input.headerBottom + clear + pad;
-  const available = targetLastBottom - minTileTop;
-  if (!(available > 24) || !(last.bottom - last.top > 8)) return null;
+  // The ring's own padding shrinks so the ring stays `sheetGap` above the
+  // sheet. A whole row fits when its tiles end at that line.
+  const maxTileBottom = input.sheetTop - sheetGap;
+  if (!(maxTileBottom > minTileTop + 24)) return null;
 
-  let from = 0;
-  while (from < lastIndex && last.bottom - rows[from].top > available + 0.5) from += 1;
-  if (last.bottom - rows[from].top > available + 0.5) return null;
-
-  let delta = Math.max(0, last.bottom - targetLastBottom);
   const heading = input.heading;
+  const headingGap = 4;
+  let delta = 0;
   if (heading && heading.bottom - heading.top > 8) {
-    const headTop = heading.top - delta;
-    const headBottom = heading.bottom - delta;
-    const straddles = headTop < input.headerBottom - 1 && headBottom > input.headerBottom + 1;
-    if (straddles) {
-      const extra = headBottom - input.headerBottom;
-      const nextFirstTop = rows[from].top - delta - extra;
-      if (nextFirstTop >= minTileTop - 0.5) delta += extra;
-    }
+    const targetTop = input.headerBottom + headingGap;
+    if (heading.top < targetTop - 0.5) delta = heading.top - targetTop;
+  } else if (rows[0].top < minTileTop - 0.5) {
+    delta = rows[0].top - minTileTop;
   }
-  return { delta, from, to: lastIndex };
+
+  let to = -1;
+  for (let index = 0; index < rows.length; index += 1) {
+    const top = rows[index].top - delta;
+    const bottom = rows[index].bottom - delta;
+    if (bottom - top <= 8) continue;
+    if (top < minTileTop - 0.5 || bottom > maxTileBottom + 0.5) break;
+    to = index;
+  }
+  return { delta, from: 0, to };
 }
 
 export type SidePad = { left: number; right: number; top: number; bottom: number };
