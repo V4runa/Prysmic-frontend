@@ -13,6 +13,7 @@ import PasswordHints from "../components/PasswordHints";
 import UserAvatar, { AvatarGlyph } from "../components/UserAvatar";
 import { syncVerificationProfile } from "../components/EmailVerificationPrompt";
 import { TOUR_ENABLED } from "../tour/tourFlag";
+import { armTourReplay } from "../tour/tourSeen";
 import { Field, FormButton, SelectField, TextField } from "../components/forms";
 import { ApiError, apiFetch } from "../hooks/useApi";
 import { useSessionIdentity } from "../hooks/useAuth";
@@ -850,10 +851,18 @@ function TourSection() {
     <GlassPanel>
       <h2 className="text-base font-medium tracking-wide text-slate-100">Tour</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-400">
-        A one-minute walk through Prysmic.
+        A short tour of the main areas in Prysmic.
       </p>
-      <FormButton type="button" variant="secondary" className="mt-4" onClick={() => router.push("/notes?tour=1")}>
-        Walk the tour again
+      <FormButton
+        type="button"
+        variant="secondary"
+        className="mt-4"
+        onClick={() => {
+          armTourReplay();
+          router.push("/notes?tour=1");
+        }}
+      >
+        Start the tour again
       </FormButton>
     </GlassPanel>
   );
@@ -911,7 +920,7 @@ export default function SettingsPage() {
 
   return (
     <PageTransition>
-      <div className="w-full app-page-h overflow-y-auto app-scroll px-4 py-6 sm:px-6">
+      <div data-app-route="/settings" className="w-full app-page-h overflow-y-auto app-scroll px-4 py-6 sm:px-6">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-4 pb-8">
           <InstallHint />
           <ProfileSection userId={identity.userId} />

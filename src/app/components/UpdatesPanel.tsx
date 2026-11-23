@@ -17,6 +17,7 @@ import {
 import { dismissProductHighlight } from "../hooks/useUpdatesSeen";
 import { springSoft } from "../lib/motion";
 import { TOUR_ENABLED } from "../tour/tourFlag";
+import { armTourReplay } from "../tour/tourSeen";
 
 function subscribeNoop(): () => void {
   return () => {};
@@ -145,7 +146,10 @@ function UpdateActionLink({
   return (
     <Link
       href={action.href}
-      onClick={onNavigate}
+      onClick={() => {
+        if (action.href.includes("tour=1")) armTourReplay();
+        onNavigate?.();
+      }}
       className="mt-2 inline-block text-sm text-slate-300 underline decoration-white/20 underline-offset-4 transition-colors hover:text-slate-100 hover:decoration-white/40"
     >
       {action.label}

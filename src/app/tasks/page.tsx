@@ -22,11 +22,8 @@ import MissingRecord from "../components/MissingRecord";
 import { isNoteNotFound, parseOriginNoteId } from "../notes/noteMenu";
 import { parseTagIds, tagFilterHref, taskMatchesTag } from "../lib/tagQuery";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTour } from "../tour/TourProvider";
-
 export default function TasksPage() {
   const router = useRouter();
-  const tour = useTour();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.toString();
@@ -104,7 +101,6 @@ export default function TasksPage() {
 
   const handleTaskCreated = () => {
     setOriginError("");
-    tour.notifyTaskCreated();
     fetchTasks();
     if (originNoteId != null) {
       void queryClient.invalidateQueries({ queryKey: ["notes"] });
@@ -204,11 +200,11 @@ export default function TasksPage() {
 
   return (
     <PageTransition>
-      <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
+      <div data-app-route="/tasks" className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
         <GlassPanel className="app-workspace flex h-full min-h-0 flex-col gap-4 sm:gap-6 max-sm:overflow-y-auto max-sm:app-scroll">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <h1 data-tour-heading tabIndex={-1} className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide outline-none">
+              <h1 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
                 Your Tasks
               </h1>
               {activeTab === "active" && (
@@ -228,7 +224,7 @@ export default function TasksPage() {
           </div>
 
           {/* Traditional tab-style nav */}
-          <div className="flex border-b border-white/10 text-white overflow-x-auto">
+          <div className="flex overflow-x-auto overflow-y-hidden border-b border-white/10 text-white scrollbar-hidden">
             {["active", "completed", "archived"].map((tab) => (
               <motion.button
                 key={tab}

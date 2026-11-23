@@ -36,13 +36,12 @@ interface CalendarFiltersProps {
 
 export default function CalendarFilters({ value, onChange }: CalendarFiltersProps) {
   return (
-    <div data-tour="calendar-chips" className="hidden sm:flex items-center gap-1.5 flex-wrap shrink-0">
+    <div className="hidden sm:flex items-center gap-1.5 flex-wrap shrink-0">
       {SOURCES.map(({ key, label, icon: Icon, on }) => {
         const active = value[key];
         return (
           <motion.button
             key={key}
-            data-tour={`calendar-chip-${key}`}
             {...tactileSubtle}
             onClick={() => onChange({ ...value, [key]: !active })}
             aria-pressed={active}

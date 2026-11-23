@@ -13,10 +13,7 @@ interface SpinnerProps {
  */
 export default function Spinner({ label, className = "" }: SpinnerProps) {
   return (
-    <div
-      data-tour-loading=""
-      className={`flex flex-col items-center justify-center gap-3 text-slate-400 ${className}`}
-    >
+    <div className={`flex flex-col items-center justify-center gap-3 text-slate-400 ${className}`}>
       <motion.span
         className="h-8 w-8 rounded-full border-2 border-white/10 border-t-cyan-300/80"
         animate={{ rotate: 360 }}

@@ -8,20 +8,20 @@ import { clearTourSignup, rememberTourSeen, tourSeenRequestBody } from "./tourSe
  * endpoint (preview against production, before the backend ships) still
  * keeps this browser from auto-playing again.
  */
-export async function saveTourSeen(userId: number | null): Promise<void> {
+export function saveTourSeen(userId: number | null): string | null {
+  const at = new Date().toISOString();
   try {
-    rememberTourSeen(window.localStorage, userId);
+    rememberTourSeen(window.localStorage, userId, at);
     clearTourSignup(window.localStorage, userId);
   } catch {
     // Private mode can reject storage. The request below may still succeed.
   }
 
-  try {
-    await apiFetch("/users/me/tour", {
-      method: "PATCH",
-      body: JSON.stringify(tourSeenRequestBody(true)),
-    });
-  } catch {
+  void apiFetch("/users/me/tour", {
+    method: "PATCH",
+    body: JSON.stringify(tourSeenRequestBody(true)),
+  }).catch(() => {
     // 404 while the route is not deployed, or a network miss. The mirror holds.
-  }
+  });
+  return userId == null ? null : at;
 }

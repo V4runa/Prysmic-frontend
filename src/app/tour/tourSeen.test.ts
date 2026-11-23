@@ -75,6 +75,16 @@ test("an explicit null plays, and any timestamp never auto-plays", () => {
       signupFresh: false,
       localSeen: true,
     }),
+    { start: false, reason: "seen" }
+  );
+  assert.deepEqual(
+    decideTourStart({
+      requested: false,
+      userLoaded: true,
+      seenAt: null,
+      signupFresh: false,
+      localSeen: false,
+    }),
     { start: true, reason: "unseen" }
   );
   assert.deepEqual(
@@ -118,7 +128,7 @@ test("a missing field plays only for a brand-new signup", () => {
       signupFresh: true,
       localSeen: true,
     }),
-    { start: false, reason: "existing" }
+    { start: false, reason: "seen" }
   );
 });
 
@@ -198,9 +208,11 @@ test("a direct tour link opens once and does not restart when the walk ends", ()
   const stillThere = takeTourRequest({ serial: 1, handled: first.handled, phase: "done" });
   assert.deepEqual(stillThere, { start: false, handled: 1 });
   const whileWalking = takeTourRequest({ serial: 2, handled: 1, phase: "active" });
-  assert.deepEqual(whileWalking, { start: false, handled: 1 });
-  const again = takeTourRequest({ serial: 2, handled: 1, phase: "done" });
-  assert.deepEqual(again, { start: true, handled: 2 });
+  assert.deepEqual(whileWalking, { start: false, handled: 2 });
+  const after = takeTourRequest({ serial: 2, handled: whileWalking.handled, phase: "done" });
+  assert.deepEqual(after, { start: false, handled: 2 });
+  const later = takeTourRequest({ serial: 3, handled: 2, phase: "done" });
+  assert.deepEqual(later, { start: true, handled: 3 });
 });
 
 test("fresh-account chrome stays quiet until the tour ends and the route changes", () => {
@@ -219,7 +231,7 @@ test("fresh-account chrome stays quiet until the tour ends and the route changes
   assert.equal(landed.landingPath, "/moods");
   assert.equal(
     tourQuietsChrome({ ...fresh, phase: "done", pathname: "/moods", landing: landed }),
-    true
+    false
   );
   const left = nextChromeQuiet(landed, "done", "/notes");
   assert.equal(left.released, true);

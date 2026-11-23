@@ -1,0 +1,768 @@
+/**
+ * Runs inside the page. A tour card or ring fails when it cuts through a
+ * visible text line or button: the two boxes meet, and the cover does not
+ * contain the whole item. Fully clear and fully covered both pass.
+ */
+export function collectOverlaps() {
+  const slack = 2;
+  function boxOf(rect) {
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  }
+  function misses(a, b) {
+    return a.x + a.width <= b.x + 1 || b.x + b.width <= a.x + 1 || a.y + a.height <= b.y + 1 || b.y + b.height <= a.y + 1;
+  }
+  function roundBox(box) {
+    return { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) };
+  }
+  function cuts(cover, item) {
+    const coverRight = cover.x + cover.width;
+    const coverBottom = cover.y + cover.height;
+    const itemRight = item.x + item.width;
+    const itemBottom = item.y + item.height;
+    const misses =
+      coverRight <= item.x + slack ||
+      itemRight <= cover.x + slack ||
+      coverBottom <= item.y + slack ||
+      itemBottom <= cover.y + slack;
+    if (misses) return false;
+    const contains =
+      cover.x <= item.x + slack &&
+      cover.y <= item.y + slack &&
+      coverRight >= itemRight - slack &&
+      coverBottom >= itemBottom - slack;
+    return !contains;
+  }
+  function visible(node) {
+    const style = getComputedStyle(node);
+    if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
+    return true;
+  }
+  const covers = [];
+  const card = document.querySelector("[data-tour-card]");
+  if (card instanceof HTMLElement) {
+    const rect = card.getBoundingClientRect();
+    if (rect.width > 2 && rect.height > 2) covers.push({ kind: "card", box: boxOf(rect) });
+  }
+  const ring = document.querySelector("[data-tour-ring]");
+  if (ring instanceof HTMLElement) {
+    const rect = ring.getBoundingClientRect();
+    if (rect.width > 2 && rect.height > 2) covers.push({ kind: "ring", box: boxOf(rect) });
+  }
+  const items = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    const parent = node.parentElement;
+    if (!(parent instanceof HTMLElement)) continue;
+    if (parent.closest("[data-tour-card]")) continue;
+    if (!visible(parent)) continue;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    for (const rect of range.getClientRects()) {
+      if (rect.width < 2 || rect.height < 2) continue;
+      if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) continue;
+      items.push({ kind: "text", label: text.slice(0, 80), box: boxOf(rect), node: parent });
+    }
+  }
+  for (const button of document.querySelectorAll("button, a")) {
+    if (!(button instanceof HTMLElement)) continue;
+    if (button.closest("[data-tour-card]")) continue;
+    if (!visible(button)) continue;
+    const rect = button.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) continue;
+    if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) continue;
+    const label = (button.getAttribute("aria-label") || button.textContent || button.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
+    items.push({ kind: "control", label, box: boxOf(rect), node: button });
+  }
+  for (const tile of document.querySelectorAll("[data-tour='mood-grid'] > *, [data-tour-day]")) {
+    if (!(tile instanceof HTMLElement)) continue;
+    if (tile.closest("[data-tour-card]")) continue;
+    if (!visible(tile)) continue;
+    const rect = tile.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) continue;
+    if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) continue;
+    const label = (tile.getAttribute("aria-label") || tile.textContent || "tile").replace(/\s+/g, " ").trim().slice(0, 80);
+    items.push({ kind: "tile", label, box: boxOf(rect), node: tile });
+  }
+  const hits = [];
+  const nav = document.querySelector(".app-bottom-nav");
+  const navBox =
+    nav instanceof HTMLElement && getComputedStyle(nav).display !== "none" ? nav.getBoundingClientRect() : null;
+  const cardIsSheet =
+    card instanceof HTMLElement &&
+    navBox != null &&
+    Math.abs(card.getBoundingClientRect().bottom - navBox.top) < 24;
+  for (const cover of covers) {
+    if (cover.kind === "card" && cardIsSheet) continue;
+    for (const item of items) {
+      if (!cuts(cover.box, item.box)) continue;
+      hits.push({
+        cover: cover.kind,
+        item: item.kind,
+        label: item.label,
+        coverBox: {
+          x: Math.round(cover.box.x),
+          y: Math.round(cover.box.y),
+          w: Math.round(cover.box.width),
+          h: Math.round(cover.box.height),
+        },
+        itemBox: {
+          x: Math.round(item.box.x),
+          y: Math.round(item.box.y),
+          w: Math.round(item.box.width),
+          h: Math.round(item.box.height),
+        },
+      });
+    }
+  }
+  if (card instanceof HTMLElement) {
+    const cardRect = card.getBoundingClientRect();
+    for (const node of document.querySelectorAll("main h1, main h2, main h3, main p")) {
+      if (!(node instanceof HTMLElement) || node.closest("[data-tour-card]")) continue;
+      const style = getComputedStyle(node);
+      if (style.visibility === "hidden" || style.display === "none" || Number(style.opacity) === 0) continue;
+      const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+      if (text.length < 12) continue;
+      const rect = node.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) continue;
+      if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
+      const overlapW = Math.min(cardRect.right, rect.right) - Math.max(cardRect.left, rect.left);
+      const overlapH = Math.min(cardRect.bottom, rect.bottom) - Math.max(cardRect.top, rect.top);
+      if (overlapW > 2 && overlapH > 2) {
+        hits.push({
+          cover: "card",
+          item: "copy",
+          label: `card covers copy: ${text.slice(0, 48)}`,
+          coverBox: { x: Math.round(cardRect.x), y: Math.round(cardRect.y), w: Math.round(cardRect.width), h: Math.round(cardRect.height) },
+          itemBox: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
+        });
+        break;
+      }
+    }
+    if (card.scrollHeight > card.clientHeight + 1) {
+      const rect = card.getBoundingClientRect();
+      hits.push({
+        cover: "card",
+        item: "clip",
+        label: `card content clipped scroll ${card.scrollHeight} client ${card.clientHeight}`,
+        coverBox: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
+        itemBox: { x: 0, y: 0, w: card.scrollHeight, h: card.clientHeight },
+      });
+    }
+    for (const node of card.querySelectorAll("*")) {
+      if (!(node instanceof HTMLElement)) continue;
+      const box = node.getBoundingClientRect();
+      if (box.width < 2 || box.height < 2) continue;
+      let parent = node.parentElement;
+      while (parent) {
+        const style = getComputedStyle(parent);
+        if (style.overflowX !== "visible" || style.overflowY !== "visible") {
+          const bounds = parent.getBoundingClientRect();
+          const clipped =
+            box.top < bounds.top - 1 ||
+            box.bottom > bounds.bottom + 1 ||
+            box.left < bounds.left - 1 ||
+            box.right > bounds.right + 1;
+          if (clipped) {
+            const label = (node.textContent ?? node.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
+            hits.push({
+              cover: "card",
+              item: "clip",
+              label: `clipped ${label || node.tagName}`,
+              coverBox: {
+                x: Math.round(bounds.x),
+                y: Math.round(bounds.y),
+                w: Math.round(bounds.width),
+                h: Math.round(bounds.height),
+              },
+              itemBox: { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) },
+            });
+            break;
+          }
+        }
+        if (parent === card) break;
+        parent = parent.parentElement;
+      }
+    }
+  }
+  if (ring instanceof HTMLElement) {
+    const ringBox = ring.getBoundingClientRect();
+    const tourRoot = ring.parentElement;
+    const obstacles = [];
+    for (const el of document.querySelectorAll("body *")) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (tourRoot && tourRoot.contains(el)) continue;
+      if (el.closest("[data-tour-card]") || el.hasAttribute("data-tour-ring")) continue;
+      const style = getComputedStyle(el);
+      if (style.position !== "fixed" && style.position !== "sticky") continue;
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width > window.innerWidth * 0.85 && rect.height > window.innerHeight * 0.6) continue;
+      const z = Number(style.zIndex);
+      if (Number.isFinite(z) && z < 0) continue;
+      if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
+      obstacles.push({ label: (el.getAttribute("aria-label") || el.className || el.tagName).toString().replace(/\s+/g, " ").trim().slice(0, 60), box: boxOf(rect) });
+    }
+    function clippedByScroll(node, box) {
+      let parent = node instanceof HTMLElement ? node.parentElement : null;
+      while (parent && parent !== document.body) {
+        const style = getComputedStyle(parent);
+        const oy = style.overflowY;
+        const ox = style.overflowX;
+        const scrollY = oy === "auto" || oy === "scroll" || (oy === "hidden" && parent.scrollHeight > parent.clientHeight + 1);
+        const scrollX = ox === "auto" || ox === "scroll" || (ox === "hidden" && parent.scrollWidth > parent.clientWidth + 1);
+        if (scrollY || scrollX) {
+          const bounds = parent.getBoundingClientRect();
+          const top = box.y;
+          const bottom = box.y + box.height;
+          const left = box.x;
+          const right = box.x + box.width;
+          if (top < bounds.top - 1 || bottom > bounds.bottom + 1 || left < bounds.left - 1 || right > bounds.right + 1) {
+            return true;
+          }
+        }
+        parent = parent.parentElement;
+      }
+      return false;
+    }
+    for (const obstacle of obstacles) {
+      if (misses(boxOf(ringBox), obstacle.box)) continue;
+      hits.push({
+        cover: "ring",
+        item: "sticky",
+        label: `ring crosses ${obstacle.label}`,
+        coverBox: roundBox(boxOf(ringBox)),
+        itemBox: roundBox(obstacle.box),
+      });
+    }
+    for (const item of items) {
+      if (misses(boxOf(ringBox), item.box)) continue;
+      const node = item.node;
+      if (node instanceof HTMLElement && clippedByScroll(node, item.box)) {
+        hits.push({
+          cover: "ring",
+          item: "clip",
+          label: `ringed ${item.label} is clipped by scroll`,
+          coverBox: roundBox(boxOf(ringBox)),
+          itemBox: roundBox(item.box),
+        });
+      }
+      for (const obstacle of obstacles) {
+        if (misses(item.box, obstacle.box)) continue;
+        hits.push({
+          cover: "ring",
+          item: "sticky",
+          label: `${item.label} sits under ${obstacle.label}`,
+          coverBox: roundBox(item.box),
+          itemBox: roundBox(obstacle.box),
+        });
+      }
+    }
+  }
+  if (card instanceof HTMLElement) {
+    const style = getComputedStyle(card);
+    const box = card.getBoundingClientRect();
+    const pad =
+      (Number.parseFloat(style.paddingTop) || 0) +
+      (Number.parseFloat(style.paddingBottom) || 0) +
+      (Number.parseFloat(style.borderTopWidth) || 0) +
+      (Number.parseFloat(style.borderBottomWidth) || 0);
+    const measure = card.querySelector("[data-tour-measure]");
+    const root = measure instanceof HTMLElement ? measure : card;
+    let children = 0;
+    for (const child of root.children) {
+      if (!(child instanceof HTMLElement)) continue;
+      const rect = child.getBoundingClientRect();
+      const childStyle = getComputedStyle(child);
+      children += rect.height + (Number.parseFloat(childStyle.marginTop) || 0) + (Number.parseFloat(childStyle.marginBottom) || 0);
+    }
+    const expected = children + pad;
+    if (children > 0 && box.height > expected + 4) {
+      hits.push({
+        cover: "card",
+        item: "stretch",
+        label: `card is ${Math.round(box.height - expected)}px taller than its content`,
+        coverBox: roundBox(boxOf(box)),
+        itemBox: { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(expected) },
+      });
+    }
+  }
+  if (ring instanceof HTMLElement) {
+    const ringBox = boxOf(ring.getBoundingClientRect());
+    const tourRoot = ring.parentElement;
+    for (const el of document.querySelectorAll("body *")) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (tourRoot && tourRoot.contains(el)) continue;
+      if (el.contains(ring)) continue;
+      if (el.querySelector("[data-tour], [data-tour-day]")) continue;
+      const style = getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) continue;
+      if (rect.width > window.innerWidth * 0.9 && rect.height > window.innerHeight * 0.7) continue;
+      const item = boxOf(rect);
+      if (misses(ringBox, item)) continue;
+      const containsRing =
+        item.x <= ringBox.x + 2 &&
+        item.y <= ringBox.y + 2 &&
+        item.x + item.width >= ringBox.x + ringBox.width - 2 &&
+        item.y + item.height >= ringBox.y + ringBox.height - 2;
+      if (containsRing) continue;
+      const ringContains =
+        ringBox.x <= item.x + 2 &&
+        ringBox.y <= item.y + 2 &&
+        ringBox.x + ringBox.width >= item.x + item.width - 2 &&
+        ringBox.y + ringBox.height >= item.y + item.height - 2;
+      if (ringContains) continue;
+      const label = (el.getAttribute("aria-label") || el.textContent || el.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
+      hits.push({
+        cover: "ring",
+        item: "cut",
+        label: `ring cuts ${label || el.tagName}`,
+        coverBox: roundBox(ringBox),
+        itemBox: roundBox(item),
+      });
+    }
+  }
+  if (ring instanceof HTMLElement && card instanceof HTMLElement) {
+    const header = document.querySelector(".app-header");
+    const headerBox = header instanceof HTMLElement ? header.getBoundingClientRect() : null;
+    const ringBox = ring.getBoundingClientRect();
+    const margin = 8;
+    if (headerBox && headerBox.height > 1 && ringBox.top < headerBox.bottom + margin - 1) {
+      hits.push({
+        cover: "ring",
+        item: "header",
+        label: "ring overlaps the header",
+        coverBox: roundBox(boxOf(ringBox)),
+        itemBox: roundBox(boxOf(headerBox)),
+      });
+    }
+    const scroller = document.querySelector("[data-tour='mood-grid']")?.closest(".app-scroll");
+    const clipTop = scroller instanceof HTMLElement ? scroller.getBoundingClientRect().top : headerBox ? headerBox.bottom : 0;
+    if (card.getAttribute("data-tour-card") === "moods") {
+      for (const el of document.querySelectorAll("[data-tour='mood-grid'] button")) {
+        if (!(el instanceof HTMLElement) || !visible(el)) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 8 || rect.height < 8) continue;
+        const inside =
+          rect.top >= ringBox.top - 2 &&
+          rect.bottom <= ringBox.bottom + 2 &&
+          rect.left >= ringBox.left - 2 &&
+          rect.right <= ringBox.right + 2;
+        if (!inside) continue;
+        const covered = rect.top < (headerBox ? headerBox.bottom : 0) - 1 || rect.top < clipTop - 1;
+        if (!covered) continue;
+        const label = (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+        hits.push({
+          cover: "ring",
+          item: "covered",
+          label: `inside the ring but covered: ${label || el.tagName}`,
+          coverBox: roundBox(boxOf(ringBox)),
+          itemBox: roundBox(boxOf(rect)),
+        });
+      }
+    }
+    const cardBox = card.getBoundingClientRect();
+    const bandTop = ringBox.bottom + 1;
+    const bandBottom = cardBox.top - 1;
+    if (bandBottom > bandTop + 2) {
+      for (const el of document.querySelectorAll("button, a, [data-tour='mood-grid'] button")) {
+        if (!(el instanceof HTMLElement)) continue;
+        if (el.closest("[data-tour-card]")) continue;
+        if (!visible(el)) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 2 || rect.height < 2) continue;
+        const inBand = rect.bottom > bandTop && rect.top < bandBottom;
+        if (!inBand) continue;
+        const label = (el.getAttribute("aria-label") || el.textContent || el.tagName).replace(/\s+/g, " ").trim().slice(0, 80);
+        hits.push({
+          cover: "gap",
+          item: "peek",
+          label: `between ring and sheet: ${label || el.tagName}`,
+          coverBox: {
+            x: Math.round(ringBox.x),
+            y: Math.round(bandTop),
+            w: Math.round(ringBox.width),
+            h: Math.round(bandBottom - bandTop),
+          },
+          itemBox: roundBox(boxOf(rect)),
+        });
+      }
+    }
+  }
+  if (card instanceof HTMLElement) {
+    const copy = card.querySelector("#tour-card-body");
+    const copyBox = card.querySelector("[data-tour-body]");
+    if (copy instanceof HTMLElement && copyBox instanceof HTMLElement) {
+      const line = Number.parseFloat(getComputedStyle(copy).lineHeight) || 22;
+      const full = copy.scrollHeight;
+      const text = copy.getBoundingClientRect();
+      const frame = copyBox.getBoundingClientRect();
+      const visible = Math.max(0, Math.min(text.bottom, frame.bottom) - Math.max(text.top, frame.top));
+      const required = Math.min(full, line * 3);
+      if (full > 8 && visible < required - 4) {
+        hits.push({
+          cover: "card",
+          item: "copy",
+          label: `copy visible ${Math.round(visible)}px, needs ${Math.round(required)}px`,
+          coverBox: roundBox(boxOf(frame)),
+          itemBox: roundBox(boxOf(text)),
+        });
+      }
+      if (copyBox.scrollHeight > copyBox.clientHeight + 4 && !card.querySelector("[data-tour-more]")) {
+        hits.push({
+          cover: "card",
+          item: "copy",
+          label: "copy scrolls with no hint",
+          coverBox: roundBox(boxOf(frame)),
+          itemBox: { x: 0, y: 0, w: copyBox.scrollHeight, h: copyBox.clientHeight },
+        });
+      }
+    }
+    const box = card.getBoundingClientRect();
+    if (box.top < -1 || box.bottom > window.innerHeight + 1 || box.left < -1 || box.right > window.innerWidth + 1) {
+      hits.push({
+        cover: "card",
+        item: "viewport",
+        label: "sheet leaves the viewport",
+        coverBox: roundBox(boxOf(box)),
+        itemBox: { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight },
+      });
+    }
+    for (const button of card.querySelectorAll("[data-tour-actions] button")) {
+      if (!(button instanceof HTMLElement) || !visible(button)) continue;
+      const rect = button.getBoundingClientRect();
+      if (rect.height < 2) continue;
+      const clipped = rect.top < -1 || rect.bottom > window.innerHeight + 1 || rect.top < box.top - 1 || rect.bottom > box.bottom + 1;
+      if (!clipped) continue;
+      const label = (button.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+      hits.push({
+        cover: "card",
+        item: "button",
+        label: `button out of reach: ${label}`,
+        coverBox: roundBox(boxOf(box)),
+        itemBox: roundBox(boxOf(rect)),
+      });
+    }
+  }
+  if (card?.getAttribute("data-tour-card") === "moods") {
+    const sheetTop = card.getBoundingClientRect().top;
+    for (const button of document.querySelectorAll("[data-tour='mood-grid'] button")) {
+      if (!(button instanceof HTMLElement)) continue;
+      const style = getComputedStyle(button);
+      if (style.visibility !== "hidden" && style.display !== "none") continue;
+      const rect = button.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > sheetTop) continue;
+      if (rect.height < 8) continue;
+      const label = (button.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+      hits.push({
+        cover: "dim",
+        item: "hidden",
+        label: `hidden instead of dimmed: ${label}`,
+        coverBox: roundBox(boxOf(card.getBoundingClientRect())),
+        itemBox: roundBox(boxOf(rect)),
+      });
+    }
+  }
+  if (
+    window.innerWidth >= 1024 &&
+    card instanceof HTMLElement &&
+    !(ring instanceof HTMLElement) &&
+    ["notes", "tasks", "contracts", "calendar", "moods"].includes(card.getAttribute("data-tour-card") ?? "")
+  ) {
+    hits.push({
+      cover: "ring",
+      item: "missing",
+      label: "desktop step has no ring",
+      coverBox: roundBox(boxOf(card.getBoundingClientRect())),
+      itemBox: { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight },
+    });
+  }
+  if (ring instanceof HTMLElement && card instanceof HTMLElement) {
+    const ringRect = ring.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    function gapClear(a, b) {
+      return a.right + 8 <= b.left + 0.5 || b.right + 8 <= a.left + 0.5 || a.bottom + 8 <= b.top + 0.5 || b.bottom + 8 <= a.top + 0.5;
+    }
+    const overlapW = Math.min(ringRect.right, cardRect.right) - Math.max(ringRect.left, cardRect.left);
+    const overlapH = Math.min(ringRect.bottom, cardRect.bottom) - Math.max(ringRect.top, cardRect.top);
+    const moodNest = card.getAttribute("data-tour-card") === "moods" && document.documentElement.dataset.moodNest === "1";
+    if (moodNest) {
+      const insetL = cardRect.left - ringRect.left;
+      const insetR = ringRect.right - cardRect.right;
+      const insetT = cardRect.top - ringRect.top;
+      const insetB = ringRect.bottom - cardRect.bottom;
+      const inside = insetL >= 11.5 && insetR >= 11.5 && insetT >= 11.5 && insetB >= 11.5 && cardRect.bottom <= window.innerHeight + 0.5 && cardRect.top >= 0;
+      if (!inside) {
+        hits.push({
+          cover: "ring",
+          item: "card",
+          label: `card is outside the mood ring L${Math.round(insetL)} R${Math.round(insetR)} T${Math.round(insetT)} B${Math.round(insetB)}`,
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: roundBox(boxOf(cardRect)),
+        });
+      }
+      const tileBox = (rect) => ({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom });
+      const cardBox = tileBox(cardRect);
+      const gapOf = (a, b) => {
+        const gapX = Math.max(a.left - b.right, b.left - a.right);
+        const gapY = Math.max(a.top - b.bottom, b.top - a.bottom);
+        if (gapX < 0 && gapY < 0) return 0;
+        if (gapX < 0) return gapY;
+        if (gapY < 0) return gapX;
+        return Math.hypot(gapX, gapY);
+      };
+      for (const button of document.querySelectorAll("[data-tour='mood-grid'] button")) {
+        if (!(button instanceof HTMLElement)) continue;
+        const rect = button.getBoundingClientRect();
+        if (rect.height < 40) continue;
+        const gap = gapOf(cardBox, tileBox(rect));
+        if (gap >= 11.5) continue;
+        const label = (button.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 24);
+        hits.push({
+          cover: "card",
+          item: "tile",
+          label: gap <= 0 ? `card covers a mood tile: ${label}` : `card is under 12px from a tile: ${label}`,
+          coverBox: roundBox(boxOf(cardRect)),
+          itemBox: roundBox(boxOf(rect)),
+        });
+        break;
+      }
+    } else if (overlapW > 0 && overlapH > 0) {
+      hits.push({
+        cover: "ring",
+        item: "card",
+        label: "ring intersects the card",
+        coverBox: roundBox(boxOf(ringRect)),
+        itemBox: roundBox(boxOf(cardRect)),
+      });
+    } else if (!gapClear(ringRect, cardRect)) {
+      hits.push({
+        cover: "ring",
+        item: "card",
+        label: "ring is under 8px from the card",
+        coverBox: roundBox(boxOf(ringRect)),
+        itemBox: roundBox(boxOf(cardRect)),
+      });
+    }
+    const stepId = card.getAttribute("data-tour-card");
+    let anchorNode = null;
+    if (stepId === "tasks") anchorNode = document.querySelector("[data-tour='tasks-field']");
+    else if (stepId === "notes") anchorNode = document.querySelector("[data-tour='notes-create']");
+    else if (stepId === "contracts") anchorNode = document.querySelector("[data-tour='contracts-create'], [data-tour='contracts-list']");
+    else if (stepId === "calendar") {
+      const todays = [...document.querySelectorAll("[data-tour='calendar-today']")].filter((node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const rect = node.getBoundingClientRect();
+        return rect.width > 2 && rect.height > 2 && rect.bottom > 0 && rect.top < window.innerHeight;
+      });
+      anchorNode = todays[0]?.closest("[data-tour-day]") ?? null;
+    }
+    else if (stepId === "moods") {
+      const tiles = [...document.querySelectorAll("[data-tour='mood-grid'] button")].filter((button) => {
+        if (!(button instanceof HTMLElement) || getComputedStyle(button).visibility === "hidden") return false;
+        const rect = button.getBoundingClientRect();
+        return rect.height > 40 && rect.top >= ringRect.top - 2 && rect.bottom <= ringRect.bottom + 2;
+      });
+      if (tiles.length > 0) {
+        const first = tiles[0].getBoundingClientRect();
+        const union = { left: first.left, top: first.top, right: first.right, bottom: first.bottom };
+        for (const tile of tiles) {
+          const rect = tile.getBoundingClientRect();
+          union.left = Math.min(union.left, rect.left);
+          union.top = Math.min(union.top, rect.top);
+          union.right = Math.max(union.right, rect.right);
+          union.bottom = Math.max(union.bottom, rect.bottom);
+        }
+        anchorNode = { getBoundingClientRect: () => union };
+      }
+    }
+    if (anchorNode) {
+      const raw = anchorNode.getBoundingClientRect();
+      const anchor = { left: raw.left, top: raw.top, right: raw.right, bottom: raw.bottom, width: raw.width, height: raw.height };
+      const insetL = anchor.left - ringRect.left;
+      const insetR = ringRect.right - anchor.right;
+      const insetT = anchor.top - ringRect.top;
+      const insetB = ringRect.bottom - anchor.bottom;
+      const moodNestAlign = stepId === "moods" && document.documentElement.dataset.moodNest === "1";
+      if (!moodNestAlign && (Math.abs(insetL - insetR) > 2 || Math.abs(insetT - insetB) > 2)) {
+        hits.push({
+          cover: "ring",
+          item: "align",
+          label: `ring misaligned by L${Math.round(insetL)} R${Math.round(insetR)} T${Math.round(insetT)} B${Math.round(insetB)}`,
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: { x: Math.round(anchor.left), y: Math.round(anchor.top), w: Math.round(anchor.width), h: Math.round(anchor.height) },
+        });
+      }
+      const header = document.querySelector(".app-header");
+      const headerBottom = header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
+      const tileCovered =
+        stepId === "moods" &&
+        [...document.querySelectorAll("[data-tour='mood-grid'] button")].some((button) => {
+          if (!(button instanceof HTMLElement)) return false;
+          const rect = button.getBoundingClientRect();
+          if (rect.height < 40) return false;
+          return (
+            Math.min(rect.right, cardRect.right) - Math.max(rect.left, cardRect.left) > 0 &&
+            Math.min(rect.bottom, cardRect.bottom) - Math.max(rect.top, cardRect.top) > 0
+          );
+        });
+      const overlapsCard =
+        stepId === "moods"
+          ? tileCovered
+          : Math.min(anchor.right, cardRect.right) - Math.max(anchor.left, cardRect.left) > 0 &&
+            Math.min(anchor.bottom, cardRect.bottom) - Math.max(anchor.top, cardRect.top) > 0;
+      let clipped = false;
+      if (anchorNode instanceof HTMLElement) {
+        let parent = anchorNode.parentElement;
+        while (parent && parent !== document.body) {
+          const style = getComputedStyle(parent);
+          const oy = style.overflowY;
+          if (oy === "hidden" || oy === "auto" || oy === "scroll") {
+            const bounds = parent.getBoundingClientRect();
+            if (anchor.top < bounds.top - 1 || anchor.bottom > bounds.bottom + 1) {
+              clipped = true;
+              break;
+            }
+          }
+          parent = parent.parentElement;
+        }
+      }
+      const ringed = [...document.querySelectorAll("[data-tour='mood-grid'] button, [data-tour-day]")].filter((node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const rect = node.getBoundingClientRect();
+        if (rect.width < 8 || rect.height < 8) return false;
+        const midY = (rect.top + rect.bottom) / 2;
+        const midX = (rect.left + rect.right) / 2;
+        return midY >= ringRect.top - 1 && midY <= ringRect.bottom + 1 && midX >= ringRect.left - 1 && midX <= ringRect.right + 1;
+      });
+      for (const node of ringed) {
+        if (!(node instanceof HTMLElement)) continue;
+        const rect = node.getBoundingClientRect();
+        const edges = [
+          [rect.left + 1, rect.top + 1],
+          [rect.right - 1, rect.top + 1],
+          [rect.left + 1, rect.bottom - 1],
+          [rect.right - 1, rect.bottom - 1],
+        ];
+        let hidden = false;
+        for (const [x, y] of edges) {
+          let parent = node.parentElement;
+          while (parent && parent !== document.body) {
+            const style = getComputedStyle(parent);
+            const clips = [style.overflow, style.overflowX, style.overflowY].some((value) => value === "hidden" || value === "auto" || value === "scroll");
+            if (clips) {
+              const bounds = parent.getBoundingClientRect();
+              if (x < bounds.left + 1 || x > bounds.right - 1 || y < bounds.top + 1 || y > bounds.bottom - 1) {
+                hidden = true;
+                break;
+              }
+            }
+            parent = parent.parentElement;
+          }
+          if (hidden) break;
+        }
+        const inset = Math.min(28, rect.width / 3, rect.height / 3);
+        const points = [
+          [rect.left + inset, rect.top + inset],
+          [rect.right - inset, rect.top + inset],
+          [rect.left + inset, rect.bottom - inset],
+          [rect.right - inset, rect.bottom - inset],
+        ];
+        for (const [x, y] of points) {
+          if (y < headerBottom + 1 || y > window.innerHeight - 1 || x < 1 || x > window.innerWidth - 1) {
+            hidden = true;
+            break;
+          }
+          const tour = document.querySelector("[data-tour-ring]")?.parentElement;
+          const top = document.elementsFromPoint(x, y).find((hit) => !(tour && tour.contains(hit)));
+          const wrapsTile = top instanceof Element && top.contains(node) && top.getBoundingClientRect().height < rect.height + 48;
+          const sameGrid =
+            top instanceof Element &&
+            node.closest("[data-tour='mood-grid']") instanceof Element &&
+            node.closest("[data-tour='mood-grid']")?.contains(top);
+          if (!(top === node || (top instanceof Element && node.contains(top)) || wrapsTile || sameGrid)) {
+            hidden = true;
+            break;
+          }
+          let parent = node.parentElement;
+          while (parent && parent !== document.body) {
+            const style = getComputedStyle(parent);
+            const clips = [style.overflow, style.overflowX, style.overflowY].some((value) => value === "hidden" || value === "auto" || value === "scroll");
+            if (clips) {
+              const bounds = parent.getBoundingClientRect();
+              if (y < bounds.top + 1 || y > bounds.bottom - 1 || x < bounds.left + 1 || x > bounds.right - 1) {
+                hidden = true;
+                break;
+              }
+            }
+            parent = parent.parentElement;
+          }
+          if (hidden) break;
+        }
+        if (!hidden) continue;
+        const label = (node.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 24);
+        hits.push({
+          cover: "ring",
+          item: "clipped",
+          label: `clipped inside the ring: ${label}`,
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: roundBox(boxOf(rect)),
+        });
+        break;
+      }
+      if (stepId === "moods" && window.innerWidth >= 1024) {
+        for (const button of document.querySelectorAll("[data-tour='mood-grid'] button")) {
+          if (!(button instanceof HTMLElement)) continue;
+          const rect = button.getBoundingClientRect();
+          if (rect.height < 40) continue;
+          const fullyInRing =
+            rect.top >= ringRect.top - 1 &&
+            rect.bottom <= ringRect.bottom + 1 &&
+            rect.left >= ringRect.left - 1 &&
+            rect.right <= ringRect.right + 1;
+          if (fullyInRing) continue;
+          const scroller = button.closest(".app-scroll");
+          const clipTop = Math.max(
+            headerBottom,
+            scroller instanceof HTMLElement ? scroller.getBoundingClientRect().top : 0
+          );
+          const visibleTop = Math.max(rect.top, clipTop);
+          const visibleBottom = Math.min(rect.bottom, window.innerHeight);
+          if (visibleBottom - visibleTop <= 2) continue;
+          const label = (button.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 24);
+          hits.push({
+            cover: "ring",
+            item: "peek",
+            label: `partial tile above the ring: ${label}`,
+            coverBox: roundBox(boxOf(ringRect)),
+            itemBox: roundBox(boxOf(rect)),
+          });
+          break;
+        }
+      }
+      if (window.innerWidth >= 1024 && ringRect.top < headerBottom + 8) {
+        hits.push({
+          cover: "ring",
+          item: "header",
+          label: "ring meets the header",
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: { x: 0, y: 0, w: window.innerWidth, h: Math.round(headerBottom) },
+        });
+      }
+      if (overlapsCard || clipped || anchor.top < headerBottom - 1 || anchor.bottom > window.innerHeight + 1 || anchor.left < -1 || anchor.right > window.innerWidth + 1) {
+        hits.push({
+          cover: "ring",
+          item: "target",
+          label: "target is partly covered",
+          coverBox: roundBox(boxOf(ringRect)),
+          itemBox: { x: Math.round(anchor.left), y: Math.round(anchor.top), w: Math.round(anchor.width), h: Math.round(anchor.height) },
+        });
+      }
+    }
+  }
+  return hits;
+}

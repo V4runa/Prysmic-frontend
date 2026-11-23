@@ -10,6 +10,7 @@ import { localDateKey, prevDayKey } from "../lib/date";
 import { useLogicalToday } from "../hooks/usePreferences";
 import { resolveMoodVisual } from "../lib/moodColors";
 import { TextArea } from "./forms";
+import { useTour } from "../tour/TourProvider";
 
 interface MoodEntry {
   id: number;
@@ -39,6 +40,7 @@ export default function MoodTimeline({
   onSaveTodayNote,
 }: MoodTimelineProps) {
   const today = useLogicalToday();
+  const tour = useTour();
   // Count consecutive logical days that have at least one *organically logged*
   // mood entry, walking backwards from the current logical day.
   // Backfilled entries — moods added retroactively through the calendar — are
@@ -69,13 +71,12 @@ export default function MoodTimeline({
   }, [focusDay, timeline]);
 
   return (
-    <div data-tour="mood-room" className="app-scroll relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 pb-24 sm:pt-32 sm:pb-20">
+    <div className="app-scroll relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-10 pb-24 sm:pt-32 sm:pb-20">
       {/* 🔥 Streak header */}
       <motion.div
-        data-tour="mood-flame"
-        initial={{ opacity: 0, y: -10 }}
+        initial={tour.overlay ? false : { opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
+        transition={tour.overlay ? { duration: 0 } : { duration: 0.8 }}
         className="flex flex-col items-center relative z-10 overflow-visible"
       >
         <motion.div
@@ -122,10 +123,11 @@ export default function MoodTimeline({
               <motion.div
                 key={mood.id}
                 id={`mood-${mood.id}`}
-                initial={{ opacity: 0, y: 25 }}
+                initial={tour.overlay ? false : { opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ delay: i * 0.05 }}
+                transition={tour.overlay ? { duration: 0 } : { delay: i * 0.05 }}
+                data-tour={isToday ? "mood-today" : undefined}
                 className="relative mb-8 grid w-full min-w-0 grid-cols-[3.25rem_1.25rem_minmax(0,1fr)] items-center gap-x-3 sm:mb-12 sm:grid-cols-[4rem_1.25rem_minmax(0,1fr)] sm:gap-x-6"
               >
                 <Link
@@ -159,7 +161,6 @@ export default function MoodTimeline({
                 </div>
 
                 <motion.div
-                  data-tour={isToday ? "mood-today" : undefined}
                   className={clsx(
                     "min-w-0 bg-white/[0.05] border border-white/10 rounded-2xl p-3 sm:p-6 backdrop-blur-md shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-all duration-300",
                     cc.cardHover,

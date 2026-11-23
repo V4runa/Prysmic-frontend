@@ -101,6 +101,7 @@ type SendOpts = {
   body?: BodyInit | null;
   cache?: RequestCache;
   form?: boolean;
+  signal?: AbortSignal | null;
   retried?: boolean;
 };
 
@@ -121,6 +122,7 @@ async function send(opts: SendOpts): Promise<Response> {
     headers,
     body: opts.body ?? undefined,
     cache: opts.cache,
+    signal: opts.signal ?? undefined,
   };
   if (requestNeedsSessionCookie(opts.endpoint, opts.method)) {
     init.credentials = "include";
@@ -162,7 +164,7 @@ export async function apiFetch<T>(
   endpoint: string,
   options: ApiInit = {}
 ): Promise<T> {
-  const { auth = true, keepSessionOn401 = false, headers: headerInit, method, body, cache } = options;
+  const { auth = true, keepSessionOn401 = false, headers: headerInit, method, body, cache, signal } = options;
 
   const res = await send({
     endpoint,
@@ -172,6 +174,7 @@ export async function apiFetch<T>(
     headers: headerInit,
     body: body ?? null,
     cache,
+    signal,
   });
 
   if (res.status === 204) {

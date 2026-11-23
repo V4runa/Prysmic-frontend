@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
+import { saveDeadline } from "../../lib/saveDeadline";
 import { contractDescriptionFromNote } from "../../lib/noteMarkdown";
 import {
   apiErrorMentionsField,
@@ -73,10 +74,11 @@ export default function NewHabitPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const finishCreate = async (payload: Record<string, unknown>) => {
+  const finishCreate = async (payload: Record<string, unknown>, signal: AbortSignal) => {
     await apiFetch("/habits", {
       method: "POST",
       body: JSON.stringify(payload),
+      signal,
     });
     queryClient.invalidateQueries({ queryKey: ["habits"] });
     if (originNoteId != null) {
@@ -90,15 +92,16 @@ export default function NewHabitPage() {
     if (!form.name.trim()) return setError("Name is required");
     const payload: Record<string, unknown> = { ...form };
     if (originNoteId != null) payload.originNoteId = originNoteId;
+    const deadline = saveDeadline();
     try {
-      await finishCreate(payload);
+      await finishCreate(payload, deadline.signal);
     } catch (err) {
       if (originNoteId != null && apiErrorMentionsField(err, "originNoteId")) {
         try {
-          await finishCreate({ ...form });
+          await finishCreate({ ...form }, deadline.signal);
           return;
         } catch {
-          setError("Something went wrong while forging your contract.");
+          setError("That contract didn't save. Try again.");
           return;
         }
       }
@@ -107,7 +110,9 @@ export default function NewHabitPage() {
         setError("Note not found.");
         return;
       }
-      setError("Something went wrong while forging your contract.");
+      setError("That contract didn't save. Try again.");
+    } finally {
+      deadline.clear();
     }
   };
 

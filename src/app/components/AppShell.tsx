@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import EmailVerificationPrompt, { syncVerificationProfile } from "./EmailVerificationPrompt";
@@ -49,14 +49,48 @@ function moodRoomStyle(paint: MoodShellAccent): CSSProperties {
   } as CSSProperties;
 }
 
+function subscribeToLocation(notify: () => void): () => void {
+  const onChange = () => notify();
+  window.addEventListener("popstate", onChange);
+  const push = history.pushState.bind(history);
+  const replace = history.replaceState.bind(history);
+  history.pushState = (...args) => {
+    const result = push(...args);
+    onChange();
+    return result;
+  };
+  history.replaceState = (...args) => {
+    const result = replace(...args);
+    onChange();
+    return result;
+  };
+  return () => {
+    window.removeEventListener("popstate", onChange);
+    history.pushState = push;
+    history.replaceState = replace;
+  };
+}
+
+/** The address the page is actually showing, including the frame history changes. */
+function useLivePath(pathname: string): string {
+  const live = useSyncExternalStore(
+    subscribeToLocation,
+    () => window.location.pathname,
+    () => pathname
+  );
+  return live || pathname;
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = useLivePath(usePathname());
   const queryClient = useQueryClient();
   const { username } = useSessionIdentity();
   const { avatar } = usePreferences();
   const moodRoom = useMoodRoom();
   const tour = useTour();
+  const bannerAfterTour = useRef(false);
+  if (tour.quietChrome) bannerAfterTour.current = true;
   const { unread: updatesUnread, highlight: updateHighlight } = useUpdatesSeen();
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const updatesOpenerRef = useRef<HTMLElement | null>(null);
@@ -167,7 +201,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Top Navigation Bar */}
-      <div className="app-header no-print fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-4 shadow-sm backdrop-blur-lg select-none">
+      <div className={`app-header no-print fixed top-0 left-0 right-0 flex items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-4 shadow-sm backdrop-blur-lg select-none ${tour.overlay ? "z-[90]" : "z-50"}`}>
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 sm:flex-none sm:flex-row sm:items-center sm:gap-4 lg:gap-6">
           <h1 className="shrink-0 cursor-default text-lg font-bold leading-none tracking-wide sm:text-xl">
             Prysmic
@@ -191,12 +225,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.label}
                   href={item.href}
-                  data-tour-nav={item.href}
-                  className={`text-xs sm:text-sm hover:text-cyan-300 transition whitespace-nowrap ${
-                    isActive(item.href) || tour.litHref === item.href
-                      ? "text-cyan-300"
-                      : "text-slate-300"
-                  } ${tour.litHref === item.href ? "drop-shadow-[0_0_8px_rgba(103,232,249,0.7)]" : ""}`}
+                  data-nav-link=""
+                  className="text-xs sm:text-sm hover:text-cyan-300 whitespace-nowrap"
                 >
                   {item.label}
                 </Link>
@@ -211,6 +241,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </span>
           <Link
             href="/settings"
+            data-nav-link=""
             aria-label="Settings"
             aria-current={settingsActive ? "page" : undefined}
             className={`tap-target inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs sm:px-3 sm:text-sm ${
@@ -236,7 +267,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="app-main relative z-10">
-        {tour.quietChrome ? null : <EmailVerificationPrompt />}
+        {tour.quietChrome ? null : <EmailVerificationPrompt defer={bannerAfterTour.current} />}
         {children}
       </main>
 
@@ -251,7 +282,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Native-style Bottom Tab Bar (mobile only) */}
       <nav
-        className="app-bottom-nav no-print sm:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch select-none overflow-x-auto overscroll-x-contain scrollbar-hidden border-t border-white/10 bg-[#0b0c0f]/80 backdrop-blur-lg"
+        className={`app-bottom-nav no-print sm:hidden fixed bottom-0 left-0 right-0 flex items-stretch select-none overflow-x-auto overscroll-x-contain scrollbar-hidden border-t border-white/10 bg-[#0b0c0f]/80 backdrop-blur-lg ${
+          tour.overlay ? "z-[90] pointer-events-none" : "z-50"
+        }`}
         aria-label="Primary"
       >
         {bottomNavItems.map((item) => {
@@ -267,12 +300,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             );
           }
           const Icon = item.icon!;
-          const active = isActive(item.href) || tour.litHref === item.href;
+          const active = isActive(item.href);
           return (
             <Link
               key={item.label}
               href={item.href}
-              data-tour-nav={item.href}
+              data-nav-link=""
               className="relative flex min-w-[3.25rem] flex-1 basis-0 flex-col items-center justify-center gap-0.5 pt-1.5"
             >
               {active && (
@@ -286,16 +319,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 whileTap={{ scale: 0.85 }}
                 className="flex flex-col items-center justify-center gap-0.5"
               >
-                <Icon
-                  className={`h-5 w-5 transition-colors ${
-                    active ? "text-cyan-300" : "text-slate-400"
-                  }`}
-                />
-                <span
-                  className={`text-[10px] font-medium tracking-wide transition-colors ${
-                    active ? "text-cyan-300" : "text-slate-400"
-                  }`}
-                >
+                <Icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium tracking-wide">
                   {item.label}
                 </span>
               </motion.div>

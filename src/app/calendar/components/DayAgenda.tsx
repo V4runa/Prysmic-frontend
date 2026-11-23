@@ -108,7 +108,7 @@ export default function DayAgenda({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div data-tour-keep="day" className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
           <h3 className="text-slate-100 font-semibold leading-tight">{dayLabel(day)}</h3>
           {stats.isPerfect && (
@@ -367,7 +367,7 @@ export default function DayAgenda({
       </div>
 
       {/* Quick-add task */}
-      <div className="pt-3 mt-3 border-t border-white/10 flex items-center gap-2">
+      <div data-tour-keep="quick" className="pt-3 mt-3 border-t border-white/10 flex items-center gap-2">
         <div className="flex-1 min-w-0">
           <TextField
             value={taskTitle}

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, useState } from "react";
 import { FormButton, TextField } from "./forms";
 import { ApiError, apiFetch } from "../hooks/useApi";
 import { readSessionClaims } from "../hooks/useAuth";
@@ -95,7 +94,7 @@ export function syncVerificationProfile(input: {
   refreshPrompt();
 }
 
-export default function EmailVerificationPrompt() {
+export default function EmailVerificationPrompt({ defer = false }: { defer?: boolean }) {
   const prompt = useSyncExternalStore(subscribe, readSnapshot, () => HIDDEN);
   const bannerRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
@@ -128,8 +127,48 @@ export default function EmailVerificationPrompt() {
     emailVerified: prompt.verified,
     dismissed: prompt.dismissed,
   });
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [fullHeight, setFullHeight] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  // Done already navigates to a new page. The banner belongs in its final
+  // place on that page's first paint, with no height animation afterwards.
+  const instant = defer;
+  useLayoutEffect(() => {
+    const el = innerRef.current;
+    if (!el || instant) return;
+    setFullHeight(el.scrollHeight);
+  }, [show, notice, prompt.email, instant]);
+  useEffect(() => {
+    if (instant) return;
+    if (!show) {
+      setRevealed(false);
+      return;
+    }
+    setRevealed(true);
+  }, [show, instant]);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (!show || !instant) {
+      if (!show) root.style.setProperty("--verify-banner-h", "0px");
+      return;
+    }
+    const el = bannerRef.current;
+    if (!el) return;
+    const apply = () => {
+      root.style.setProperty("--verify-banner-h", `${el.offsetHeight}px`);
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.setProperty("--verify-banner-h", "0px");
+    };
+  }, [show, notice, prompt.email, instant]);
 
   useEffect(() => {
+    if (instant) return;
     const root = document.documentElement;
     if (!show) {
       root.style.setProperty("--verify-banner-h", "0px");
@@ -147,7 +186,7 @@ export default function EmailVerificationPrompt() {
       observer.disconnect();
       root.style.setProperty("--verify-banner-h", "0px");
     };
-  }, [show, notice]);
+  }, [show, notice, instant]);
 
   const dismiss = () => {
     dismissVerifyPrompt();
@@ -189,16 +228,23 @@ export default function EmailVerificationPrompt() {
   };
 
   return (
-    <AnimatePresence>
+    <>
       {show && (
-        <motion.div
+        <div
           ref={bannerRef}
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.25 }}
-          className="no-print px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3"
+          style={
+            instant
+              ? { overflow: "hidden" }
+              : {
+                  overflow: "hidden",
+                  height: revealed && fullHeight > 0 ? fullHeight : 0,
+                  opacity: revealed ? 1 : 0,
+                  transition: "height 250ms ease, opacity 250ms ease",
+                }
+          }
+          className="no-print"
         >
+          <div ref={innerRef} className="px-3 pt-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20">
           <div
             role="region"
             aria-label="Email confirmation"
@@ -242,8 +288,9 @@ export default function EmailVerificationPrompt() {
               </button>
             </div>
           </div>
-        </motion.div>
+          </div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

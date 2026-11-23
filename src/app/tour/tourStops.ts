@@ -1,203 +1,114 @@
 /**
- * The six rooms of the first-run walk, in the order the guide travels.
- * Pure data so a native shell can reuse the same route, copy, and targets.
+ * The five rooms of the walk, in order.
+ * Welcome and the close card are not steps. Copy is the approved text.
+ *
+ * Calendar events are their own records, separate from tasks
+ * (the Events filter and EventModal), so the calendar line keeps them.
  */
 
-export const TOUR_STOP_IDS = [
-  "notes",
-  "tags",
-  "tasks",
-  "contracts",
-  "calendar",
-  "moods",
-] as const;
+export const TOUR_STEP_IDS = ["notes", "tasks", "contracts", "calendar", "moods"] as const;
 
-export type TourStopId = (typeof TOUR_STOP_IDS)[number];
+export type TourStepId = (typeof TOUR_STEP_IDS)[number];
 
-export type TourOptional = "tag" | "task" | "mood" | null;
-
-export type TourStop = {
-  id: TourStopId;
-  /** Exact path. Sub-routes such as /notes/new are not this stop. */
+export type TourStep = {
+  id: TourStepId;
   route: string;
-  /** Nav href that brightens while the guide is in flight. */
-  navHref: string;
-  /** Element the light pool opens around. */
+  /** First visible match. Contracts use the create button when the list is empty. */
   target: string;
-  /** Where the guide arcs before the route changes. */
-  waypoint: string;
   title: string;
   body: string;
-  /** Body used when this stop's page is still empty. */
-  emptyBody?: string;
-  /** Shown for a moment after the optional action. */
-  ack: string | null;
-  optional: TourOptional;
-  /** Mote gathered at this stop. Null on moods; that color arrives with the finale. */
-  mote: string | null;
-  /** Screen-reader name, without the stop number. */
-  label: string;
 };
 
-export const TOUR_COPY = {
-  welcomeLead: "This is your notebook. A quiet place for your thoughts, your days, and how you feel.",
-  welcomeAsk: "Shall I show you around? It takes about a minute.",
-  showMe: "Show me around",
-  lookAlone: "I'll look on my own",
-  tagAck: "That tag can go on any note or task.",
-  taskAck: "Added. When you finish it, it shows on that day in your calendar.",
-  notToday: "Not today",
-  notTodayLine: "The room lights up the first time you log a mood.",
-  leave: "Leave tour",
-  leftLine: "The tour is in Settings whenever you want it.",
-  homeLine: "Welcome home. You can walk this again anytime from Settings.",
-  litLine: "Your mood already lights the room.",
-  back: "Back",
-  next: "Next",
+export const TOUR_WELCOME = {
+  title: "Welcome to Prysmic",
+  body: "This is your private notebook for notes, tasks, contracts, a calendar, and moods. This short tour shows you each area. You can skip it at any time.",
+  start: "Start tour",
+  skip: "Skip tour",
+} as const;
+
+export const TOUR_CLOSE = {
+  title: "You're all set",
+  body: "You can start this tour again anytime from Settings.",
   done: "Done",
 } as const;
 
-/** Spectrum motes. Same hues as PrismBackdrop and the calendar source chips. */
-export const TOUR_MOTE = {
-  guide: "#67e8f9",
-  core: "#a5f3fc",
-  notes: "#a78bfa",
-  tags: "#a5f3fc",
-  tasks: "#7dd3fc",
-  contracts: "#fcd34d",
-  moods: "#6ee7b7",
-  scrim: "#06070a",
-  night: "#13161a",
+export const TOUR_CONTROLS = {
+  skip: "Skip tour",
+  back: "Back",
+  next: "Next",
 } as const;
 
-export const SCRIM_ARRIVAL = 0.88;
-export const SCRIM_STOP = 0.62;
-/**
- * Resting dim once a stop has revealed. Lighter than the route-change veil
- * so the notebook stays faintly readable, still a dim room.
- */
-export const TOUR_REST_DIM = 0.64;
-
-/** PageTransition's curve. Flights use it so the guide and the page agree. */
-export const PAGE_EASE = [0.22, 1, 0.36, 1] as const;
-
-export const TOUR_STOPS: readonly TourStop[] = [
+export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "notes",
     route: "/notes",
-    navHref: "/notes",
     target: "[data-tour='notes-create']",
-    waypoint: "[data-tour-nav='/notes']",
     title: "Notes",
-    body: "This is where your thoughts live. Write anything, finished or not.",
-    ack: null,
-    optional: null,
-    mote: TOUR_MOTE.notes,
-    label: "Notes",
-  },
-  {
-    id: "tags",
-    route: "/tags",
-    navHref: "/tags",
-    target: "[data-tour='tags-create']",
-    waypoint: "[data-tour='manage-tags']",
-    title: "Tag Codex",
-    body: "Tags gather notes and tasks by theme. Name one now if you like, or keep walking.",
-    ack: TOUR_COPY.tagAck,
-    optional: "tag",
-    mote: TOUR_MOTE.tags,
-    label: "Tags",
+    body: "This is where you write. Select New Note to start one. You can add tags to a note to connect it with related notes and tasks.",
   },
   {
     id: "tasks",
     route: "/tasks",
-    navHref: "/tasks",
-    target: "[data-tour='tasks-add']",
-    waypoint: "[data-tour-nav='/tasks']",
+    target: "[data-tour='tasks-field']",
     title: "Tasks",
-    body: "Things to do, kept short. Type one and press Enter.",
-    ack: TOUR_COPY.taskAck,
-    optional: "task",
-    mote: TOUR_MOTE.tasks,
-    label: "Tasks",
+    body: "This is your to-do list. Type a task and press Enter to add it. When you mark a task done, it shows on that day in the calendar.",
   },
   {
     id: "contracts",
     route: "/habits",
-    navHref: "/habits",
     target: "[data-tour='contracts-create'], [data-tour='contracts-list']",
-    waypoint: "[data-tour-nav='/habits']",
     title: "Contracts",
-    body: "A contract is a small promise to yourself. Check in each day and watch it hold.",
-    emptyBody: "A contract is a small promise to yourself. One is enough to begin.",
-    ack: null,
-    optional: null,
-    mote: TOUR_MOTE.contracts,
-    label: "Contracts",
+    body: "A contract is a daily commitment you set for yourself. Add one, then check it off on this page each day. The days you keep it are saved here and on the calendar.",
   },
   {
     id: "calendar",
     route: "/calendar",
-    navHref: "/calendar",
     target: "[data-tour='calendar-today']",
-    waypoint: "[data-tour-nav='/calendar']",
     title: "Calendar",
-    body: "Everything meets here. Tasks, contracts, events and moods, day by day.",
-    ack: null,
-    optional: null,
-    mote: null,
-    label: "Calendar",
+    body: "The calendar shows your tasks, contracts, events, and moods by day. Select a day to see what is on it, or select an item to open it.",
   },
   {
     id: "moods",
     route: "/moods",
-    navHref: "/moods",
-    target: "[data-tour='mood-picker']",
-    waypoint: "[data-tour-nav='/moods']",
-    title: "Last stop",
-    body: "One small thing before you settle in.",
-    ack: null,
-    optional: "mood",
-    mote: null,
-    label: "Moods",
+    target: "[data-tour='mood-grid']",
+    title: "Moods",
+    body: "Here you can log how you feel today. Select a mood, or add your own. If you log one, the notebook takes on that color for the rest of the day.",
   },
 ];
 
-export function tourStopByIndex(index: number): TourStop | null {
-  return TOUR_STOPS[index] ?? null;
+export const TOUR_STEP_COUNT = TOUR_STEPS.length;
+
+/** How long the card takes to fade. The route waits until this has finished. */
+export const TOUR_FADE_MS = 160;
+
+export function tourStepByIndex(index: number): TourStep | null {
+  return TOUR_STEPS[index] ?? null;
 }
 
-export function tourStopIndex(id: TourStopId): number {
-  return TOUR_STOP_IDS.indexOf(id);
+/** Route the card should be standing on. Welcome stays on Notes. Close stays where it is. */
+export function tourRouteFor(phase: "welcome" | "step" | "close" | "done", index: number): string | null {
+  if (phase === "close") return null;
+  if (phase === "step") return tourStepByIndex(index)?.route ?? "/notes";
+  return "/notes";
 }
 
-/** True only for the stop's own page, not a nested editor. */
-export function routeMatches(pathname: string, route: string): boolean {
-  return pathname === route;
+export function tourProgressLabel(index: number): string {
+  return `${index + 1} of ${TOUR_STEP_COUNT}`;
 }
 
-export function stopIndexForPath(pathname: string): number {
-  return TOUR_STOPS.findIndex((stop) => routeMatches(pathname, stop.route));
-}
-
-export function welcomeHeading(name: string | null | undefined): string {
-  const trimmed = name?.trim() ?? "";
-  if (!trimmed) return "Welcome.";
-  const shown = trimmed.charAt(0).toLocaleUpperCase() + trimmed.slice(1);
-  return `Welcome, ${shown}.`;
-}
-
-/** Soft near-black behind tour words. A gradient, not a blur, so phones stay steady. */
-export const TOUR_WASH = {
-  background:
-    "linear-gradient(180deg, rgba(6,7,10,0.97) 0%, rgba(8,10,14,0.96) 72%, rgba(6,7,10,0.94) 100%)",
-  borderRadius: 18,
-  padding: "14px 16px 12px",
-  boxSizing: "border-box" as const,
-} as const;
-
-export function stopAnnouncement(index: number): string {
-  const stop = tourStopByIndex(index);
-  if (!stop) return "";
-  return `Stop ${index + 1} of ${TOUR_STOPS.length}, ${stop.label}. ${stop.body}`;
+/** Every user-facing sentence in the tour, for the copy lock. */
+export function tourFacingCopy(): string[] {
+  return [
+    TOUR_WELCOME.title,
+    TOUR_WELCOME.body,
+    TOUR_WELCOME.start,
+    TOUR_WELCOME.skip,
+    TOUR_CLOSE.title,
+    TOUR_CLOSE.body,
+    TOUR_CLOSE.done,
+    TOUR_CONTROLS.skip,
+    TOUR_CONTROLS.back,
+    TOUR_CONTROLS.next,
+    ...TOUR_STEPS.flatMap((step) => [step.title, step.body, tourProgressLabel(TOUR_STEPS.indexOf(step))]),
+  ];
 }

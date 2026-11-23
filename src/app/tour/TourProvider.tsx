@@ -2,25 +2,22 @@
 
 import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../hooks/useApi";
-import { useSessionIdentity } from "../hooks/useAuth";
-import { useMoodRoom } from "../hooks/useMoodRoom";
-import { readSignupEmailNote } from "../lib/storedSession";
+import { readSessionClaims, useSessionIdentity } from "../hooks/useAuth";
 import { saveTourSeen } from "./tourClient";
-import TourStage from "./TourStage";
-import {
-  initialTourState,
-  tourHoldsMoodTimeline,
-  tourOverlayActive,
-  tourReducer,
-  tourStopId,
-} from "./tourMachine";
+import TourCard from "./TourCard";
+import { initialTourState, tourIsOpen, tourReducer } from "./tourMachine";
+import { TOUR_ENABLED } from "./tourFlag";
 import {
   decideTourStart,
   forgetLocalSeen,
   nextChromeQuiet,
   QUIET_CHROME_MEMORY,
+  localSeenRecently,
   readLocalSeen,
+  readLocalSeenAt,
+  takeTourReplay,
   readSignupFresh,
   readTourSeenAt,
   rememberTourSeen,
@@ -29,43 +26,25 @@ import {
   type ChromeQuietMemory,
   type TourSeenValue,
 } from "./tourSeen";
-import { departDelay, TOUR_BEAT } from "./tourBeats";
-import { TOUR_ENABLED } from "./tourFlag";
-import { TOUR_COPY, TOUR_STOPS, routeMatches, stopIndexForPath, type TourStopId } from "./tourStops";
+import { adjacentTourRoutes, cancelIdleTourPrefetch, prefetchTourRoute } from "./tourPrefetch";
+import { TOUR_FADE_MS, tourRouteFor } from "./tourStops";
 
 export type TourApi = {
-  /** The welcome, the walk, or a closing line is on screen. */
+  /** Welcome, a step, or the close card is on screen. */
   overlay: boolean;
-  /** Moods must not mount its timeline, so the flame stays out of the tour. */
-  holdsMoodTimeline: boolean;
-  /** Nav href to brighten while the guide is in flight. */
-  litHref: string | null;
-  /** The room currently being walked, when the tour is underway. */
-  stopId: TourStopId | null;
   /**
-   * Hide the email banner and Updates highlight cards: before a fresh tour
-   * starts, during the walk, and on the landing screen until the route changes.
+   * Hide the email banner and Updates highlight cards while the tour is up,
+   * and on the Notes landing until the route changes.
    */
   quietChrome: boolean;
-  /** First-run walk only. The Updates dot returns when the tour ends or is left. */
+  /** The Updates dot stays hidden for the whole time the tour is open. */
   suppressUpdatesDot: boolean;
-  notifyTagCreated: () => void;
-  notifyTaskCreated: () => void;
-  notifyMoodPicked: () => void;
-  notifyMoodKept: (color: string | null) => void;
 };
 
 const INACTIVE: TourApi = {
   overlay: false,
-  holdsMoodTimeline: false,
-  litHref: null,
-  stopId: null,
   quietChrome: false,
   suppressUpdatesDot: false,
-  notifyTagCreated: () => {},
-  notifyTaskCreated: () => {},
-  notifyMoodPicked: () => {},
-  notifyMoodKept: () => {},
 };
 
 const TourContext = createContext<TourApi>(INACTIVE);
@@ -75,8 +54,6 @@ export function useTour(): TourApi {
 }
 
 export default function TourProvider({ children }: { children: React.ReactNode }) {
-  // Off: the default inactive API. Nothing auto-starts, ?tour=1 is ignored,
-  // and the tour cannot quiet chrome, light the nav, or lock the page.
   if (!TOUR_ENABLED) return children;
   return (
     <TourProviderInner>
@@ -115,16 +92,21 @@ function stripTourParam(router: { replace: (href: string, options?: { scroll?: b
 
 function TourProviderInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const identity = useSessionIdentity();
   const [state, dispatch] = useReducer(tourReducer, initialTourState);
   const [requestSerial, setRequestSerial] = useState(0);
   const [seenAt, setSeenAt] = useState<TourSeenValue>(undefined);
   const [userLoaded, setUserLoaded] = useState(false);
-  const navigatingTo = useRef<string | null>(null);
   const saved = useRef(false);
   const autoOpened = useRef(false);
   const handledRequest = useRef(0);
+  const ended = useRef(false);
+  const appliedRoute = useRef("");
+  const closePath = useRef("");
+  const pendingPush = useRef(0);
+  const notesHandoff = useRef(false);
   const [landing, setLanding] = useState<ChromeQuietMemory>(QUIET_CHROME_MEMORY);
 
   const onTourQuery = useCallback((event: { rising: boolean }) => {
@@ -138,7 +120,19 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     apiFetch<unknown>("/users")
       .then((body) => {
         if (cancelled) return;
-        setSeenAt(readTourSeenAt(body, userId));
+        const server = readTourSeenAt(body, userId);
+        setSeenAt((current) => {
+          if (typeof server === "string") return server;
+          if (typeof current === "string") return current;
+          try {
+            if (server === null && localSeenRecently(window.localStorage, userId)) {
+              return readLocalSeenAt(window.localStorage, userId);
+            }
+          } catch {
+            // Storage can be blocked. The server value still applies.
+          }
+          return server;
+        });
         setUserLoaded(true);
       })
       .catch(() => {
@@ -160,9 +154,11 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       storage = null;
     }
 
+    const recent =
+      storage != null && userId != null ? localSeenRecently(storage, userId) : false;
     if (userLoaded && storage && userId != null) {
       if (typeof seenAt === "string") rememberTourSeen(storage, userId, seenAt);
-      else if (seenAt === null) forgetLocalSeen(storage, userId);
+      else if (seenAt === null && !recent && !saved.current) forgetLocalSeen(storage, userId);
     }
 
     const phaseKind = state.phase === "idle" || state.phase === "done" ? state.phase : "active";
@@ -173,13 +169,19 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     });
     handledRequest.current = request.handled;
     if (request.start) {
+      const armed = takeTourReplay();
+      if (ended.current && !armed) {
+        stripTourParam(router, pathname);
+        return;
+      }
+      ended.current = false;
       dispatch({ type: "open" });
       stripTourParam(router, pathname);
       return;
     }
     if (requestSerial > 0) stripTourParam(router, pathname);
 
-    if (state.phase !== "idle" && state.phase !== "done") return;
+    if (phaseKind !== "idle" || saved.current || recent) return;
 
     const decision = decideTourStart({
       requested: false,
@@ -190,134 +192,108 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     });
 
     if (!decision.start || autoOpened.current) return;
-    if (state.phase === "done") return;
     autoOpened.current = true;
     dispatch({ type: "open" });
   }, [identity.userId, userLoaded, seenAt, requestSerial, state.phase, pathname, router]);
 
   useEffect(() => {
-    if (state.phase !== "arrival") return;
-    if (routeMatches(pathname, "/notes")) return;
-    navigatingTo.current = "/notes";
-    router.push("/notes");
-  }, [state.phase, pathname, router]);
-
-  useEffect(() => {
-    if (state.phase !== "travel") return;
-    const stop = TOUR_STOPS[state.index];
-    if (!stop) return;
-    let cancelled = false;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timer = window.setTimeout(() => {
-      if (cancelled) return;
-      if (routeMatches(window.location.pathname, stop.route)) {
-        navigatingTo.current = null;
-        dispatch({ type: "arrived" });
-        return;
+    if (state.phase === "idle") {
+      notesHandoff.current = false;
+      return;
+    }
+    if (state.phase === "done") {
+      stripTourParam(router, pathname);
+      // Done asks for Notes once. Later clicks, including Settings, must stay
+      // on the page the person asked for.
+      if (state.returnNotes && !notesHandoff.current) {
+        notesHandoff.current = true;
+        if (pathname !== "/notes") router.push("/notes");
       }
-      navigatingTo.current = stop.route;
-      router.push(stop.route);
-    }, departDelay(reduced));
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [state.phase, state.index, router]);
-
-  useEffect(() => {
-    if (state.phase !== "travel") return;
-    if (!navigatingTo.current || !routeMatches(pathname, navigatingTo.current)) return;
-    navigatingTo.current = null;
-    dispatch({ type: "arrived" });
-  }, [state.phase, pathname]);
-
-  useEffect(() => {
-    if (!tourOverlayActive(state)) return;
-    const landed = stopIndexForPath(pathname);
-    if (navigatingTo.current && routeMatches(pathname, navigatingTo.current)) return;
-
-    if (state.phase === "arrival") return;
-
-    if (state.phase === "travel") {
-      if (landed === state.index) return;
-      const origin = state.index > 0 ? TOUR_STOPS[state.index - 1]?.route : "/notes";
-      if (origin && routeMatches(pathname, origin)) return;
-      if (landed >= 0) dispatch({ type: "align", index: landed });
-      else if (!navigatingTo.current) dispatch({ type: "leave" });
       return;
     }
-
-    if (state.phase === "present" || state.phase === "ack" || state.phase === "settle") {
-      if (landed === state.index) return;
-      if (landed >= 0) dispatch({ type: "align", index: landed });
-      else dispatch({ type: "leave" });
+    notesHandoff.current = false;
+    const route = tourRouteFor(state.phase, state.index);
+    const key = `${state.phase}:${state.index}:${route ?? "stay"}`;
+    if (appliedRoute.current === key) {
+      const leftStep = route != null && pathname !== route;
+      const leftClose = route == null && closePath.current !== "" && pathname !== closePath.current;
+      if (leftStep || leftClose) {
+        window.clearTimeout(pendingPush.current);
+        ended.current = true;
+        cancelIdleTourPrefetch(queryClient);
+        dispatch({ type: "skip" });
+      }
       return;
     }
-
-    if (
-      state.phase === "reflect" ||
-      state.phase === "light" ||
-      (state.phase === "closing" && state.closing === "home")
-    ) {
-      if (!routeMatches(pathname, "/moods")) dispatch({ type: "leave" });
+    appliedRoute.current = key;
+    if (route == null) closePath.current = pathname;
+    if (route && pathname !== route) {
+      // Let the old card start fading before the address changes, so the
+      // previous step's text is not sitting at full opacity on the new page.
+      window.clearTimeout(pendingPush.current);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // The old card fades for TOUR_FADE_MS. Wait until that opacity is 0
+      // before the address changes, so the previous title is never readable
+      // on the next page.
+      const wait = reduce ? 0 : TOUR_FADE_MS + 24;
+      pendingPush.current = window.setTimeout(() => router.push(route), wait);
+      return;
     }
-  }, [pathname, state]);
+    stripTourParam(router, pathname);
+  }, [state.phase, state.index, state.returnNotes, pathname, router, queryClient]);
+
+  const finishTour = useCallback(() => {
+    ended.current = true;
+    handledRequest.current = Math.max(handledRequest.current, requestSerial);
+    stripTourParam(router, pathname);
+    const userId = identity.userId ?? readSessionClaims()?.userId ?? null;
+    if (!saved.current && userId != null) {
+      saved.current = true;
+      const at = saveTourSeen(userId);
+      if (at) setSeenAt(at);
+    }
+  }, [identity.userId, pathname, router, requestSerial]);
+
+  const markSeen = useCallback(() => {
+    finishTour();
+  }, [finishTour]);
 
   useEffect(() => {
     if (!state.persistSeen) {
       saved.current = false;
       return;
     }
-    if (saved.current) return;
-    saved.current = true;
-    void saveTourSeen(identity.userId);
-  }, [state.persistSeen, identity.userId]);
+    markSeen();
+  }, [state.persistSeen, markSeen]);
 
+  const phaseRef = useRef(state.phase);
+  phaseRef.current = state.phase;
   useEffect(() => {
-    if (state.phase !== "ack") return;
-    const timer = window.setTimeout(() => dispatch({ type: "ack-done" }), 1400);
-    return () => window.clearTimeout(timer);
-  }, [state.phase, state.index, state.ackLine]);
-
-  useEffect(() => {
-    if (state.phase !== "closing") return;
-    const delay =
-      state.closing === "home" || state.closing === "lit"
-        ? TOUR_BEAT.lift + 700
-        : state.closing === "left"
-          ? TOUR_BEAT.wordsOut + TOUR_BEAT.wordsIn + TOUR_BEAT.lift
-          : TOUR_BEAT.lift + 200;
-    const timer = window.setTimeout(() => dispatch({ type: "closing-done" }), delay);
-    return () => window.clearTimeout(timer);
-  }, [state.phase, state.closing]);
+    if (state.phase !== "welcome" && state.phase !== "step" && state.phase !== "close") return;
+    const userId = identity.userId ?? readSessionClaims()?.userId ?? null;
+    for (const route of adjacentTourRoutes(state.phase, state.index)) {
+      router.prefetch(route);
+      prefetchTourRoute(queryClient, route, userId);
+    }
+    return () => {
+      const next = phaseRef.current;
+      if (next === "welcome" || next === "step" || next === "close") return;
+      cancelIdleTourPrefetch(queryClient);
+    };
+  }, [state.phase, state.index, identity.userId, router, queryClient]);
 
   useEffect(() => {
     if (state.phase !== "done") return;
-    const heading =
-      document.querySelector("main [data-tour-heading]") ||
-      document.querySelector("main h1, main h2") ||
-      document.querySelector("main");
+    const heading = document.querySelector("main h1, main h2");
     if (!(heading instanceof HTMLElement)) return;
     if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
-    heading.focus({ preventScroll: true });
+    document.querySelectorAll<HTMLElement>("[data-tour-return]").forEach((node) => {
+      if (node !== heading) node.removeAttribute("data-tour-return");
+    });
+    heading.setAttribute("data-tour-return", "");
+    const focus = heading.focus.bind(heading) as (options?: FocusOptions & { focusVisible?: boolean }) => void;
+    focus({ preventScroll: true, focusVisible: false });
   }, [state.phase]);
-
-  const onBack = useCallback(() => {
-    if (state.finale === "skip" && state.phase === "present") {
-      dispatch({ type: "finale-back" });
-      return;
-    }
-    if (state.phase !== "present" && state.phase !== "ack") return;
-    if (state.index <= 0) {
-      dispatch({ type: "back" });
-      return;
-    }
-    const pathAtBack = pathname;
-    router.back();
-    window.setTimeout(() => {
-      if (window.location.pathname === pathAtBack) dispatch({ type: "back" });
-    }, 280);
-  }, [pathname, router, state.finale, state.index, state.phase]);
 
   const phaseKind = state.phase === "idle" || state.phase === "done" ? state.phase : "active";
   const nextLanding = nextChromeQuiet(landing, phaseKind, pathname);
@@ -331,55 +307,40 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     pathname,
     landing: nextLanding,
   });
+  const open = tourIsOpen(state);
+  // The welcome card waits until Notes is the current page. Opening it from
+  // Settings used to paint the card for a frame before the route changed.
+  const welcomeParked = state.phase === "welcome" && pathname !== "/notes";
 
   const api = useMemo<TourApi>(
     () => ({
-      overlay: tourOverlayActive(state),
-      holdsMoodTimeline: tourHoldsMoodTimeline(state),
-      litHref: state.phase === "travel" ? (TOUR_STOPS[state.index]?.navHref ?? null) : null,
-      stopId: tourStopId(state),
+      overlay: open,
       quietChrome,
-      suppressUpdatesDot: tourOverlayActive(state) && typeof seenAt !== "string",
-      notifyTagCreated: () => dispatch({ type: "action", line: TOUR_COPY.tagAck }),
-      notifyTaskCreated: () => dispatch({ type: "action", line: TOUR_COPY.taskAck }),
-      notifyMoodPicked: () => dispatch({ type: "mood-picked" }),
-      notifyMoodKept: (color) => dispatch({ type: "mood-kept", color }),
+      suppressUpdatesDot: open,
     }),
-    [state, quietChrome, seenAt]
+    [open, quietChrome]
   );
-
-  const room = useMoodRoom();
-  const moodTint = room.accent ? { r: room.accent.r, g: room.accent.g, b: room.accent.b } : null;
-
-  useEffect(() => {
-    if (!room.token) return;
-    if (state.phase !== "present" && state.phase !== "settle") return;
-    if (tourStopId(state) !== "moods") return;
-    dispatch({ type: "mood-already", color: room.token });
-  }, [room.token, state]);
 
   return (
     <QueryContext.Provider value={onTourQuery}>
       <TourContext.Provider value={api}>
         {children}
-        {tourOverlayActive(state) ? (
-          <TourStage
-            state={state}
-            name={identity.username}
-            emailNote={readSignupEmailNote()}
-            moodTint={moodTint}
-            moodToken={room.token}
-            onBegin={() => dispatch({ type: "begin" })}
-            onDecline={() => dispatch({ type: "decline" })}
-            onLeave={() => dispatch({ type: "leave" })}
+        {open && !welcomeParked ? (
+          <TourCard
+            phase={state.phase === "welcome" || state.phase === "step" || state.phase === "close" ? state.phase : "welcome"}
+            index={state.index}
+            pathname={pathname}
+            onStart={() => dispatch({ type: "start" })}
             onNext={() => dispatch({ type: "next" })}
-            onBack={onBack}
-            onNotToday={() => dispatch({ type: "not-today" })}
-            onFinaleBack={() => dispatch({ type: "finale-back" })}
-            onFinaleDone={() => dispatch({ type: "finale-done" })}
-            onTargetReady={() => dispatch({ type: "target-ready", todayMood: room.token })}
-            onLightDone={() => dispatch({ type: "light-done" })}
-            onClosingDone={() => dispatch({ type: "closing-done" })}
+            onBack={() => dispatch({ type: "back" })}
+            onSkip={() => {
+              finishTour();
+              window.setTimeout(() => dispatch({ type: "skip" }), 160);
+            }}
+            onDone={() => {
+              finishTour();
+              window.setTimeout(() => dispatch({ type: "done" }), 160);
+            }}
           />
         ) : null}
       </TourContext.Provider>

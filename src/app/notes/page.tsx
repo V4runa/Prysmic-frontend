@@ -31,8 +31,6 @@ import { parseTagIds, tagFilterHref } from "../lib/tagQuery";
 import TagChipRow from "../components/TagChipRow";
 import NoteActionsMenu from "../components/NoteActionsMenu";
 import { notesForList, type OriginatedTaskRef } from "./noteMenu";
-import { useTour } from "../tour/TourProvider";
-
 interface Note {
   id: number;
   title: string;
@@ -54,7 +52,6 @@ interface TagData {
 
 export default function NotesOverviewPage() {
   const router = useRouter();
-  const tour = useTour();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.toString();
@@ -189,7 +186,7 @@ export default function NotesOverviewPage() {
 
   return (
     <PageTransition>
-    <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
+    <div data-app-route="/notes" className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
     <div
       className={clsx(
         "flex h-full min-h-0 w-full flex-col gap-4 sm:gap-6 xl:flex-row",
@@ -283,22 +280,18 @@ export default function NotesOverviewPage() {
       )}
 
       {/* Main content */}
-      <main data-tour="notes-panel" className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <GlassPanel className="flex h-full min-h-0 w-full min-w-0 flex-col gap-4 sm:gap-6">
           <div className="flex justify-between items-center flex-wrap gap-4">
-            <h2 data-tour-heading tabIndex={-1} className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide outline-none">
+            <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">
               Your Notes
             </h2>
             <div className="flex items-center gap-2">
               <motion.div {...tactile} className="inline-flex">
                 <Link
                   href="/tags"
-                  data-tour="manage-tags"
-                  className={`tap-target flex items-center gap-1.5 px-3 py-2 rounded-md border transition-colors text-sm ${
-                    tour.litHref === "/tags"
-                      ? "border-cyan-300/40 text-cyan-300"
-                      : "border-white/10 text-slate-300 hover:bg-white/10"
-                  }`}
+                  data-tour-keep=""
+                  className="tap-target flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/10 text-slate-300 hover:bg-white/10 transition-colors text-sm"
                 >
                   <Tag className="h-4 w-4" />
                   <span className="hidden sm:inline">Manage tags</span>
@@ -398,7 +391,7 @@ export default function NotesOverviewPage() {
             </div>
           )}
 
-          <div data-tour="notes-feed" className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
               <Spinner label="Gathering your thoughts..." />
@@ -409,7 +402,7 @@ export default function NotesOverviewPage() {
             </div>
           ) : filteredNotes.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-slate-400 text-center text-lg">
+              <p data-tour-quiet="" className="text-slate-400 text-center text-lg">
                 {archived && activeTagIds.length === 0
                   ? "No archived notes."
                   : activeTagIds.length > 0
