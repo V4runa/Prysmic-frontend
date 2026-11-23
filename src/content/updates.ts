@@ -62,12 +62,20 @@ export type PlannedUpdate = {
 
 export const productUpdates = [
   {
+    id: "habits-and-tour-welcome",
+    date: "2026-11-23",
+    kind: "improved",
+    title: "Contracts are now Habits",
+    summary:
+      "Contracts are now called Habits, which says more plainly what they are. Everything you've already logged is still there. The guided tour also ends with a short welcome now.",
+  },
+  {
     id: "guided-tour",
     date: "2026-11-19",
     kind: "new",
     title: "A tour of Prysmic",
     summary:
-      "A short tour shows you notes, tasks, contracts, the calendar, and moods. You can start it again anytime from Settings.",
+      "A short tour shows you notes, tasks, habits, the calendar, and moods. You can start it again anytime from Settings.",
     action: { label: "Start the tour", href: "/notes?tour=1" },
   },
   {
@@ -85,7 +93,7 @@ export const productUpdates = [
     kind: "new",
     title: "A record of the days you kept",
     summary:
-      "A contract now shows the days you kept it, month by month. A kept day opens that day on the calendar.",
+      "A habit now shows the days you kept it, month by month. A kept day opens that day on the calendar.",
   },
   {
     id: "tidier-tags",
@@ -133,7 +141,7 @@ export const productUpdates = [
     kind: "improved",
     title: "Looks right on big screens",
     summary:
-      "On a large screen, tag names fit on their cards, a contract's Edit and Delete sit with the writing, and notes, lists, the calendar, and the home page use the extra width.",
+      "On a large screen, tag names fit on their cards, a habit's Edit and Delete sit with the writing, and notes, lists, the calendar, and the home page use the extra width.",
   },
   {
     id: "mood-check-in",
@@ -149,7 +157,7 @@ export const productUpdates = [
     kind: "improved",
     title: "Easier to use on a phone",
     summary:
-      "On a phone, the account line sits under the wordmark, a note's heading is no longer cut off, and contract check-offs and note tag filters are easier to tap.",
+      "On a phone, the account line sits under the wordmark, a note's heading is no longer cut off, and habit check-offs and note tag filters are easier to tap.",
   },
   {
     id: "note-into-task",
@@ -165,7 +173,7 @@ export const productUpdates = [
     kind: "new",
     title: "More you can do with a note",
     summary:
-      "A note has a quiet menu: turn it into a contract, put it on a calendar day, pin or archive it, copy it as text or Markdown, or print it.",
+      "A note has a quiet menu: turn it into a habit, put it on a calendar day, pin or archive it, copy it as text or Markdown, or print it.",
   },
   {
     id: "calendar-day-links",
@@ -173,7 +181,7 @@ export const productUpdates = [
     kind: "new",
     title: "Calendar day links",
     summary:
-      "A day on the calendar opens the note, task, contract, or mood it shows. The date on a note, task, mood, or contract opens that day.",
+      "A day on the calendar opens the note, task, habit, or mood it shows. The date on a note, task, mood, or habit opens that day.",
   },
   {
     id: "calendar-finished-tasks",
@@ -205,7 +213,7 @@ export const productUpdates = [
     kind: "improved",
     title: "A clearer welcome and plainer starter notes",
     summary:
-      "The first-run welcome is clearer, and the Start Here note and sample notes, contracts, and tasks are rewritten in plain language.",
+      "The first-run welcome is clearer, and the Start Here note and sample notes, habits, and tasks are rewritten in plain language.",
   },
   {
     id: "settings-page",
@@ -213,7 +221,7 @@ export const productUpdates = [
     kind: "new",
     title: "Settings",
     summary:
-      "You can change your password, update your email and confirm the new address, and pick an avatar. You can also choose the page that opens after login, a 12- or 24-hour clock, and the hour when your contract and mood day rolls over.",
+      "You can change your password, update your email and confirm the new address, and pick an avatar. You can also choose the page that opens after login, a 12- or 24-hour clock, and the hour when your habit and mood day rolls over.",
   },
   {
     id: "privacy-and-terms",
@@ -229,7 +237,7 @@ export const productUpdates = [
     kind: "new",
     title: "Delete your account",
     summary:
-      "You can delete your account from Settings. You confirm with your current password and the word DELETE, and your notes, tags, contracts, tasks, and moods are removed.",
+      "You can delete your account from Settings. You confirm with your current password and the word DELETE, and your notes, tags, habits, tasks, and moods are removed.",
   },
 ] as const satisfies readonly ProductUpdate[];
 

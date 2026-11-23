@@ -39,12 +39,15 @@ export type TourApi = {
   quietChrome: boolean;
   /** The Updates dot stays hidden for the whole time the tour is open. */
   suppressUpdatesDot: boolean;
+  /** The email banner is already in the page, under the dim, as the tour ends. */
+  revealBanner: boolean;
 };
 
 const INACTIVE: TourApi = {
   overlay: false,
   quietChrome: false,
   suppressUpdatesDot: false,
+  revealBanner: false,
 };
 
 const TourContext = createContext<TourApi>(INACTIVE);
@@ -108,6 +111,8 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   const pendingPush = useRef(0);
   const notesHandoff = useRef(false);
   const [landing, setLanding] = useState<ChromeQuietMemory>(QUIET_CHROME_MEMORY);
+  const [bannerLive, setBannerLive] = useState(false);
+  const endHandoff = useRef(false);
 
   const onTourQuery = useCallback((event: { rising: boolean }) => {
     if (event.rising) setRequestSerial((value) => value + 1);
@@ -197,6 +202,11 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   }, [identity.userId, userLoaded, seenAt, requestSerial, state.phase, pathname, router]);
 
   useEffect(() => {
+    if (state.phase === "welcome") endHandoff.current = false;
+    if (state.phase === "welcome" || state.phase === "step") setBannerLive(false);
+  }, [state.phase]);
+
+  useEffect(() => {
     if (state.phase === "idle") {
       notesHandoff.current = false;
       return;
@@ -217,7 +227,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
     if (appliedRoute.current === key) {
       const leftStep = route != null && pathname !== route;
       const leftClose = route == null && closePath.current !== "" && pathname !== closePath.current;
-      if (leftStep || leftClose) {
+      if ((leftStep || leftClose) && !endHandoff.current) {
         window.clearTimeout(pendingPush.current);
         ended.current = true;
         cancelIdleTourPrefetch(queryClient);
@@ -317,8 +327,9 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
       overlay: open,
       quietChrome,
       suppressUpdatesDot: open,
+      revealBanner: bannerLive,
     }),
-    [open, quietChrome]
+    [open, quietChrome, bannerLive]
   );
 
   return (
@@ -335,11 +346,15 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
             onBack={() => dispatch({ type: "back" })}
             onSkip={() => {
               finishTour();
-              window.setTimeout(() => dispatch({ type: "skip" }), 160);
+              setBannerLive(true);
+              window.setTimeout(() => dispatch({ type: "skip" }), TOUR_FADE_MS + 80);
             }}
             onDone={() => {
               finishTour();
-              window.setTimeout(() => dispatch({ type: "done" }), 160);
+              endHandoff.current = true;
+              setBannerLive(true);
+              if (pathname !== "/notes") router.push("/notes");
+              window.setTimeout(() => dispatch({ type: "done" }), TOUR_FADE_MS + 80);
             }}
           />
         ) : null}

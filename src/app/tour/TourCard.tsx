@@ -849,6 +849,7 @@ export default function TourCard({
   const [stage, setStage] = useState<"out" | "measure" | "show">("measure");
   const stageKey = useRef("");
   const stageIdentity = useRef("");
+  const moodsScrollHold = useRef<number | null>(null);
   const shownSig = useRef("");
   const navLock = useRef(false);
   const dimHeld = useRef(false);
@@ -1244,8 +1245,13 @@ export default function TourCard({
             const child = scroller.firstElementChild;
             if (child instanceof HTMLElement) child.style.minHeight = "";
             scroller.style.paddingBottom = "";
-            scroller.scrollTop = 0;
-            moodScrolls = 1;
+            if (moodsScrollHold.current != null) {
+              scroller.scrollTop = moodsScrollHold.current;
+              moodScrolls = 20;
+            } else {
+              scroller.scrollTop = 0;
+              moodScrolls = 1;
+            }
             previous = null;
             return;
           }
@@ -1358,6 +1364,7 @@ export default function TourCard({
             }
           }
           moodScrolls = 20;
+          moodsScrollHold.current = scroller.scrollTop;
           previous = null;
           return;
         }
@@ -1478,6 +1485,25 @@ export default function TourCard({
   }, [phase, index, pathname, step, chrome.top, chrome.bottom]);
 
   useLayoutEffect(() => {
+    const panel = document.querySelector<HTMLElement>(".app-workspace-moods");
+    const onTourMoods =
+      pathname === "/moods" && (phase === "close" || (phase === "step" && step?.id === "moods"));
+    if (!onTourMoods) {
+      if (pathname !== "/moods" && panel) {
+        panel.style.paddingTop = "";
+        panel.style.marginTop = "";
+        moodsScrollHold.current = null;
+      }
+      return;
+    }
+    if (!panel) return;
+    panel.style.paddingTop = "0px";
+    panel.style.marginTop = "-8px";
+    const scroller = panel.querySelector<HTMLElement>(".app-scroll");
+    if (scroller && moodsScrollHold.current != null) scroller.scrollTop = moodsScrollHold.current;
+  }, [pathname, phase, step?.id]);
+
+  useLayoutEffect(() => {
     if (phase !== "close") {
       setCloseReady(false);
       return;
@@ -1583,9 +1609,9 @@ export default function TourCard({
         event.stopPropagation();
         if (navLock.current || stage !== "show") return;
         navLock.current = true;
-        setStage("out");
         if (phase === "close") onDone();
         else onSkip();
+        window.requestAnimationFrame(() => setStage("out"));
         return;
       }
       if (event.key !== "Tab") return;
@@ -2233,14 +2259,15 @@ export default function TourCard({
   const placedSpot = (stage === "show" || showFrozenLook) && frozen.current ? frozen.current.spot : spot;
   const showFrozenCard = stage === "out" || stage === "measure" || (stage === "show" && showLive && spot != null);
   const tourOpen = stage === "show";
-  const guarded = (action: () => void) => (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const guarded = (action: () => void, settleBanner = false) => (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     if (navLock.current || stage !== "show") return;
     navLock.current = true;
-    setStage("out");
     action();
+    if (settleBanner) window.requestAnimationFrame(() => setStage("out"));
+    else setStage("out");
   };
   const dimAlready = dimHeld.current;
   if (stage === "show") dimHeld.current = true;
@@ -2377,7 +2404,7 @@ export default function TourCard({
           ) : null}
           <div data-tour-actions="" className={`flex shrink-0 flex-nowrap items-center gap-2 ${moodCompact && viewport.width < 640 && !moodNested ? "mt-2" : moodNested || viewport.width < 640 ? "mt-3" : "mt-5"}`}>
             {shownKind !== "close" ? (
-              <button type="button" className={`${btnSecondary} transition-none`} style={{ opacity: 1 }} disabled={!tourOpen} onPointerDown={guarded(onSkip)}>
+              <button type="button" className={`${btnSecondary} transition-none`} style={{ opacity: 1 }} disabled={!tourOpen} onPointerDown={guarded(onSkip, true)}>
                 {TOUR_CONTROLS.skip}
               </button>
             ) : null}
@@ -2398,7 +2425,7 @@ export default function TourCard({
                 </button>
               ) : null}
               {shownKind === "close" ? (
-                <button type="button" className={`${btnPrimary} transition-none`} style={{ opacity: 1 }} disabled={!tourOpen} onPointerDown={guarded(onDone)}>
+                <button type="button" className={`${btnPrimary} transition-none`} style={{ opacity: 1 }} disabled={!tourOpen} onPointerDown={guarded(onDone, true)}>
                   {TOUR_CLOSE.done}
                 </button>
               ) : null}

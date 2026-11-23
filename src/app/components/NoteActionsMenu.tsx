@@ -328,7 +328,7 @@ export default function NoteActionsMenu({
             {panel === "actions" && (
               <div className="py-1">
                 <button type="button" role="menuitem" disabled={pending} onClick={turnIntoContract} className={menuItemClass}>
-                  Turn into a contract
+                  Turn into a habit
                 </button>
                 <button type="button" role="menuitem" disabled={pending} onClick={makeTask} className={menuItemClass}>
                   Make a task

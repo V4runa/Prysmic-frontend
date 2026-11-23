@@ -51,14 +51,14 @@ const habitClip = {
   mp4: "/marketing/clips/habit.mp4",
   webm: "/marketing/clips/habit.webm",
   poster: "/marketing/clips/habit.jpg",
-  label: "Checking off the Evening pages contract.",
+  label: "Checking off the Evening pages habit.",
 };
 
 const calendarClip = {
   mp4: "/marketing/clips/calendar.mp4",
   webm: "/marketing/clips/calendar.webm",
   poster: "/marketing/clips/calendar.jpg",
-  label: "Opening a day that holds a contract, a mood, a note, and a task.",
+  label: "Opening a day that holds a habit, a mood, a note, and a task.",
 };
 
 export default function HomePage() {
@@ -77,7 +77,7 @@ export default function HomePage() {
               A calm place to keep your ideas and come back to them.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
-              Prysmic is a private notebook for creative work and reflective practice. Write notes and organize them with tags you name. Write short contracts with yourself and check them off. Log how each day felt. The calendar puts it all together, day by day.
+              Prysmic is a private notebook for creative work and reflective practice. Write notes and organize them with tags you name. Write short habits with yourself and check them off. Log how each day felt. The calendar puts it all together, day by day.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/signup" className={btnPrimary}>
@@ -137,13 +137,13 @@ export default function HomePage() {
       </section>
 
       <section className={section}>
-        <p className={kickerClass}>Contracts</p>
+        <p className={kickerClass}>Habits</p>
         <h2 className="mt-3 max-w-2xl text-3xl font-semibold text-slate-50 sm:text-4xl">
-          Write contracts with yourself.
+          Write habits with yourself.
         </h2>
         <div className="mt-6 max-w-2xl space-y-4 text-base leading-relaxed text-slate-300">
           <p>
-            A contract has a name, an intent that says why it matters to you, and an affirmation you want to keep in mind. Set it as daily, weekly or monthly, and pick a color and an icon.
+            A habit has a name, an intent that says why it matters to you, and an affirmation you want to keep in mind. Set it as daily, weekly or monthly, and pick a color and an icon.
           </p>
           <p>
             When you&apos;ve done it, check it off. Prysmic keeps your current streak and your longest one, and you can undo a check-in made by mistake.
@@ -153,7 +153,7 @@ export default function HomePage() {
           <div className={frame}>
             <Shot
               src="/marketing/habit.webp"
-              alt="The Write 300 words contract, open to its daily frequency, intent, affirmation, and streak."
+              alt="The Write 300 words habit, open to its daily frequency, intent, affirmation, and streak."
               sizes="(min-width: 3000px) 1700px, (min-width: 2200px) 1500px, (min-width: 1024px) 960px, 100vw"
               className="aspect-[16/10]"
             />
@@ -211,10 +211,10 @@ export default function HomePage() {
         </h2>
         <div className="mt-6 max-w-2xl space-y-4 text-base leading-relaxed text-slate-300">
           <p>
-            Open any day to see what you wrote, which contracts you kept, how you felt and what was due. Switch between month, week and day views, and filter by type when you only want to see one kind of entry.
+            Open any day to see what you wrote, which habits you kept, how you felt and what was due. Switch between month, week and day views, and filter by type when you only want to see one kind of entry.
           </p>
           <p>
-            You can also add your own events and link them to a note, a task or a contract. Over time the calendar becomes a record you can look back through by date.
+            You can also add your own events and link them to a note, a task or a habit. Over time the calendar becomes a record you can look back through by date.
           </p>
         </div>
         <figure className="mt-10">
@@ -235,7 +235,7 @@ export default function HomePage() {
         </p>
         <ol className="mt-8 max-w-2xl list-decimal space-y-2 pl-5 text-base leading-relaxed text-slate-300">
           <li>Write a note and give it a tag of your own.</li>
-          <li>Write one contract and check it off.</li>
+          <li>Write one habit and check it off.</li>
           <li>Open the calendar and look at the day.</li>
         </ol>
         <ul className="mt-8 max-w-2xl space-y-2 text-sm leading-relaxed text-slate-400">

@@ -107,7 +107,7 @@ test("days before the contract was signed come from the habit createdAt", () => 
   const later = days.find((day) => day.key === "2026-10-05");
   assert.equal(first?.beforeContract, true);
   assert.equal(first?.kept, false);
-  assert.match(first?.label ?? "", /before this contract/);
+  assert.match(first?.label ?? "", /before this habit/);
   assert.equal(signed?.beforeContract, false);
   assert.equal(signed?.kept, true);
   assert.equal(later?.kept, true);

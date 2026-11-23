@@ -101,7 +101,7 @@ export default function NewHabitPage() {
           await finishCreate({ ...form }, deadline.signal);
           return;
         } catch {
-          setError("That contract didn't save. Try again.");
+          setError("That habit didn't save. Try again.");
           return;
         }
       }
@@ -110,7 +110,7 @@ export default function NewHabitPage() {
         setError("Note not found.");
         return;
       }
-      setError("That contract didn't save. Try again.");
+      setError("That habit didn't save. Try again.");
     } finally {
       deadline.clear();
     }
@@ -121,8 +121,8 @@ export default function NewHabitPage() {
       <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
         <GlassPanel className="w-full max-w-[1400px] flex flex-col gap-4 sm:gap-6 h-full min-h-0">
           <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
-            <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Forge a New Contract</h2>
-            <p className="text-slate-400 text-sm sm:text-base">Name the contract and why you want to keep it.</p>
+            <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Forge a New Habit</h2>
+            <p className="text-slate-400 text-sm sm:text-base">Name the habit and why you want to keep it.</p>
           </div>
           {originTitle && originNoteId != null && (
             <p className="text-sm text-slate-400">
@@ -167,7 +167,7 @@ export default function NewHabitPage() {
               <Field label="Name" htmlFor="new-habit-name">
                 <TextField
                   id="new-habit-name"
-                  placeholder="Name your contract"
+                  placeholder="Name your habit"
                   value={form.name}
                   onChange={(e) => handleChange("name", e.target.value)}
                 />
@@ -177,7 +177,7 @@ export default function NewHabitPage() {
                 <TextArea
                   id="new-habit-description"
                   rows={2}
-                  placeholder="What does this contract involve? (optional)"
+                  placeholder="What does this habit involve? (optional)"
                   value={form.description}
                   onChange={(e) => handleChange("description", e.target.value)}
                 />
@@ -246,7 +246,7 @@ export default function NewHabitPage() {
                 className="flex-1 sm:flex-none"
               >
                 <Check className="w-4 h-4" />
-                Forge Contract
+                Forge Habit
               </FormButton>
             </div>
           </div>

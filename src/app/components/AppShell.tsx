@@ -161,7 +161,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ))[] = [
     { label: "Notes", href: "/notes", icon: StickyNote },
     { label: "Calendar", href: "/calendar", icon: CalendarDays },
-    { label: "Contracts", href: "/habits", icon: Flame },
+    { label: "Habits", href: "/habits", icon: Flame },
     { label: "Tasks", href: "/tasks", icon: CheckSquare },
     { label: "Moods", href: "/moods", icon: Smile },
     // Tags is a supporting taxonomy reached from within Notes on mobile.
@@ -267,7 +267,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="app-main relative z-10">
-        {tour.quietChrome ? null : <EmailVerificationPrompt defer={bannerAfterTour.current} />}
+        {tour.quietChrome && !tour.revealBanner ? null : (
+          <EmailVerificationPrompt defer={bannerAfterTour.current || tour.revealBanner} />
+        )}
         {children}
       </main>
 

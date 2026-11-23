@@ -24,7 +24,7 @@ const SOURCES: {
 }[] = [
   { key: "event", label: "Events", icon: CalendarClock, on: "text-cyan-200 bg-cyan-400/15 border-cyan-300/40" },
   { key: "task", label: "Tasks", icon: CheckSquare, on: "text-sky-200 bg-sky-400/15 border-sky-300/40" },
-  { key: "habit", label: "Contracts", icon: Flame, on: "text-amber-100 bg-amber-400/15 border-amber-300/40" },
+  { key: "habit", label: "Habits", icon: Flame, on: "text-amber-100 bg-amber-400/15 border-amber-300/40" },
   { key: "note", label: "Notes", icon: StickyNote, on: "text-violet-200 bg-violet-400/15 border-violet-300/40" },
   { key: "mood", label: "Moods", icon: Smile, on: "text-emerald-200 bg-emerald-400/15 border-emerald-300/40" },
 ];

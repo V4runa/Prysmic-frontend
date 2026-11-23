@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "How Prysmic handles your account and the notes, contracts, tasks, moods, and calendar events you keep. Your writing is visible only to you.",
+    "How Prysmic handles your account and the notes, habits, tasks, moods, and calendar events you keep. Your writing is visible only to you.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
       <p className="mt-3 text-sm text-slate-400">Last updated: November 16, 2026</p>
       <div className="mt-8 space-y-8 text-base leading-relaxed text-slate-300">
         <p>
-          {`Prysmic is a private notebook for notes, contracts, tasks, moods and a calendar. It is run by Eduardo Martin Gargani, Orlando, Florida, USA ("we"). There are no feeds, followers or sharing. What you write is visible only to you.`}
+          {`Prysmic is a private notebook for notes, habits, tasks, moods and a calendar. It is run by Eduardo Martin Gargani, Orlando, Florida, USA ("we"). There are no feeds, followers or sharing. What you write is visible only to you.`}
         </p>
 
         <Section title="What we collect">
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
               Account details: a username, an email address, and a password stored only as a one-way hash (bcrypt). We never see or store your actual password.
             </li>
             <li>
-              What you add: notes, tags, attached files, contracts and check-ins, tasks, moods and mood notes, custom moods, and calendar events.
+              What you add: notes, tags, attached files, habits and check-ins, tasks, moods and mood notes, custom moods, and calendar events.
             </li>
             <li>
               Technical data: our hosting providers keep standard server logs, which can include your IP address, browser type and the pages requested. We use IP addresses briefly to limit repeated password-reset and login-related requests. Those counters live in memory for about 15 minutes and are not stored.
@@ -108,7 +108,7 @@ export default function PrivacyPage() {
 
         <Section title="How long we keep data">
           <p>
-            {`We keep your account and content until you delete them or delete your account. When you delete your account, everything it holds is removed from the live database right away: the account, notes, tags, attached files, contracts and check-ins, tasks, moods, custom moods and calendar events. We also keep encrypted nightly backups for disaster recovery. Each backup is deleted after 14 days, so deleted data disappears from backups within 14 days. Expired email links are purged within about a day. Error reports and server logs are kept for the providers' standard retention periods and contain no note, task or mood content.`}
+            {`We keep your account and content until you delete them or delete your account. When you delete your account, everything it holds is removed from the live database right away: the account, notes, tags, attached files, habits and check-ins, tasks, moods, custom moods and calendar events. We also keep encrypted nightly backups for disaster recovery. Each backup is deleted after 14 days, so deleted data disappears from backups within 14 days. Expired email links are purged within about a day. Error reports and server logs are kept for the providers' standard retention periods and contain no note, task or mood content.`}
           </p>
         </Section>
 

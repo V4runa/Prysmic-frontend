@@ -51,7 +51,7 @@ export default function HabitsPage() {
   const lastCheckDate = useRef<string>(today);
 
   useEffect(() => {
-    setError(isError ? "Failed to load contracts" : "");
+    setError(isError ? "Failed to load habits" : "");
   }, [isError]);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function HabitsPage() {
       queryClient.setQueryData<Habit[]>(habitsQueryKey, (prev) =>
         (prev ?? []).map((h) => (h.id === habitId ? previousState : h))
       );
-      setError("Failed to mark contract complete.");
+      setError("Failed to mark habit complete.");
       setAnimatingId(null);
     }
   };
@@ -135,7 +135,7 @@ export default function HabitsPage() {
       <GlassPanel className="app-workspace flex h-full min-h-0 flex-col gap-4 sm:gap-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Your Contracts</h2>
+            <h2 className="text-slate-100 text-2xl sm:text-3xl font-bold tracking-wide">Your Habits</h2>
             <p className="text-slate-400 text-sm sm:text-base">Personal commitments you can check in on.</p>
           </div>
           <motion.button
@@ -144,7 +144,7 @@ export default function HabitsPage() {
             onClick={() => router.push("/habits/new")}
             className="shrink-0 self-start sm:self-center px-3 sm:px-4 py-2 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-400/10 hover:shadow-[0_0_18px_rgba(103,232,249,0.25)] rounded-md text-sm sm:text-base transition-shadow"
           >
-            + New Contract
+            + New Habit
           </motion.button>
         </div>
 
@@ -171,7 +171,7 @@ export default function HabitsPage() {
               >
                 {habits.length === 0 ? (
                   <p data-tour-keep="" data-tour-quiet="" className="col-span-full px-2 py-8 text-center text-slate-400">
-                    No contracts yet. A small promise is enough to begin.
+                    No habits yet. A small promise is enough to begin.
                   </p>
                 ) : null}
                 {habits.map((habit, i) => {
