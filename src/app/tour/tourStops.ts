@@ -27,8 +27,9 @@ export const TOUR_WELCOME = {
 } as const;
 
 export const TOUR_CLOSE = {
-  title: "Welcome to Prysmic",
-  body: "You're all set. Your notebook is ready whenever you are. You can start this tour again anytime from Settings.",
+  title: "You're all set",
+  body: "Your notebook is ready. Use it to keep track of your days and watch your progress build over time. Welcome to Prysmic.",
+  hint: "You can start this tour again anytime from Settings.",
   done: "Done",
 } as const;
 
@@ -105,6 +106,7 @@ export function tourFacingCopy(): string[] {
     TOUR_WELCOME.skip,
     TOUR_CLOSE.title,
     TOUR_CLOSE.body,
+    TOUR_CLOSE.hint,
     TOUR_CLOSE.done,
     TOUR_CONTROLS.skip,
     TOUR_CONTROLS.back,

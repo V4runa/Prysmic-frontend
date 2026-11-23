@@ -62,8 +62,12 @@ test("the tour is five steps with the approved copy", () => {
     TOUR_STEPS[4]?.body,
     "Here you can log how you feel today. Select a mood, or add your own. If you log one, the notebook takes on that color for the rest of the day."
   );
-  assert.equal(TOUR_CLOSE.title, "Welcome to Prysmic");
-  assert.equal(TOUR_CLOSE.body, "You're all set. Your notebook is ready whenever you are. You can start this tour again anytime from Settings.");
+  assert.equal(TOUR_CLOSE.title, "You're all set");
+  assert.equal(
+    TOUR_CLOSE.body,
+    "Your notebook is ready. Use it to keep track of your days and watch your progress build over time. Welcome to Prysmic."
+  );
+  assert.equal(TOUR_CLOSE.hint, "You can start this tour again anytime from Settings.");
   assert.equal(TOUR_CLOSE.done, "Done");
   assert.equal(TOUR_CONTROLS.back, "Back");
   assert.equal(TOUR_CONTROLS.next, "Next");

@@ -39,8 +39,12 @@ export type TourApi = {
   quietChrome: boolean;
   /** The Updates dot stays hidden for the whole time the tour is open. */
   suppressUpdatesDot: boolean;
-  /** The email banner is already in the page, under the dim, as the tour ends. */
-  revealBanner: boolean;
+  /**
+   * Where the email banner may sit while the overlay is still up.
+   * "notes" waits until Notes is the painted page, so Moods does not drop.
+   * "here" puts it on the current page (Skip stays put).
+   */
+  revealBanner: false | "here" | "notes";
 };
 
 const INACTIVE: TourApi = {
@@ -111,7 +115,7 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
   const pendingPush = useRef(0);
   const notesHandoff = useRef(false);
   const [landing, setLanding] = useState<ChromeQuietMemory>(QUIET_CHROME_MEMORY);
-  const [bannerLive, setBannerLive] = useState(false);
+  const [bannerLive, setBannerLive] = useState<false | "here" | "notes">(false);
   const endHandoff = useRef(false);
 
   const onTourQuery = useCallback((event: { rising: boolean }) => {
@@ -346,13 +350,15 @@ function TourProviderInner({ children }: { children: React.ReactNode }) {
             onBack={() => dispatch({ type: "back" })}
             onSkip={() => {
               finishTour();
-              setBannerLive(true);
+              setBannerLive("here");
               window.setTimeout(() => dispatch({ type: "skip" }), TOUR_FADE_MS + 80);
             }}
             onDone={() => {
               finishTour();
               endHandoff.current = true;
-              setBannerLive(true);
+              // The banner waits for the Notes commit. Mounting it now would
+              // drop Moods while the address has already changed.
+              setBannerLive("notes");
               if (pathname !== "/notes") router.push("/notes");
               window.setTimeout(() => dispatch({ type: "done" }), TOUR_FADE_MS + 80);
             }}

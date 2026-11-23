@@ -1946,6 +1946,7 @@ export default function TourCard({
   const progress = phase === "step" ? tourProgressLabel(index) : null;
   const titleId = "tour-card-title";
   const bodyId = "tour-card-body";
+  const hintId = "tour-card-hint";
   const progressId = "tour-card-progress";
 
   // The copy wins over the ring on a phone or a short window. A laptop or
@@ -2360,7 +2361,7 @@ export default function TourCard({
           role="dialog"
           aria-modal="true"
           aria-labelledby={progress ? `${progressId} ${titleId}` : titleId}
-          aria-describedby={bodyId}
+          aria-describedby={shownKind === "close" ? `${bodyId} ${hintId}` : bodyId}
           tabIndex={-1}
           className={`fixed z-[81] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#14161c] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.45)] outline-none ${
             lookNested ? "px-4 py-3" : viewport.width < 640 ? (moodCompact ? "px-3.5 py-2" : "p-3.5") : placedSpot && placedSpot.width < 380 ? "px-3.5 py-4" : "p-5"
@@ -2396,6 +2397,11 @@ export default function TourCard({
           <p id={bodyId} className={`text-sm text-slate-300 ${moodNested ? "mt-1.5 leading-snug" : moodCompact && viewport.width < 640 ? "mt-1 leading-snug" : "mt-2 leading-relaxed"}`}>
             {shownBody}
           </p>
+          {shownKind === "close" ? (
+            <p id={hintId} className="mt-2 text-xs leading-relaxed text-slate-400">
+              {TOUR_CLOSE.hint}
+            </p>
+          ) : null}
           </div>
           {copyCapped ? (
             <p data-tour-more="" className="shrink-0 pt-1 text-xs text-slate-400">
