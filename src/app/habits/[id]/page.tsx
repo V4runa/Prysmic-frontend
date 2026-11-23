@@ -226,7 +226,7 @@ export default function HabitDetailPage() {
   if (contractMissing || (loadError && !habit)) {
     return (
       <PageTransition>
-        <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
+        <div data-app-route="/habits" className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
           <GlassPanel className="flex h-full min-h-0 w-full max-w-[1400px] flex-col">
             <MissingRecord
               title={contractMissing ? "Not found" : "Could not load"}
@@ -246,7 +246,7 @@ export default function HabitDetailPage() {
 
   if (!habit) {
     return (
-      <div className="app-page-h flex items-center justify-center">
+      <div data-app-route="/habits" className="app-page-h flex items-center justify-center">
         <Spinner label="Summoning habit..." />
       </div>
     );
@@ -254,7 +254,7 @@ export default function HabitDetailPage() {
 
   return (
     <PageTransition>
-      <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
+      <div data-app-route="/habits" className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
         <GlassPanel
           className={clsx(
             "flex w-full max-w-[1400px] min-h-0 flex-col gap-4 sm:gap-6",
