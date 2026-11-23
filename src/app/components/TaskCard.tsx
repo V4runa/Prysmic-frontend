@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Task, TaskPriority } from "../tasks/types/task";
 import { apiFetch } from "../hooks/useApi";
 import { rememberTaskCompletion } from "../hooks/taskCompletionSync";
+import { calendarQueryKey } from "../hooks/useCalendar";
 import {
   CheckCircle2,
   Circle,
@@ -106,9 +107,10 @@ export default function TaskCard({ task, onUpdate }: TaskCardProps) {
     try {
       const endpoint = task.isComplete ? "uncomplete" : "complete";
       await apiFetch(`/tasks/${task.id}/${endpoint}`, { method: "POST" });
-      // The list refresh waits for the animation. The calendar feed does not,
-      // or leaving this page still shows the previous check.
+      // The list refresh waits for the animation. The calendar must not:
+      // opening it during that pause used to show the previous day.
       rememberTaskCompletion(queryClient, task.id, !task.isComplete, { tasks: false });
+      void queryClient.invalidateQueries({ queryKey: calendarQueryKey });
 
       if (!task.isComplete) {
         setAnimating(true);
