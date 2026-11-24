@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +16,7 @@ import { useLogicalToday } from "../../hooks/usePreferences";
 import { tactileSubtle } from "../../lib/motion";
 import { CalendarMoodItem } from "../types";
 import { TextField } from "../../components/forms";
+import { scheduleViewportPin } from "../../lib/pinViewport";
 
 const sectionTitle =
   "text-[11px] uppercase tracking-widest text-slate-500 font-semibold";
@@ -41,6 +42,11 @@ export default function DayMoodEditor({ day, mood }: DayMoodEditorProps) {
 
   const isFuture = day > localToday();
   const logicalDay = useLogicalToday();
+
+  useEffect(() => {
+    if (!open) return;
+    return () => scheduleViewportPin();
+  }, [open]);
 
   const refresh = () =>
     Promise.all([

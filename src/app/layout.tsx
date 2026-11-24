@@ -43,6 +43,9 @@ export const viewport: Viewport = {
   // Allow pinch-zoom for accessibility; cover lets us use safe-area insets.
   viewportFit: "cover",
   themeColor: "#0b0c0f",
+  // The keyboard overlays the app. Resizing the layout viewport is what lets
+  // iOS leave the shell a few pixels high after a mood note is dismissed.
+  interactiveWidget: "overlays-content",
 };
 
 export default function RootLayout({
