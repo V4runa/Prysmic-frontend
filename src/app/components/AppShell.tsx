@@ -180,7 +180,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="app-shell min-h-[100dvh] text-slate-100 font-sans relative overflow-hidden"
+      className="app-shell text-slate-100 font-sans overflow-hidden"
       data-mood-lit={moodRoom.accent ? "true" : undefined}
       data-mood-room={moodRoom.token ?? undefined}
       style={moodRoom.paint ? moodRoomStyle(moodRoom.paint) : undefined}

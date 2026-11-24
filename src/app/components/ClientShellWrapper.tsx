@@ -6,6 +6,7 @@ import AppShell from "./AppShell";
 import PrismBackdrop from "./PrismBackdrop";
 import TourProvider from "../tour/TourProvider";
 import { SessionToastProvider, useSessionToast } from "./SessionToastContext";
+import { installViewportPin, scheduleViewportPin } from "../lib/pinViewport";
 import { isPublicPath } from "../lib/publicPaths";
 import { isAccessTokenCurrent, refreshAccessSession } from "../lib/refreshSession";
 import { discardExpiredAccessToken, isSessionRestoreSuppressed, readStoredToken } from "../lib/storedSession";
@@ -16,6 +17,13 @@ function ClientShellInner({ children }: { children: React.ReactNode }) {
   const isPublic = isPublicPath(pathname);
   const toastTriggeredRef = useRef(false);
   const triggerToast = useSessionToast();
+
+  useEffect(() => installViewportPin(), []);
+
+  // A stuck keyboard height survives client navigations. Repair on each route.
+  useEffect(() => {
+    scheduleViewportPin();
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;

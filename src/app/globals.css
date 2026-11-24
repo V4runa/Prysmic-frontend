@@ -243,10 +243,21 @@ html:has([data-app-route="/account"]) a[data-nav-link][href="/settings"] {
 }
 
 /* --- Base Styles --- */
-body {
-  height: 100%;
+/* The canvas stays the app's dark color. A light-mode system theme used to
+   paint the gap under a short shell white. Percentage height is avoided: on
+   iOS it can stay at the keyboard height until a reload. */
+html {
+  background: #0b0c0f;
+  color-scheme: dark;
   overflow: hidden;
-  background: var(--background);
+  overscroll-behavior: none;
+}
+
+body {
+  min-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #0b0c0f;
   color: var(--foreground);
   font-family: var(--font-inter), sans-serif;
   font-weight: 400;
@@ -399,6 +410,13 @@ select option {
 }
 
 .app-shell {
+  /* Fixed to the screen, at least one dynamic viewport. --app-height is set
+     only to grow a shell the keyboard left short, never to shrink it. */
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: var(--app-height, 100dvh);
+  min-height: 100dvh;
   transition:
     --mood-room-r 1.6s ease,
     --mood-room-g 1.6s ease,
@@ -653,6 +671,7 @@ html:has(.marketing-root),
 html:has(.marketing-root) body {
   height: auto;
   overflow: auto;
+  overscroll-behavior: auto;
   color-scheme: dark;
   /* Keep the public site dark even when the OS prefers light. The app's own
      light-scheme variables must not wash this document out. */
@@ -697,6 +716,15 @@ html:has(.marketing-root) body {
     overflow: visible !important;
     background: #fff !important;
     color: #1c1c1c !important;
+  }
+
+  .app-shell {
+    position: static !important;
+    inset: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .no-print {

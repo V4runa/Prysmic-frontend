@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { tactile } from "../lib/motion";
+import { scheduleViewportPin } from "../lib/pinViewport";
 import { moodColor } from "../lib/moodColors";
 import { TextArea, FormButton } from "./forms";
 
@@ -27,8 +28,20 @@ export default function MoodReflection({
   const [note, setNote] = useState(initialNote);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const tint = moodColor(color);
+
+  // Removing a focused textarea does not always blur it on iOS, so the
+  // window can stay scrolled after Skip or Submit unmounts this screen.
+  useEffect(() => {
+    const root = rootRef.current;
+    return () => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && root?.contains(active)) active.blur();
+      scheduleViewportPin();
+    };
+  }, []);
 
   // Await the save so a failure resets the button (with an inline retry)
   // instead of stranding the user on a permanent "Saving..." state. On success
@@ -57,6 +70,7 @@ export default function MoodReflection({
 
   return (
     <motion.div
+      ref={rootRef}
       key="reflection"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}

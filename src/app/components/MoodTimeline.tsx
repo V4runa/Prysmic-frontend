@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import clsx from "clsx";
 import { calendarDayHref } from "../lib/calendarDay";
+import { scheduleViewportPin } from "../lib/pinViewport";
 import { localDateKey, prevDayKey } from "../lib/date";
 import { useLogicalToday } from "../hooks/usePreferences";
 import { resolveMoodVisual } from "../lib/moodColors";
@@ -67,7 +68,19 @@ export default function MoodTimeline({
     if (!focusDay) return;
     const match = timeline.find((mood) => localDateKey(mood.date) === focusDay);
     if (!match) return;
-    document.getElementById(`mood-${match.id}`)?.scrollIntoView({ block: "center" });
+    const id = `mood-${match.id}`;
+    // Scroll the timeline pane only. scrollIntoView also scrolls the window,
+    // and iOS then leaves that offset in place.
+    const frame = window.requestAnimationFrame(() => {
+      const node = document.getElementById(id);
+      if (!(node instanceof HTMLElement)) return;
+      const scroller = node.closest(".app-scroll");
+      if (!(scroller instanceof HTMLElement)) return;
+      const nodeBox = node.getBoundingClientRect();
+      const box = scroller.getBoundingClientRect();
+      scroller.scrollTop += nodeBox.top - box.top - (box.height - nodeBox.height) / 2;
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [focusDay, timeline]);
 
   return (
@@ -224,6 +237,11 @@ function TodayNote({
   const [draft, setDraft] = useState(note ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!editing) return;
+    return () => scheduleViewportPin();
+  }, [editing]);
 
   if (!editing) {
     return (

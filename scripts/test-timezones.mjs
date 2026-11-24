@@ -69,6 +69,7 @@ const notes = spawnSync(
       "src/app/tour/tourFlag.test.ts",
     "src/app/lib/missingRecord.test.ts",
     "src/app/lib/installPrompt.test.ts",
+    "src/app/lib/pinViewport.test.ts",
   ],
   { stdio: "inherit", env: process.env }
 );
