@@ -83,7 +83,8 @@ function useLivePath(pathname: string): string {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = useLivePath(usePathname());
+  const committedPath = usePathname();
+  const pathname = useLivePath(committedPath);
   const queryClient = useQueryClient();
   const { username } = useSessionIdentity();
   const { avatar } = usePreferences();
@@ -91,6 +92,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const tour = useTour();
   const bannerAfterTour = useRef(false);
   if (tour.quietChrome) bannerAfterTour.current = true;
+  // useLivePath follows the address before the new page is painted. The banner
+  // and the Updates dot wait for the committed Notes page, so Moods never drops.
+  const notesUnderTour = tour.revealBanner === "notes" && committedPath === "/notes";
+  const showBanner = !tour.quietChrome || tour.revealBanner === "here" || notesUnderTour;
+  const hideUpdatesDot = tour.suppressUpdatesDot && !notesUnderTour;
   const { unread: updatesUnread, highlight: updateHighlight } = useUpdatesSeen();
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const updatesOpenerRef = useRef<HTMLElement | null>(null);
@@ -161,7 +167,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ))[] = [
     { label: "Notes", href: "/notes", icon: StickyNote },
     { label: "Calendar", href: "/calendar", icon: CalendarDays },
-    { label: "Contracts", href: "/habits", icon: Flame },
+    { label: "Habits", href: "/habits", icon: Flame },
     { label: "Tasks", href: "/tasks", icon: CheckSquare },
     { label: "Moods", href: "/moods", icon: Smile },
     // Tags is a supporting taxonomy reached from within Notes on mobile.
@@ -218,7 +224,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.label}
                   variant="desktop"
                   open={updatesOpen}
-                  unread={tour.suppressUpdatesDot ? false : updatesUnread}
+                  unread={hideUpdatesDot ? false : updatesUnread}
                   onOpen={openUpdates}
                 />
               ) : (
@@ -267,7 +273,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="app-main relative z-10">
-        {tour.quietChrome ? null : <EmailVerificationPrompt defer={bannerAfterTour.current} />}
+        {showBanner ? (
+          <EmailVerificationPrompt defer={bannerAfterTour.current || tour.revealBanner !== false} />
+        ) : null}
         {children}
       </main>
 
@@ -294,7 +302,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.label}
                 variant="mobile"
                 open={updatesOpen}
-                unread={tour.suppressUpdatesDot ? false : updatesUnread}
+                unread={hideUpdatesDot ? false : updatesUnread}
                 onOpen={openUpdates}
               />
             );

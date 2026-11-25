@@ -637,7 +637,7 @@ export default function ViewNotePage() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-10 sm:gap-y-3">
                           {contracts.length > 0 && (
                             <div className="flex min-w-0 flex-col gap-1">
-                              <p className="text-xs text-slate-500">Contracts from this note</p>
+                              <p className="text-xs text-slate-500">Habits from this note</p>
                               <ul className="flex flex-col gap-0.5">
                                 {contracts.map((contract) => (
                                   <li key={contract.id}>

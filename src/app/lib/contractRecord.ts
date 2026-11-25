@@ -117,7 +117,7 @@ export function recordDayLabel(day: {
 }): string {
   const notes: string[] = [];
   if (day.isToday) notes.push("today");
-  if (day.beforeContract) notes.push("before this contract");
+  if (day.beforeContract) notes.push("before this habit");
   else if (day.kept) notes.push("kept");
   const base = formatCalendarDay(day.key);
   return notes.length ? `${base}, ${notes.join(", ")}` : base;

@@ -114,7 +114,7 @@ export default function DayAgenda({
           {stats.isPerfect && (
             <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-200">
               <Sparkles className="h-3.5 w-3.5" />
-              Perfect day — every contract honoured
+              Perfect day — every habit honoured
             </span>
           )}
         </div>
@@ -265,7 +265,7 @@ export default function DayAgenda({
         {/* Habits */}
         {habits.length > 0 && (
           <section className="flex flex-col gap-1.5">
-            <span className={sectionTitle}>Contracts</span>
+            <span className={sectionTitle}>Habits</span>
             {habits.map((h) => {
               const Icon = habitIconMap[(h.icon as IconKey) ?? "flame"] ?? habitIconMap.flame;
               const toggleHabit = () => {

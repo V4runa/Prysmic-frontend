@@ -38,7 +38,7 @@ test("the tour is five steps with the approved copy", () => {
   assert.equal(TOUR_WELCOME.title, "Welcome to Prysmic");
   assert.equal(
     TOUR_WELCOME.body,
-    "This is your private notebook for notes, tasks, contracts, a calendar, and moods. This short tour shows you each area. You can skip it at any time."
+    "This is your private notebook for notes, tasks, habits, a calendar, and moods. This short tour shows you each area. You can skip it at any time."
   );
   assert.equal(TOUR_WELCOME.start, "Start tour");
   assert.equal(TOUR_WELCOME.skip, "Skip tour");
@@ -52,18 +52,22 @@ test("the tour is five steps with the approved copy", () => {
   );
   assert.equal(
     TOUR_STEPS[2]?.body,
-    "A contract is a daily commitment you set for yourself. Add one, then check it off on this page each day. The days you keep it are saved here and on the calendar."
+    "A habit is something you want to do each day. Add one, then check it off on this page each day. The days you keep it are saved here and on the calendar."
   );
   assert.equal(
     TOUR_STEPS[3]?.body,
-    "The calendar shows your tasks, contracts, events, and moods by day. Select a day to see what is on it, or select an item to open it."
+    "The calendar shows your tasks, habits, events, and moods by day. Select a day to see what is on it, or select an item to open it."
   );
   assert.equal(
     TOUR_STEPS[4]?.body,
     "Here you can log how you feel today. Select a mood, or add your own. If you log one, the notebook takes on that color for the rest of the day."
   );
   assert.equal(TOUR_CLOSE.title, "You're all set");
-  assert.equal(TOUR_CLOSE.body, "You can start this tour again anytime from Settings.");
+  assert.equal(
+    TOUR_CLOSE.body,
+    "Your notebook is ready. Use it to keep track of your days and watch your progress build over time. Welcome to Prysmic."
+  );
+  assert.equal(TOUR_CLOSE.hint, "You can start this tour again anytime from Settings.");
   assert.equal(TOUR_CLOSE.done, "Done");
   assert.equal(TOUR_CONTROLS.back, "Back");
   assert.equal(TOUR_CONTROLS.next, "Next");
@@ -72,7 +76,7 @@ test("the tour is five steps with the approved copy", () => {
 
   const facing = tourFacingCopy().join("\n");
   assert.equal(/tap/i.test(facing), false);
-  assert.equal(/habit/i.test(facing), false);
+  assert.equal(/habit/i.test(facing), true);
 });
 
 test("start, next, and back move through the steps without marking seen", () => {
@@ -150,7 +154,7 @@ test("settings and updates use the approved tour lines", () => {
   assert.match(updates, /A tour of Prysmic/);
   assert.match(
     updates,
-    /A short tour shows you notes, tasks, contracts, the calendar, and moods\. You can start it again anytime from Settings\./
+    /A short tour shows you notes, tasks, habits, the calendar, and moods\. You can start it again anytime from Settings\./
   );
   assert.match(updates, /Start the tour/);
 });

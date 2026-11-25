@@ -191,7 +191,7 @@ test("the note surfaces wire the menu without moving delete into it", () => {
   assert.match(list, /archived=true/);
   assert.match(list, /notesForList/);
   assert.match(note, /NoteActionsMenu/);
-  assert.match(note, /Contracts from this note/);
+  assert.match(note, /Habits from this note/);
   assert.match(note, /Tasks from this note/);
   assert.match(note, /taskHref/);
   assert.match(note, /task\.isComplete/);
@@ -202,7 +202,7 @@ test("the note surfaces wire the menu without moving delete into it", () => {
   assert.match(menu, /stopPropagation/);
   assert.match(menu, /Make a task/);
   assert.match(menu, /\/tasks\?originNoteId=/);
-  const contractAt = menu.indexOf("Turn into a contract");
+  const contractAt = menu.indexOf("Turn into a habit");
   const taskAt = menu.indexOf("Make a task");
   const dayAt = menu.indexOf("Add to a calendar day", contractAt);
   assert.ok(contractAt !== -1 && taskAt > contractAt && dayAt > taskAt);

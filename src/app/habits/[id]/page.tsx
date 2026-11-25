@@ -205,14 +205,14 @@ export default function HabitDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this contract?")) return;
+    if (!confirm("Are you sure you want to delete this habit?")) return;
     try {
       await apiFetch(`/habits/${id}`, { method: "DELETE" });
       queryClient.removeQueries({ queryKey: ["habit", id] });
       queryClient.invalidateQueries({ queryKey: ["habits"] });
       router.push("/habits");
     } catch {
-      setError("Failed to delete contract");
+      setError("Failed to delete habit");
     }
   };
 
@@ -226,17 +226,17 @@ export default function HabitDetailPage() {
   if (contractMissing || (loadError && !habit)) {
     return (
       <PageTransition>
-        <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
+        <div data-app-route="/habits" className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4">
           <GlassPanel className="flex h-full min-h-0 w-full max-w-[1400px] flex-col">
             <MissingRecord
               title={contractMissing ? "Not found" : "Could not load"}
               message={
                 contractMissing
-                  ? "This contract isn't here."
-                  : "This contract could not be loaded."
+                  ? "This habit isn't here."
+                  : "This habit could not be loaded."
               }
               backHref="/habits"
-              backLabel="Back to contracts"
+              backLabel="Back to habits"
             />
           </GlassPanel>
         </div>
@@ -246,15 +246,15 @@ export default function HabitDetailPage() {
 
   if (!habit) {
     return (
-      <div className="app-page-h flex items-center justify-center">
-        <Spinner label="Summoning contract..." />
+      <div data-app-route="/habits" className="app-page-h flex items-center justify-center">
+        <Spinner label="Summoning habit..." />
       </div>
     );
   }
 
   return (
     <PageTransition>
-      <div className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
+      <div data-app-route="/habits" className="w-full app-page-h flex flex-col items-center px-3 sm:px-6 md:px-10 xl:px-12 2xl:px-20 pt-3 sm:pt-4 pb-3 sm:pb-4 gap-4 sm:gap-6">
         <GlassPanel
           className={clsx(
             "flex w-full max-w-[1400px] min-h-0 flex-col gap-4 sm:gap-6",
@@ -264,7 +264,7 @@ export default function HabitDetailPage() {
         >
           <div className="flex justify-between items-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-100 tracking-wide">
-              {edit ? "Edit Contract" : "Contract"}
+              {edit ? "Edit Habit" : "Habit"}
             </h2>
             <motion.button
               {...tactile}
@@ -306,7 +306,7 @@ export default function HabitDetailPage() {
                         id="habit-name"
                         value={form.name || ""}
                         onChange={(e) => handleChange("name", e.target.value)}
-                        placeholder="Name your contract"
+                        placeholder="Name your habit"
                       />
                     </Field>
                     <Field label="Description" htmlFor="habit-description">
@@ -315,7 +315,7 @@ export default function HabitDetailPage() {
                         rows={2}
                         value={form.description || ""}
                         onChange={(e) => handleChange("description", e.target.value)}
-                        placeholder="What does this contract involve?"
+                        placeholder="What does this habit involve?"
                       />
                     </Field>
                     <Field label="Intent" htmlFor="habit-intent">

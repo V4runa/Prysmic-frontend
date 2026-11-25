@@ -21,14 +21,15 @@ export type TourStep = {
 
 export const TOUR_WELCOME = {
   title: "Welcome to Prysmic",
-  body: "This is your private notebook for notes, tasks, contracts, a calendar, and moods. This short tour shows you each area. You can skip it at any time.",
+  body: "This is your private notebook for notes, tasks, habits, a calendar, and moods. This short tour shows you each area. You can skip it at any time.",
   start: "Start tour",
   skip: "Skip tour",
 } as const;
 
 export const TOUR_CLOSE = {
   title: "You're all set",
-  body: "You can start this tour again anytime from Settings.",
+  body: "Your notebook is ready. Use it to keep track of your days and watch your progress build over time. Welcome to Prysmic.",
+  hint: "You can start this tour again anytime from Settings.",
   done: "Done",
 } as const;
 
@@ -57,15 +58,15 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: "contracts",
     route: "/habits",
     target: "[data-tour='contracts-create'], [data-tour='contracts-list']",
-    title: "Contracts",
-    body: "A contract is a daily commitment you set for yourself. Add one, then check it off on this page each day. The days you keep it are saved here and on the calendar.",
+    title: "Habits",
+    body: "A habit is something you want to do each day. Add one, then check it off on this page each day. The days you keep it are saved here and on the calendar.",
   },
   {
     id: "calendar",
     route: "/calendar",
     target: "[data-tour='calendar-today']",
     title: "Calendar",
-    body: "The calendar shows your tasks, contracts, events, and moods by day. Select a day to see what is on it, or select an item to open it.",
+    body: "The calendar shows your tasks, habits, events, and moods by day. Select a day to see what is on it, or select an item to open it.",
   },
   {
     id: "moods",
@@ -105,6 +106,7 @@ export function tourFacingCopy(): string[] {
     TOUR_WELCOME.skip,
     TOUR_CLOSE.title,
     TOUR_CLOSE.body,
+    TOUR_CLOSE.hint,
     TOUR_CLOSE.done,
     TOUR_CONTROLS.skip,
     TOUR_CONTROLS.back,
