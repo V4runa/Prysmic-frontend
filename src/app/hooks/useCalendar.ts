@@ -23,6 +23,11 @@ export function useCalendarFeed(from: string, to: string) {
         `/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
       ),
     enabled: !!from && !!to,
+    // The rest of the app keeps a page warm for five minutes. This feed is
+    // what someone opens to see a check, a mood, a task, or an event they
+    // just saved. A visit always asks again, including when a fetch that
+    // started before the save lands afterwards and would otherwise look fresh.
+    staleTime: 0,
   });
 }
 

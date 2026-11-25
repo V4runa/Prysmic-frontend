@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../components/GlassPanel";
@@ -121,11 +122,10 @@ export default function HabitsPage() {
   };
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 10 },
+    hidden: { opacity: 0 },
     visible: (i: number) => ({
       opacity: 1,
-      y: 0,
-      transition: { delay: i * 0.04 },
+      transition: { delay: i * 0.04, duration: 0.2 },
     }),
   };
 
@@ -188,13 +188,14 @@ export default function HabitsPage() {
                     variants={cardVariants}
                     initial="hidden"
                     animate="visible"
-                    whileTap={{ scale: 0.99 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 24 }}
-                    onClick={() => router.push(`/habits/${habit.id}`)}
-                    className={`glass-sheen card-lift group relative flex flex-col gap-3 rounded-2xl p-4 sm:p-5 cursor-pointer overflow-hidden backdrop-blur-md border ${
+                    className={`glass-sheen group relative overflow-hidden rounded-2xl border backdrop-blur-md ${
                       isTodayChecked ? c.cardChecked : c.cardIdle
                     }`}
                   >
+                    <Link
+                      href={`/habits/${habit.id}`}
+                      className="relative z-10 flex flex-col gap-3 p-4 sm:p-5"
+                    >
                     {/* 🎆 Completion Burst */}
                     {animating && (
                       <>
@@ -261,8 +262,9 @@ export default function HabitsPage() {
                         </span>
                       </div>
                     )}
+                    </Link>
 
-                    {/* ✅ Check Button */}
+                    {/* Check control sits outside the link so one press does not also open the habit. */}
                     {isTodayChecked ? (
                       // Completed: a non-destructive badge. Tapping it falls
                       // through to the card click, which opens the detail view

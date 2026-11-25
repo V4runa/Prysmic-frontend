@@ -17,8 +17,8 @@ export default function PageTransition({
     <AnimatePresence initial={false}>
       <motion.div
         key={pathname}
-        initial={steady ? false : { opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={steady ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
         exit={steady ? { opacity: 1, transition: { duration: 0 } } : { opacity: 0 }}
         transition={steady ? { duration: 0 } : { duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >

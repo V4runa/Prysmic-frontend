@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import GlassPanel from "../../components/GlassPanel";
 import PageTransition from "../../components/PageTransition";
 import { apiFetch } from "../../hooks/useApi";
+import { calendarQueryKey } from "../../hooks/useCalendar";
 import { saveDeadline } from "../../lib/saveDeadline";
 import { contractDescriptionFromNote } from "../../lib/noteMarkdown";
 import {
@@ -81,6 +82,7 @@ export default function NewHabitPage() {
       signal,
     });
     queryClient.invalidateQueries({ queryKey: ["habits"] });
+    queryClient.invalidateQueries({ queryKey: calendarQueryKey });
     if (originNoteId != null) {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
       queryClient.invalidateQueries({ queryKey: ["note", String(originNoteId)] });
