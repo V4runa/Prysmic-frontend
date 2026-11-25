@@ -8,6 +8,7 @@ import {
   CalendarLinkType,
   CalendarRecurrence,
 } from "../calendar/types";
+import { calendarFeedPath } from "../lib/calendarDay";
 
 export const calendarQueryKey = ["calendar"] as const;
 
@@ -19,9 +20,7 @@ export function useCalendarFeed(from: string, to: string) {
   return useQuery({
     queryKey: [...calendarQueryKey, from, to],
     queryFn: () =>
-      apiFetch<CalendarFeed>(
-        `/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
-      ),
+      apiFetch<CalendarFeed>(calendarFeedPath(from, to)),
     enabled: !!from && !!to,
     // The rest of the app keeps a page warm for five minutes. This feed is
     // what someone opens to see a check, a mood, a task, or an event they

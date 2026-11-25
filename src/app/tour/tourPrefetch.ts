@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { monthGridRange } from "../calendar/lib/calendarLib";
 import { apiFetch } from "../hooks/useApi";
+import { calendarFeedPath } from "../lib/calendarDay";
 import { localToday, logicalToday } from "../lib/date";
 import { TOUR_STEPS } from "./tourStops";
 
@@ -58,7 +59,7 @@ export function prefetchTourRoute(queryClient: QueryClient, route: string, userI
     const range = monthGridRange(calendarDay);
     void queryClient.prefetchQuery({
       queryKey: ["calendar", range.from, range.to],
-      queryFn: ({ signal }) => apiFetch(`/calendar?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`, { signal }),
+      queryFn: ({ signal }) => apiFetch(calendarFeedPath(range.from, range.to), { signal }),
     });
   } else if (route === "/moods") {
     void queryClient.prefetchQuery({

@@ -49,6 +49,26 @@ export function calendarDayHref(day: string): string {
   return `/calendar?date=${day}`;
 }
 
+function clientTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Calendar feed URL. `tz` is the viewer's IANA zone so a daily contract
+ * starts on their local creation day. An empty zone omits it and the API
+ * keeps the UTC start day.
+ */
+export function calendarFeedPath(from: string, to: string, timeZone?: string): string {
+  const params = new URLSearchParams({ from, to });
+  const zone = timeZone ?? clientTimeZone();
+  if (zone) params.set("tz", zone);
+  return `/calendar?${params.toString()}`;
+}
+
 export function noteHref(id: number): string {
   return `/notes/${id}`;
 }
