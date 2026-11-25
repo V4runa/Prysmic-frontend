@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   calendarDayFromSearch,
   calendarDayHref,
+  calendarFeedPath,
   formatCalendarDay,
   habitHref,
   isCalendarDayKey,
@@ -39,6 +40,14 @@ test("calendar day keys reject impossible dates and do not shift the written day
   assert.equal(formatCalendarDay("not-a-day"), "not-a-day");
 
   assert.equal(calendarDayHref("2026-11-11"), "/calendar?date=2026-11-11");
+  assert.equal(
+    calendarFeedPath("2026-11-24", "2026-11-24", "America/New_York"),
+    "/calendar?from=2026-11-24&to=2026-11-24&tz=America%2FNew_York",
+  );
+  assert.equal(
+    calendarFeedPath("2026-11-24", "2026-11-24", ""),
+    "/calendar?from=2026-11-24&to=2026-11-24",
+  );
   assert.equal(noteHref(4), "/notes/4");
   assert.equal(taskHref(9), "/tasks?task=9");
   assert.equal(parseTaskFocus("task=9"), 9);
